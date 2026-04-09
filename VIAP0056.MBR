@@ -1,0 +1,99 @@
+      ****************************************************************
+      *
+      *                  VIAP0056-TRATA-ERRO-BANKA
+      ****************************************************************
+      *
+       VIAP0056-TRATA-ERRO-BANKA.
+      *
+            MOVE VIAW0056-MSGQ              TO BRCL1020-PGMQ.
+            MOVE ZEROES                     TO VIAW0056-COD-ERR.
+      *
+            CALL 'BR1020' USING BRCL1020-PGMQ
+                                BRCL1020-WRMG-H
+                                BRCL1020-WNOCORN
+
+
+
+
+
+
+            PERFORM VARYING VIAW0056-INDEX FROM 1 BY 1
+              UNTIL (VIAW0056-INDEX > 10)
+                 OR BRCL1020-WRMG(VIAW0056-INDEX) EQUAL SPACES
+               MOVE BRCL1020-WRMG(VIAW0056-INDEX) TO VIAW0056-MSG-TOT
+      * AUTORIZAÇÃO INVÁLIDA
+               IF VIAW0056-MSG = 'GBM0198'
+                  MOVE 'VIAP0056-WRMG'
+                    TO VIAL0015-CAMPO-NM(VIAW0056-INDEX)
+                  MOVE BRCL1020-WRMG(VIAW0056-INDEX)
+                    TO VIAL0015-CAMPO-VLR(VIAW0056-INDEX)
+                  PERFORM VIAP0016-TRATA-DEBUG
+                     THRU VIAP0016-TRATA-DEBUG-EXIT
+                  MOVE PSCK0001-ERR-ORAUTR TO VIAW0056-COD-ERR
+               END-IF
+      * NÃO EXISTEM MOVIMENTOS PARA ANULAR NO DIA
+               IF VIAW0056-MSG = 'GBM7536'
+                  MOVE 'VIAP0056-WRMG'
+                    TO VIAL0015-CAMPO-NM(VIAW0056-INDEX)
+                  MOVE BRCL1020-WRMG(VIAW0056-INDEX)
+                    TO VIAL0015-CAMPO-VLR(VIAW0056-INDEX)
+                  PERFORM VIAP0016-TRATA-DEBUG
+                     THRU VIAP0016-TRATA-DEBUG-EXIT
+                  MOVE PSCK0001-ANUL-DAT-ERR TO VIAW0056-COD-ERR
+               END-IF
+      * UTILIZADOR SEM AUTORIZAÇÃO
+               IF VIAW0056-MSG = 'GBM1232'
+               OR VIAW0056-MSG = 'GBM0252'
+                  MOVE 'VIAP0056-WRMG'
+                    TO VIAL0015-CAMPO-NM(VIAW0056-INDEX)
+                  MOVE BRCL1020-WRMG(VIAW0056-INDEX)
+                    TO VIAL0015-CAMPO-VLR(VIAW0056-INDEX)
+                  PERFORM VIAP0016-TRATA-DEBUG
+                     THRU VIAP0016-TRATA-DEBUG-EXIT
+                  MOVE PSCK0001-ERR-USER-AUTR TO VIAW0056-COD-ERR
+               END-IF
+      * EXCEDE PLAFOND DO UTILIZADOR
+               IF VIAW0056-MSG = 'GBM0201'
+                  MOVE 'VIAP0056-WRMG'
+                    TO VIAL0015-CAMPO-NM(VIAW0056-INDEX)
+                  MOVE BRCL1020-WRMG(VIAW0056-INDEX)
+                    TO VIAL0015-CAMPO-VLR(VIAW0056-INDEX)
+                  PERFORM VIAP0016-TRATA-DEBUG
+                     THRU VIAP0016-TRATA-DEBUG-EXIT
+                  MOVE PSCK0001-ERR-PLAFOND   TO VIAW0056-COD-ERR
+               END-IF
+      * ESTORNO SÓ PODE SER FEITO PELO BALCÃO OU UTILIZADOR
+      * DO MOVIMENTO
+               IF VIAW0056-MSG = 'GBM0266'
+                  MOVE 'VIAP0056-WRMG'
+                    TO VIAL0015-CAMPO-NM(VIAW0056-INDEX)
+                  MOVE BRCL1020-WRMG(VIAW0056-INDEX)
+                    TO VIAL0015-CAMPO-VLR(VIAW0056-INDEX)
+                  PERFORM VIAP0016-TRATA-DEBUG
+                     THRU VIAP0016-TRATA-DEBUG-EXIT
+                  MOVE PSCK0001-ERR-ESTORNO   TO VIAW0056-COD-ERR
+               END-IF
+      * AUTORIZAÇÃO NÃO É VÁLIDA PARA A DATA
+               IF VIAW0056-MSG = 'GBM5177'
+                  MOVE 'VIAP0056-WRMG'
+                    TO VIAL0015-CAMPO-NM(VIAW0056-INDEX)
+                  MOVE BRCL1020-WRMG(VIAW0056-INDEX)
+                    TO VIAL0015-CAMPO-VLR(VIAW0056-INDEX)
+                  PERFORM VIAP0016-TRATA-DEBUG
+                     THRU VIAP0016-TRATA-DEBUG-EXIT
+                  MOVE PSCK0001-ERR-DTAUTR    TO VIAW0056-COD-ERR
+               END-IF
+      * CONTA CCC VENCIDA. MOVIMENTO NÃO EFECTUADO
+               IF VIAW0056-MSG = 'GBM3568'
+                  MOVE 'VIAP0056-WRMG'
+                    TO VIAL0015-CAMPO-NM(VIAW0056-INDEX)
+                  MOVE BRCL1020-WRMG(VIAW0056-INDEX)
+                    TO VIAL0015-CAMPO-VLR(VIAW0056-INDEX)
+                  PERFORM VIAP0016-TRATA-DEBUG
+                     THRU VIAP0016-TRATA-DEBUG-EXIT
+                  MOVE PSCK0001-ERR-CCC-VENC  TO VIAW0056-COD-ERR
+               END-IF
+            END-PERFORM.
+      *
+       VIAP0056-TRATA-ERRO-BANKA-EXIT.
+           EXIT.

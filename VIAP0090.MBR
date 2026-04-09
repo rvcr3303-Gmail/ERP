@@ -1,0 +1,66 @@
+      ****************************************************************
+      *
+      *                  VIAP0090-TRATA-ERRO-BANKA
+      ****************************************************************
+      *
+       VIAP0090-TRATA-ERRO-BANKA.
+      *
+            MOVE VIAW0090-MSGQ              TO ETCL9200-PGMQ.
+            MOVE ZEROES                     TO ETCL9200-WNOCORN.
+            MOVE ZEROES                     TO VIAW0090-COD-ERR.
+      *
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+      *
+           PERFORM CALL-ETR90200
+              THRU CALL-ETR90200-EXIT.
+      *
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT.
+
+            PERFORM VARYING VIAW0090-INDEX FROM 1 BY 1
+              UNTIL (VIAW0090-INDEX > 10)
+                 OR ETCL9200-WRMG(VIAW0090-INDEX) EQUAL SPACES
+
+               MOVE ETCL9200-WRMG(VIAW0090-INDEX) TO VIAW0090-MSG-TOT
+
+
+               IF VIAW0090-COD-ERR EQUAL ZEROES
+                 IF VIAW0090-INDEX = 1
+                   IF VIAW0090-MSG = '$PM0280'
+                      MOVE VIAK0001-ERRO-LICENCA-BANKA
+                                                TO VIAW0090-COD-ERR
+                      MOVE VIAK0002-APLIC-AT    TO VIAW0090-ERR-CAPLIC
+                   END-IF
+                   IF VIAW0090-MSG = 'GBM0019'
+                      MOVE VIAK0001-ERRO-USR-NOTFND
+                                                TO VIAW0090-COD-ERR
+                      MOVE VIAK0002-APLIC-AT    TO VIAW0090-ERR-CAPLIC
+                   END-IF
+                   IF VIAW0090-MSG = 'GBM0078'
+                      MOVE VIAK0001-ERRO-TERM-NOTFND
+                                                TO VIAW0090-COD-ERR
+                      MOVE VIAK0002-APLIC-AT    TO VIAW0090-ERR-CAPLIC
+                   END-IF
+                 END-IF
+               END-IF
+
+            END-PERFORM.
+      *
+       VIAP0090-TRATA-ERRO-BANKA-EXIT.
+           EXIT.
+      ****************************************************************
+      *
+      *                  VIAP0090-INIT-MSG-BANKA
+      ****************************************************************
+      *
+       VIAP0090-INIT-MSG-BANKA.
+      *
+      *    LIMPA DA QUEUE AS MENSAGENS DE ACESSOS ANTERIORES
+           MOVE '*CLEAR'               TO SXCW0902-MSGID
+           MOVE VIAW0090-MSGQ          TO SXCW0902-PGMQC
+           PERFORM SXCP0902-ESCREVE-MSG
+              THRU SXCP0902-ESCREVE-MSG-EXIT.
+      *
+       VIAP0090-INIT-MSG-BANKA-EXIT.
+           EXIT.
