@@ -1,0 +1,253 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI53102.
+      ******************************************************************
+      *     PROGRAMA COI53102.                                         *
+      *                                                                *
+      *     Manutenção de Credênciais Bancárias                        *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI53102         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD8000 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV5310.
+       COPY COCV5311.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT8000 PIC X(08) VALUE 'COVT8000'.
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-X                         PIC 9(03) VALUE ZEROS.
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'COI53102'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI53102         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV5310-MSG.
+           MOVE COCV5310-ASE       TO COCV5311-ASE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV5310-ADE       TO COCV5311-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2050-VALIDACAO
+                 THRU 2050-VALIDACAO-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      * 2050-VALIDACAO
+      *--------------------------------------------------------------
+       2050-VALIDACAO.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2050-VALIDACAO    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV5310-CCONTA EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV5311-CCONTA-S
+               MOVE COCK0001-CAMPO-OBRIGAT TO COCV5311-CCONTA-MSG
+               MOVE COCK0002-CAPLIC        TO COCV5311-CCONTA-CAPLIC
+           END-IF.
+
+       2050-VALIDACAO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV5310-CPAIS        TO COCD8000-CPAIS.
+           MOVE COCV5310-CBANCO       TO COCD8000-CBANCO.
+           MOVE COCV5310-CCONTA       TO COCD8000-CCONTA.
+
+           EXEC SQL
+                 SELECT
+                       CPAIS
+                     , CBANCO
+                     , CCONTA
+                     , CUSER
+                     , PASSW
+                     , ITOKENREQ
+                     , CEMPR
+                     , URL
+                     , IACTIVO
+                 INTO
+                       :COCD8000-CPAIS
+                     , :COCD8000-CBANCO
+                     , :COCD8000-CCONTA
+                     , :COCD8000-CUSER
+                     , :COCD8000-PASSW
+                     , :COCD8000-ITOKENREQ
+                     , :COCD8000-CEMPR
+                     , :COCD8000-URL
+                     , :COCD8000-IACTIVO
+                  FROM  COVT8000
+                 WHERE  CPAIS  = :COCD8000-CPAIS
+                   AND  CBANCO = :COCD8000-CBANCO
+                   AND  CCONTA = :COCD8000-CCONTA
+           END-EXEC
+
+           MOVE CON-COVT8000 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV5311-CCONTA-S
+                    MOVE COCK0001-CCONTA-EXISTS
+                      TO COCV5311-CCONTA-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV5311-CCONTA-CAPLIC
+                 ELSE
+                     MOVE COCD8000-CPAIS       TO COCV5311-CPAIS
+                     MOVE COCD8000-CBANCO      TO COCV5311-CBANCO
+                     MOVE COCD8000-CCONTA      TO COCV5311-CCONTA
+                     MOVE COCD8000-CUSER       TO COCV5311-CUSER
+                     MOVE COCD8000-PASSW       TO COCV5311-PASSW
+                     MOVE COCD8000-ITOKENREQ   TO COCV5311-ITOKENREQ
+                     MOVE COCD8000-CEMPR       TO COCV5311-CEMPR
+                     MOVE COCD8000-URL         TO COCV5311-URL
+                     MOVE COCD8000-IACTIVO     TO COCV5311-IACTIVO
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV5311-CCONTA-S
+                    MOVE COCK0001-CCONTA-N-EXISTS
+                      TO COCV5311-CCONTA-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV5311-CCONTA-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV5311-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV5311-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV5311-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

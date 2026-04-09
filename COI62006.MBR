@@ -1,0 +1,491 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI62006.
+      ******************************************************************
+      *     PROGRAMA COI62006.
+      *
+      *     Upload Ficheiros
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       SOURCE-COMPUTER. IBM-AS400.
+       OBJECT-COMPUTER. IBM-AS400.
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      *
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI62006         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+           EXEC SQL INCLUDE COCD2800 END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV6200.
+       COPY COCV6201.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY AQCW0005.
+       COPY VIAW0011.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ETCL0002.
+       COPY ARCK0001.
+       COPY ARCL2205.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY COCL0100.
+       COPY COCL5020.
+       COPY COCL5030.
+       COPY COCL5010.
+       COPY ETCK0001.
+       COPY ETCK0002.
+      *
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME                  PIC  X(08) VALUE 'COI62006'.
+      *--------------------------------------------------------------
+      * VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-EXEC-MODULO            PIC  X(10)  VALUE SPACES.
+      *--------------------------------------------------------------
+      * CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+      ********* STATUS **************
+           05 CON-TRANSMIT              PIC  X(02)  VALUE 'TR'.
+           05 CON-INTEGRADO             PIC  X(02)  VALUE 'IN'.
+           05 CON-ERRO                  PIC  X(02)  VALUE 'ER'.
+           05 CON-PROCESSADO            PIC  X(02)  VALUE 'PR'.
+      *--------------------------------------------------------------
+      * SWITCHES
+      *--------------------------------------------------------------
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI62006         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV6200-MSG.
+           MOVE COCV6200-ASE               TO COCV6201-ASE.
+
+           IF COCV6200-CNISERIES EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO    TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO   TO COCV6201-CTIPOFICH-S
+              MOVE COCK0001-ERRO-FICH       TO COCV6201-CTIPOFICH-MSG
+              MOVE COCK0002-CAPLIC          TO COCV6201-CTIPOFICH-CAPLIC
+           END-IF.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA'    TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6200-ADE               TO COCV6201-ADE.
+      *
+      * OBTEM O NOME DO MODULO A EXECUTA DEPENDENDO DO TIPO DE FICHEIRO
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-MODULO
+                 THRU 2100-OBTEM-MODULO-EXIT
+           END-IF.
+      *
+      * OBTEM O NOME DO MODULO A EXECUTA DEPENDENDO DO TIPO DE FICHEIRO
+           IF VIAL0002-SEM-ERROS
+              PERFORM 4000-INSERT-COT28
+                 THRU 4000-INSERT-COT28-EXIT
+           END-IF.
+      *
+      * EXECUTA O MODULO PARA PROCESSAR O FICHEIRO RECEBIDO
+           IF VIAL0002-SEM-ERROS
+             IF COCV6200-CTIPOFICH = 'GALPFROTA'
+              PERFORM 2200-PROC-MODULO
+                 THRU 2200-PROC-MODULO-EXIT
+             END-IF
+           END-IF.
+      *
+      * EXECUTA O MODULO PARA PROCESSAR O FICHEIRO RECEBIDO
+           IF VIAL0002-SEM-ERROS
+             IF COCV6200-CTIPOFICH = 'VENCIM'
+               PERFORM 2200-PROC-MODULO-ADM
+                  THRU 2200-PROC-MODULO-ADM-EXIT
+             END-IF
+           END-IF.
+      *
+      * EXECUTA O MODULO PARA PROCESSAR O FICHEIRO RECEBIDO
+           IF VIAL0002-SEM-ERROS
+             IF COCV6200-CTIPOFICH = 'VVERDE'
+               PERFORM 2200-PROC-MODULO-VV
+                  THRU 2200-PROC-MODULO-VV-EXIT
+             END-IF
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            2100-OBTEM-MODULO
+      *--------------------------------------------------------------
+       2100-OBTEM-MODULO.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-MODULO'      TO VIAL0015-CALLER-ID
+              MOVE 'COCV6200-CTIPOFICH '    TO VIAL0015-CAMPO-NM (1)
+              MOVE  COCV6200-CTIPOFICH      TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ETCL0002-COMMAREA     REPLACING NUMERIC BY ZEROES
+                                                 ALPHANUMERIC BY SPACES.
+
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+
+      **R  CALL 'ARREBENTA'.
+
+           MOVE COCV6200-CTIPOFICH          TO ARCL2205-CPARAM.
+           MOVE COCK0002-CAPLIC             TO ARCL2205-CAPLIC.
+
+           PERFORM CALL-ARM2206
+              THRU CALL-ARM2206-EXIT.
+
+      *    PERFORM ETCP0002-STD-END
+      *       THRU ETCP0002-STD-END-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF ARCL2205-GVALOR1 EQUAL SPACES
+                 MOVE VIAK0002-ERROS-FUNCAO
+                                            TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO
+                                            TO COCV6201-CTIPOFICH-S
+                 MOVE COCK0001-ERRO-FICH    TO COCV6201-CTIPOFICH-MSG
+                 MOVE COCK0002-CAPLIC       TO COCV6201-CTIPOFICH-CAPLIC
+              ELSE
+                 MOVE ARCL2205-GVALOR1      TO WS-EXEC-MODULO
+              END-IF
+           ELSE
+              MOVE ETCL0002-IND-ERROS       TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO
+                                            TO COCV6201-CTIPOFICH-S
+              MOVE ETCL0002-NR-ERRO         TO COCV6201-CTIPOFICH-MSG
+              MOVE ETCL0002-CAPLIC-ERRO     TO COCV6201-CTIPOFICH-CAPLIC
+           END-IF.
+      *
+       2100-OBTEM-MODULO-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            2200-PROC-MODULO
+      *--------------------------------------------------------------
+       2200-PROC-MODULO.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-PROC-MODULO'   TO VIAL0015-CALLER-ID
+              MOVE 'WS-EXEC-MODULO'         TO VIAL0015-CAMPO-NM (1)
+              MOVE  WS-EXEC-MODULO          TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6200-CNISERIES          TO COCL5010-NOMEFIC
+           MOVE COCV6200-CTIPOFICH          TO COCL5010-CTIPOFICH
+           MOVE COCV6200-CCHAVE             TO COCL5010-CCHAVE
+           MOVE COCV6200-CCODDOC            TO COCL5010-CCODDOC
+      *
+      * PASSA NA LINKAGE O NOME DO FICHEIRO A TRATAR
+           CALL WS-EXEC-MODULO           USING ETCL0002-COMMAREA
+                                               COCL5010-COMMAREA
+             ON EXCEPTION
+                SET  ETCL0002-ERROS-ARQ     TO TRUE
+                MOVE VIAK0001-PROG-NOTFND   TO ETCL0002-NR-ERRO
+                MOVE ETCL0002-IND-ERROS     TO ETCL0002-CAPLIC-ERRO
+                MOVE WS-EXEC-MODULO         TO ETCL0002-CPROGRAM
+           END-CALL.
+      *
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              CONTINUE
+           ELSE
+              MOVE ETCL0002-IND-ERROS       TO VIAL0002-IND-ERROS
+              MOVE ETCL0002-SQLCODE         TO VIAL0002-SQLCODE
+              MOVE COCK0002-STATUS-ACTIVO
+                                            TO COCV6201-CTIPOFICH-S
+              MOVE ETCL0002-NR-ERRO         TO COCV6201-CTIPOFICH-MSG
+              MOVE ETCL0002-CAPLIC-ERRO     TO COCV6201-CTIPOFICH-CAPLIC
+
+              MOVE '2200-PROC-MODULO-EXIT'  TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS'     TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0002-IND-ERROS      TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV6201-CTIPOFICH-MSG' TO VIAL0015-CAMPO-NM (2)
+              MOVE  COCV6201-CTIPOFICH-MSG  TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       2200-PROC-MODULO-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2200-PROC-MODULO-ADM
+      *--------------------------------------------------------------
+       2200-PROC-MODULO-ADM.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-PROC-MODULO-ADM'   TO VIAL0015-CALLER-ID
+              MOVE 'WS-EXEC-MODULO'         TO VIAL0015-CAMPO-NM (1)
+              MOVE  WS-EXEC-MODULO          TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6200-CNISERIES          TO COCL5020-NOMEFIC
+           MOVE COCV6200-CTIPOFICH          TO COCL5020-CTIPOFICH
+           MOVE COCV6200-CCHAVE             TO COCL5020-CCHAVE
+           MOVE COCV6200-CCODDOC            TO COCL5020-CCODDOC
+      *
+      * PASSA NA LINKAGE O NOME DO FICHEIRO A TRATAR
+           CALL WS-EXEC-MODULO           USING ETCL0002-COMMAREA
+                                               COCL5020-COMMAREA
+             ON EXCEPTION
+                SET  ETCL0002-ERROS-ARQ     TO TRUE
+                MOVE VIAK0001-PROG-NOTFND   TO ETCL0002-NR-ERRO
+                MOVE ETCL0002-IND-ERROS     TO ETCL0002-CAPLIC-ERRO
+                MOVE WS-EXEC-MODULO         TO ETCL0002-CPROGRAM
+           END-CALL.
+      *
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              CONTINUE
+           ELSE
+              MOVE ETCL0002-IND-ERROS       TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO
+                                            TO COCV6201-CTIPOFICH-S
+              MOVE ETCL0002-NR-ERRO         TO COCV6201-CTIPOFICH-MSG
+              MOVE ETCL0002-CAPLIC-ERRO     TO COCV6201-CTIPOFICH-CAPLIC
+
+              MOVE '2200-PROC-MODULO-ADM-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS'        TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV6201-CTIPOFICH-MSG'    TO VIAL0015-CAMPO-NM (2)
+              MOVE  COCV6201-CTIPOFICH-MSG     TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       2200-PROC-MODULO-ADM-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            2200-PROC-MODULO-VV
+      *--------------------------------------------------------------
+       2200-PROC-MODULO-VV.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-PROC-MODULO-VM'    TO VIAL0015-CALLER-ID
+              MOVE 'WS-EXEC-MODULO'         TO VIAL0015-CAMPO-NM (1)
+              MOVE  WS-EXEC-MODULO          TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6200-CNISERIES          TO COCL5030-NOMEFIC
+           MOVE COCV6200-CTIPOFICH          TO COCL5030-CTIPOFICH
+           MOVE COCV6200-CCHAVE             TO COCL5030-CCHAVE
+           MOVE COCV6200-CCODDOC            TO COCL5030-CCODDOC
+      *
+      * PASSA NA LINKAGE O NOME DO FICHEIRO A TRATAR
+           CALL WS-EXEC-MODULO           USING ETCL0002-COMMAREA
+                                               COCL5030-COMMAREA
+             ON EXCEPTION
+                SET  ETCL0002-ERROS-ARQ     TO TRUE
+                MOVE VIAK0001-PROG-NOTFND   TO ETCL0002-NR-ERRO
+                MOVE ETCL0002-IND-ERROS     TO ETCL0002-CAPLIC-ERRO
+                MOVE WS-EXEC-MODULO         TO ETCL0002-CPROGRAM
+           END-CALL.
+      *
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              CONTINUE
+           ELSE
+              MOVE ETCL0002-IND-ERROS       TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO
+                                            TO COCV6201-CTIPOFICH-S
+              MOVE ETCL0002-NR-ERRO         TO COCV6201-CTIPOFICH-MSG
+              MOVE ETCL0002-CAPLIC-ERRO     TO COCV6201-CTIPOFICH-CAPLIC
+
+              MOVE '2200-PROC-MODULO-ADM-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS'        TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV6201-CTIPOFICH-MSG'    TO VIAL0015-CAMPO-NM (2)
+              MOVE  COCV6201-CTIPOFICH-MSG     TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       2200-PROC-MODULO-VV-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA'   TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6201-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV6201-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV6201-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+      *
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *
+      ******************************************************************
+      *                  4000-INSERT-COT28                             *
+      ******************************************************************
+       4000-INSERT-COT28.
+
+           MOVE '4000-INSERT-COT28'        TO VIAL0015-CALLER-ID.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'COCV6200-CNISERIES   ' TO VIAL0015-CAMPO-NM (1)
+              MOVE  COCV6200-CNISERIES     TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6200-CNORIG            TO COCD2800-CFILEXLS.
+           MOVE COCV6200-CCHAVE            TO COCD2800-CCHAVE
+           MOVE VIAL0001-CUTILIZA-I        TO COCD2800-CUSERIDC.
+           MOVE COCV6200-CNISERIES         TO COCD2800-CFILEIBM.
+           MOVE CON-TRANSMIT               TO COCD2800-STATE.
+           MOVE VIAL0001-CUTILIZA-I        TO COCD2800-CUSERID.
+           MOVE COCV6200-CTIPOFICH         TO COCD2800-CFILETYP.
+
+           EXEC SQL
+              INSERT
+                INTO COVT2800_FILEADM
+                     (   CFILEXLS
+                       , CCHAVE
+                       , CFILEIBM
+                       , STATE
+                       , HTIMESTC
+                       , CUSERIDC
+                       , CUSERID
+                       , HTIMEST
+                       , CFILETYP )
+              VALUES ( :COCD2800-CFILEXLS
+                     , :COCD2800-CCHAVE
+                     , :COCD2800-CFILEIBM
+                     , :COCD2800-STATE
+                     , CURRENT TIMESTAMP
+                     , :COCD2800-CUSERIDC
+                     , :COCD2800-CUSERID
+                     , CURRENT TIMESTAMP
+                     , :COCD2800-CFILETYP
+                )
+           END-EXEC.
+
+           MOVE COCK0002-COT28               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'SQLCODE                 ' TO VIAL0015-CAMPO-NM (1)
+              MOVE  SQLCODE                   TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAW0005-SQLCODE        ' TO VIAL0015-CAMPO-NM (2)
+              MOVE  VIAW0005-SQLCODE          TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EVALUATE TRUE
+              WHEN DB2-OK
+                 CONTINUE
+              WHEN OTHER
+                 MOVE VIAK0002-ABEND-DB2
+                                           TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO
+                                           TO COCV6201-CTIPOFICH-S
+                 MOVE COCK0001-ERRO-FICH   TO COCV6201-CTIPOFICH-MSG
+                 MOVE COCK0002-CAPLIC      TO COCV6201-CTIPOFICH-CAPLIC
+           END-EVALUATE.
+
+       4000-INSERT-COT28-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0011.
+           COPY VIAP0016.
+           COPY ETCP0002.
+           COPY AQCP0005.
+           COPY ARCR2206.

@@ -1,0 +1,811 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI62306.
+      ******************************************************************
+      *     PROGRAMA COI62306.                                         *
+      *                                                                *
+      *     Emissão Ficha Cadastro Pessoal
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       SOURCE-COMPUTER. IBM-AS400.
+       OBJECT-COMPUTER. IBM-AS400.
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI62306         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD0104 END-EXEC.
+           EXEC SQL INCLUDE COCD5305 END-EXEC.
+           EXEC SQL INCLUDE COCD7301 END-EXEC.
+           EXEC SQL INCLUDE COCD5502 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV6230.
+       COPY COCV6231.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY AQCW0005.
+       COPY ARCL2720.
+       COPY TGCL1000.
+       COPY TGCL2000.
+       COPY TGCK0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT5305      PIC X(08) VALUE 'COVT5305'.
+           05 CON-COVT7301      PIC X(08) VALUE 'COVT7301'.
+           05 CON-COVT5502      PIC X(08) VALUE 'COVT5502'.
+           05 CON-ARVT0104      PIC X(08) VALUE 'ARVT0104'.
+           05 CON-FICHACAD      PIC X(10) VALUE 'FICHACAD  '.
+           05 CON-CC            PIC X(03) VALUE '009'.
+           05 CON-PP            PIC X(03) VALUE '001'.
+           05 CON-NF            PIC X(03) VALUE '003'.
+           05 CON-SEP           PIC X(03) VALUE ' - '.
+      *
+           05 CON-CTABELA-CCATPROF  PIC X(05) VALUE 'CO010'.
+           05 CON-CTABELA-CHABILIT  PIC X(05) VALUE 'CO011'.
+           05 CON-CTABELA-CGENERO   PIC X(05) VALUE 'CL002'.
+           05 CON-CTABELA-CESTCIVIL PIC X(05) VALUE 'AR020'.
+           05 CON-CTABELA-CTIPVIN   PIC X(05) VALUE 'CO600'.
+           05 CON-CTABELA-CNAC      PIC X(05) VALUE 'AR047'.
+
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME        PIC X(08)  VALUE 'COI62306'.
+           05 WS-ZCUNICO         PIC X(10)  VALUE SPACES.
+           05 WS-CTO             PIC X(200) VALUE SPACES.
+           05 WS-CCC             PIC X(200) VALUE SPACES.
+           05 WS-NOTE            PIC X(40)  VALUE SPACES.
+           05 WS-NOTE1           PIC X(40)  VALUE SPACES.
+           05 WS-NOTE2           PIC X(40)  VALUE SPACES.
+           05 WS-NOTE3           PIC X(40)  VALUE SPACES.
+      *
+           05 WS-NVENC           PIC ---.---.---.--9,99.
+           05 FILLER REDEFINES WS-NVENC.
+              10 WS-NVENC-X      PIC X(18).
+      *
+           05 WS-NOUTABN         PIC ---.---.---.--9,99.
+           05 FILLER REDEFINES WS-NOUTABN.
+              10 WS-NOUTABN-X    PIC X(18).
+      *
+           05 WS-NDEPEND         PIC 9(02).
+           05 FILLER REDEFINES WS-NDEPEND.
+              10 WS-NDEPEND-X    PIC X(02).
+      *
+           05 WS-NHORSEM         PIC --9,99.
+           05 FILLER REDEFINES WS-NHORSEM.
+              10 WS-NHORSEM-X    PIC X(06).
+      *
+           05 WS-FREGUESIA       PIC X(40)  VALUE SPACES.
+           05 WS-CONCELHO        PIC X(40)  VALUE SPACES.
+           05 WS-DISTRITO        PIC X(40)  VALUE SPACES.
+           05 WS-CONTACTOEMERG   PIC X(100) VALUE SPACES.
+           05 WS-FREGUESIA-NAT   PIC X(40)  VALUE SPACES.
+           05 WS-CONCELHO-NAT    PIC X(40)  VALUE SPACES.
+           05 WS-DISTRITO-NAT    PIC X(40)  VALUE SPACES.
+           05 WS-NACIONALIDADE   PIC X(40)  VALUE SPACES.
+           05 WS-GRAUACADEMICO   PIC X(40)  VALUE SPACES.
+           05 WS-CURSO           PIC X(40)  VALUE SPACES.
+           05 WS-CARTAOCIDADAO   PIC X(50)  VALUE SPACES.
+           05 WS-CC-VALIDADE     PIC X(10)  VALUE SPACES.
+           05 WS-PASSAPORTE      PIC X(50)  VALUE SPACES.
+           05 WS-PP-DTEMISSAO    PIC X(10)  VALUE SPACES.
+           05 WS-PP-LOCEMISSAO   PIC X(40)  VALUE SPACES.
+           05 WS-NUMFISCAL       PIC X(50)  VALUE SPACES.
+           05 WS-SITUACAO-IRS    PIC X(40)  VALUE SPACES.
+           05 WS-SUBREF-DIA      PIC X(40)  VALUE '5,12 EUR'.
+           05 WS-DESCRICAO       PIC X(50)  VALUE SPACES.
+      *
+           05 WS-CGENERO-CD      PIC X(54)  VALUE SPACES.
+           05 FILLER REDEFINES WS-CGENERO-CD.
+              10 WS-CGENERO-COD  PIC X(01).
+              10 WS-CGENERO-SEP  PIC X(03).
+              10 WS-CGENERO-DES  PIC X(50).
+      *
+           05 WS-CHABILIT-CD     PIC X(56)  VALUE SPACES.
+           05 FILLER REDEFINES WS-CHABILIT-CD.
+              10 WS-CHABILIT-COD PIC X(03).
+              10 WS-CHABILIT-SEP PIC X(03).
+              10 WS-CHABILIT-DES PIC X(50).
+      *
+           05 WS-CESTCIVIL-CD        PIC X(54)  VALUE SPACES.
+           05 FILLER REDEFINES WS-CESTCIVIL-CD.
+              10 WS-CESTCIVIL-COD    PIC X(01).
+              10 WS-CESTCIVIL-SEP    PIC X(03).
+              10 WS-CESTCIVIL-DES    PIC X(50).
+      *
+           05 WS-CCATPROF-CD        PIC X(58)  VALUE SPACES.
+           05 FILLER REDEFINES WS-CCATPROF-CD.
+              10 WS-CCATPROF-COD    PIC X(05).
+              10 WS-CCATPROF-SEP    PIC X(03).
+              10 WS-CCATPROF-DES    PIC X(50).
+      *
+           05 WS-CTIPVIN-CD         PIC X(55)  VALUE SPACES.
+           05 FILLER REDEFINES WS-CTIPVIN-CD.
+              10 WS-CTIPVIN-COD     PIC X(02).
+              10 WS-CTIPVIN-SEP     PIC X(03).
+              10 WS-CTIPVIN-DES     PIC X(50).
+      *
+           05 WS-CNAC-CD            PIC X(58)  VALUE SPACES.
+           05 FILLER REDEFINES WS-CNAC-CD.
+              10 WS-CNAC-COD        PIC X(05).
+              10 WS-CNAC-SEP        PIC X(03).
+              10 WS-CNAC-DES        PIC X(50).
+      *
+           05 WS-CTABELA                   PIC X(05) VALUE SPACES.
+           05 WS-CCOD                      PIC X(40) VALUE SPACES.
+           05 WS-C2COD                     PIC X(40) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI62306         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3000-FINAL-PROGRAMA-EXIT.
+      *
+       0000-MAINLINE-EXIT.
+           COPY VIAP0004.
+
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *--------------------------------------------------------------
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV6230-MSG.
+           MOVE COCV6230-ASE               TO COCV6231-ASE.
+      *
+           PERFORM 1010-LER-COT53
+              THRU 1010-LER-COT53-EXIT.
+      *
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+       1010-LER-COT53.
+      *--------------------------------------------------------------
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1010-LER-COT53    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6230-CPESSOA TO COCD5305-CPESSOA.
+      *
+           EXEC SQL
+                 SELECT
+                       CPESSOA
+                     , NTRABALHADOR
+                     , ZCUNICO
+                     , GNOME
+                     , GLOCALIDADE
+                     , CGENERO
+                     , DNASC
+                     , CTIPDOC
+                     , CNUMDOC
+                     , CTIPDOC2
+                     , CNUMDOC2
+                     , CBENEFIC
+                     , CESTCIVIL
+                     , DADESAO
+                     , DCANCEL
+                     , CCATPROF
+                     , CHABILIT
+                     , CTIPVIN
+                     , CNAC
+                 INTO
+                       :COCD5305-CPESSOA
+                     , :COCD5305-NTRABALHADOR
+                     , :COCD5305-ZCUNICO
+                     , :COCD5305-GNOME
+                     , :COCD5305-GLOCALIDADE
+                     , :COCD5305-CGENERO
+                     , :COCD5305-DNASC
+                     , :COCD5305-CTIPDOC
+                     , :COCD5305-CNUMDOC
+                     , :COCD5305-CTIPDOC2
+                     , :COCD5305-CNUMDOC2
+                     , :COCD5305-CBENEFIC
+                     , :COCD5305-CESTCIVIL
+                     , :COCD5305-DADESAO
+                     , :COCD5305-DCANCEL
+                     , :COCD5305-CCATPROF
+                     , :COCD5305-CHABILIT
+                     , :COCD5305-CTIPVIN
+                     , :COCD5305-CNAC
+                 FROM COVT5305_PESSOAS
+                 WHERE
+                    CPESSOA = :COCD5305-CPESSOA
+           END-EXEC
+      *
+           MOVE CON-COVT5305
+             TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 PERFORM 1020-LER-COT55
+                    THRU 1020-LER-COT55-EXIT
+              END-IF
+           END-IF.
+      *
+       1010-LER-COT53-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+       1020-LER-COT55.
+      *--------------------------------------------------------------
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1020-LER-COT55    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCD5305-ZCUNICO          TO WS-ZCUNICO.
+           INSPECT WS-ZCUNICO
+                      REPLACING LEADING ZEROES BY SPACES.
+           MOVE FUNCTION TRIM(WS-ZCUNICO) TO COCD5502-ZREF.
+           MOVE COCK0002-TIPCON-PESSOAS   TO COCD5502-CTIPCON.
+           MOVE COCK0002-CFAMCON-PESSOAS  TO COCD5502-CFAMCON.
+      *
+           EXEC SQL
+                 SELECT
+                       GMORADA
+                     , GLOCPOS
+                     , CCODPOS
+                     , GTELEFONE1
+                     , GEMAILPES
+                 INTO
+                       :COCD5502-GMORADA
+                     , :COCD5502-GLOCPOS
+                     , :COCD5502-CCODPOS
+                     , :COCD5502-GTELEFONE1
+                     , :COCD5502-GEMAILPES
+                 FROM COVT5502_CONTACTOS
+                 WHERE  CFAMCON = :COCD5502-CFAMCON
+                   AND  ZREF    = :COCD5502-ZREF
+                   AND  CTIPCON = :COCD5502-CTIPCON
+                 FETCH FIRST ROW ONLY
+           END-EXEC
+      *
+           MOVE CON-COVT5502
+             TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 PERFORM 1030-LER-COT73
+                    THRU 1030-LER-COT73-EXIT
+              END-IF
+           END-IF.
+      *
+       1020-LER-COT55-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+       1030-LER-COT73.
+      *--------------------------------------------------------------
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1030-LER-COT73    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCD5305-ZCUNICO          TO COCD7301-ZCUNICO.
+      *
+           EXEC SQL
+                 SELECT
+                       ZCUNICO
+                     , NVENC
+                     , NOUTABN
+                     , NDEPEND
+                     , NHORSEM
+                     , CNIB
+                     , CSNS
+                     , CUSERID
+                     , HTIMEST
+                 INTO
+                       :COCD7301-ZCUNICO
+                     , :COCD7301-NVENC
+                     , :COCD7301-NOUTABN
+                     , :COCD7301-NDEPEND
+                     , :COCD7301-NHORSEM
+                     , :COCD7301-CNIB
+                     , :COCD7301-CSNS
+                     , :COCD7301-CUSERID
+                     , :COCD7301-HTIMEST
+                 FROM COVT7301
+                 WHERE  ZCUNICO = :COCD7301-ZCUNICO
+                 FETCH FIRST ROW ONLY
+           END-EXEC
+      *
+           MOVE CON-COVT7301
+             TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 CONTINUE
+              END-IF
+           END-IF.
+      *
+       1030-LER-COT73-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *--------------------------------------------------------------
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6230-ADE               TO COCV6231-ADE.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-VALIDACOES
+                 THRU 2200-VALIDACOES-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2450-OBT-EMAIL
+                 THRU 2450-OBT-EMAIL-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2500-ENVIA-EMAIL
+                 THRU 2500-ENVIA-EMAIL-EXIT
+           END-IF.
+      *
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+       2200-VALIDACOES.
+      *--------------------------------------------------------------
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+      *
+       2200-VALIDACOES-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   OBTEM EMAIL
+      *--------------------------------------------------------------
+       2450-OBT-EMAIL.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2450-OBT-EMAIL      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE  SPACES               TO WS-CTO.
+           MOVE  VIAL0001-CUTILIZA-I  TO ARCD0104-GUSERNAME.
+
+           EXEC SQL
+                SELECT  GEMAIL
+                  INTO :ARCD0104-GEMAIL
+                  FROM  ARVT0104
+                 WHERE  GUSERNAME  = :ARCD0104-GUSERNAME
+           END-EXEC.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+             IF DB2-OK
+                MOVE ARCD0104-GEMAIL TO WS-CTO
+             ELSE
+                MOVE 'Utilizador não tem email'
+                                             TO VIAL0015-CALLER-ID
+                MOVE 'ARCD0104-GUSERNAME  '  TO VIAL0015-CAMPO-NM(1)
+                MOVE ARCD0104-GUSERNAME      TO VIAL0015-CAMPO-VLR(1)
+                PERFORM VIAP0016-TRATA-DEBUG
+                  THRU VIAP0016-TRATA-DEBUG-EXIT
+             END-IF
+           END-IF.
+
+       2450-OBT-EMAIL-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2500-ENVIA-EMAIL
+      *--------------------------------------------------------------
+       2500-ENVIA-EMAIL.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-ENVIA-EMAIL' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE ARCL2720-DATA     REPLACING NUMERIC BY ZEROES
+                                          ALPHANUMERIC BY SPACES.
+
+           MOVE CON-FICHACAD                   TO ARCL2720-CCOD
+           MOVE '*** Ficha de Cadastro de Pessoal ***' TO WS-NOTE.
+           MOVE 'Dados Pessoais:'                      TO WS-NOTE1.
+           MOVE 'Dados Profissionais:'                 TO WS-NOTE2.
+           MOVE 'Documentos:'                          TO WS-NOTE3.
+           MOVE WS-CTO                         TO ARCL2720-CTO.
+      *    MOVE WS-CCC                         TO ARCL2720-CCC.
+
+           MOVE WS-NOTE                        TO ARCL2720-VALOR  (01).
+           MOVE WS-NOTE1                       TO ARCL2720-VALOR  (02).
+           MOVE COCD5305-GNOME                 TO ARCL2720-VALOR  (03).
+           MOVE COCD5502-GMORADA               TO ARCL2720-VALOR  (04).
+           MOVE COCD5502-GLOCPOS               TO ARCL2720-VALOR  (05).
+           MOVE COCD5502-CCODPOS               TO ARCL2720-VALOR  (06).
+           MOVE WS-FREGUESIA                   TO ARCL2720-VALOR  (07).
+           MOVE WS-CONCELHO                    TO ARCL2720-VALOR  (08).
+           MOVE WS-DISTRITO                    TO ARCL2720-VALOR  (09).
+           MOVE COCD5502-GTELEFONE1            TO ARCL2720-VALOR  (10).
+           MOVE COCD5502-GEMAILPES             TO ARCL2720-VALOR  (11).
+           MOVE WS-CONTACTOEMERG               TO ARCL2720-VALOR  (12).
+           MOVE COCD5305-GLOCALIDADE           TO ARCL2720-VALOR  (13).
+           MOVE WS-FREGUESIA-NAT               TO ARCL2720-VALOR  (14).
+           MOVE WS-CONCELHO-NAT                TO ARCL2720-VALOR  (15).
+           MOVE WS-DISTRITO-NAT                TO ARCL2720-VALOR  (16).
+      *
+           PERFORM 2510-BUSCA-GENERO THRU 2510-BUSCA-GENERO-EXIT.
+           MOVE COCD5305-CGENERO               TO WS-CGENERO-COD.
+           MOVE CON-SEP                        TO WS-CGENERO-SEP.
+           MOVE WS-DESCRICAO                   TO WS-CGENERO-DES.
+           MOVE WS-CGENERO-CD                  TO ARCL2720-VALOR  (17).
+      *
+           PERFORM 2560-BUSCA-CNAC   THRU 2560-BUSCA-CNAC-EXIT.
+           MOVE COCD5305-CNAC                  TO WS-CNAC-COD.
+           MOVE CON-SEP                        TO WS-CNAC-SEP.
+           MOVE WS-DESCRICAO                   TO WS-CNAC-DES.
+           MOVE WS-CNAC-CD                     TO ARCL2720-VALOR  (18).
+      *
+           PERFORM 2520-BUSCA-HABIL  THRU 2520-BUSCA-HABIL-EXIT.
+           MOVE COCD5305-CHABILIT              TO WS-CHABILIT-COD.
+           MOVE CON-SEP                        TO WS-CHABILIT-SEP.
+           MOVE WS-DESCRICAO                   TO WS-CHABILIT-DES.
+           MOVE WS-CHABILIT-CD                 TO ARCL2720-VALOR  (19).
+      *
+           PERFORM 2550-BUSCA-CTIPVIN THRU 2550-BUSCA-CTIPVIN-EXIT.
+           MOVE COCD5305-CTIPVIN               TO WS-CTIPVIN-COD.
+           MOVE CON-SEP                        TO WS-CTIPVIN-SEP.
+           MOVE WS-DESCRICAO                   TO WS-CTIPVIN-DES.
+           MOVE WS-CTIPVIN-CD                  TO ARCL2720-VALOR  (41).
+      *
+           MOVE WS-CURSO                       TO ARCL2720-VALOR  (20).
+           MOVE COCD5305-DNASC                 TO ARCL2720-VALOR  (21).
+           MOVE WS-NOTE3                       TO ARCL2720-VALOR  (45).
+      *--- Cartão Cidadão
+           IF COCD5305-CTIPDOC = CON-CC
+              MOVE COCD5305-CNUMDOC            TO ARCL2720-VALOR  (22)
+           ELSE
+              IF COCD5305-CTIPDOC2 = CON-CC
+                 MOVE COCD5305-CNUMDOC2        TO ARCL2720-VALOR  (22)
+              ELSE
+                 MOVE WS-CARTAOCIDADAO         TO ARCL2720-VALOR  (22)
+              END-IF
+           END-IF.
+           MOVE WS-CC-VALIDADE                 TO ARCL2720-VALOR  (23).
+      *--- Passaporte
+           IF COCD5305-CTIPDOC = CON-PP
+              MOVE COCD5305-CNUMDOC            TO ARCL2720-VALOR  (24)
+           ELSE
+              IF COCD5305-CTIPDOC2 = CON-PP
+                 MOVE COCD5305-CNUMDOC2        TO ARCL2720-VALOR  (24)
+              ELSE
+                 MOVE WS-PASSAPORTE            TO ARCL2720-VALOR  (24)
+              END-IF
+           END-IF.
+           MOVE WS-PP-DTEMISSAO                TO ARCL2720-VALOR  (25).
+           MOVE WS-PP-LOCEMISSAO               TO ARCL2720-VALOR  (26).
+      *--- Número Fiscal
+           IF COCD5305-CTIPDOC = CON-NF
+              MOVE COCD5305-CNUMDOC            TO ARCL2720-VALOR  (27)
+           ELSE
+              IF COCD5305-CTIPDOC2 = CON-NF
+                 MOVE COCD5305-CNUMDOC2        TO ARCL2720-VALOR  (27)
+              ELSE
+                 MOVE WS-NUMFISCAL             TO ARCL2720-VALOR  (27)
+              END-IF
+           END-IF.
+           MOVE COCD5305-CBENEFIC              TO ARCL2720-VALOR  (28).
+           MOVE COCD7301-CSNS                  TO ARCL2720-VALOR  (29).
+      *
+           PERFORM 2530-BUSCA-ECIVIL THRU 2530-BUSCA-ECIVIL-EXIT.
+           MOVE COCD5305-CESTCIVIL             TO WS-CESTCIVIL-COD.
+           MOVE CON-SEP                        TO WS-CESTCIVIL-SEP.
+           MOVE WS-DESCRICAO                   TO WS-CESTCIVIL-DES.
+           MOVE WS-CESTCIVIL-CD                TO ARCL2720-VALOR  (30).
+      *
+           MOVE WS-SITUACAO-IRS                TO ARCL2720-VALOR  (31).
+      *
+           MOVE COCD7301-NDEPEND               TO WS-NDEPEND.
+           MOVE FUNCTION TRIM(WS-NDEPEND-X)    TO ARCL2720-VALOR  (32).
+      *
+           MOVE COCD7301-CNIB                  TO ARCL2720-VALOR  (33).
+           MOVE WS-NOTE2                       TO ARCL2720-VALOR  (34).
+           MOVE COCD5305-DADESAO               TO ARCL2720-VALOR  (35).
+           MOVE COCD5305-DCANCEL               TO ARCL2720-VALOR  (36).
+      *
+           PERFORM 2540-BUSCA-CATPRF THRU 2540-BUSCA-CATPRF-EXIT.
+           MOVE COCD5305-CCATPROF              TO WS-CCATPROF-COD.
+           MOVE CON-SEP                        TO WS-CCATPROF-SEP.
+           MOVE WS-DESCRICAO                   TO WS-CCATPROF-DES.
+           MOVE WS-CCATPROF-CD                 TO ARCL2720-VALOR  (37).
+      *
+           MOVE COCD7301-NVENC                 TO WS-NVENC.
+           MOVE FUNCTION TRIM(WS-NVENC-X)      TO ARCL2720-VALOR  (38).
+      *
+           MOVE WS-SUBREF-DIA                  TO ARCL2720-VALOR  (39).
+      *
+           MOVE COCD7301-NOUTABN               TO WS-NOUTABN.
+           MOVE FUNCTION TRIM(WS-NOUTABN-X)    TO ARCL2720-VALOR  (40).
+      *
+           MOVE COCD7301-NHORSEM               TO WS-NHORSEM.
+           MOVE FUNCTION TRIM(WS-NHORSEM-X)    TO ARCL2720-VALOR  (42).
+      *
+           MOVE COCD5305-NTRABALHADOR          TO ARCL2720-VALOR  (44).
+
+           PERFORM CALL-ARM2720
+              THRU CALL-ARM2720-EXIT.
+
+       2500-ENVIA-EMAIL-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2510-BUSCA-GENERO
+      *--------------------------------------------------------------
+       2510-BUSCA-GENERO.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2510-BUSCA-GENERO  ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              MOVE CON-CTABELA-CGENERO TO WS-CTABELA
+              MOVE COCD5305-CGENERO    TO WS-CCOD
+              MOVE SPACES              TO WS-C2COD
+              MOVE SPACES              TO WS-DESCRICAO
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC   TO WS-DESCRICAO
+              END-IF
+           END-IF.
+
+       2510-BUSCA-GENERO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2520-BUSCA-HABIL
+      *--------------------------------------------------------------
+       2520-BUSCA-HABIL.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2520-BUSCA-HABIL   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              MOVE CON-CTABELA-CHABILIT TO WS-CTABELA
+              MOVE COCD5305-CHABILIT    TO WS-CCOD
+              MOVE SPACES               TO WS-C2COD
+              MOVE SPACES               TO WS-DESCRICAO
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC   TO WS-DESCRICAO
+              END-IF
+           END-IF.
+
+       2520-BUSCA-HABIL-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2530-BUSCA-ECIVIL
+      *--------------------------------------------------------------
+       2530-BUSCA-ECIVIL.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2530-BUSCA-ECIVIL  ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              MOVE CON-CTABELA-CESTCIVIL TO WS-CTABELA
+              MOVE COCD5305-CESTCIVIL    TO WS-CCOD
+              MOVE SPACES                TO WS-C2COD
+              MOVE SPACES                TO WS-DESCRICAO
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC   TO WS-DESCRICAO
+              END-IF
+           END-IF.
+
+       2530-BUSCA-ECIVIL-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2540-BUSCA-CATPRF
+      *--------------------------------------------------------------
+       2540-BUSCA-CATPRF.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2540-BUSCA-CATPRF  ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              MOVE CON-CTABELA-CCATPROF  TO WS-CTABELA
+              MOVE COCD5305-CCATPROF     TO WS-CCOD
+              MOVE SPACES                TO WS-C2COD
+              MOVE SPACES                TO WS-DESCRICAO
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC   TO WS-DESCRICAO
+              END-IF
+           END-IF.
+
+       2540-BUSCA-CATPRF-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2550-BUSCA-CTIPVIN
+      *--------------------------------------------------------------
+       2550-BUSCA-CTIPVIN.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2550-BUSCA-CTIPVIN ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              MOVE CON-CTABELA-CTIPVIN  TO WS-CTABELA
+              MOVE COCD5305-CTIPVIN     TO WS-CCOD
+              MOVE SPACES               TO WS-C2COD
+              MOVE SPACES               TO WS-DESCRICAO
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC   TO WS-DESCRICAO
+              END-IF
+           END-IF.
+
+       2550-BUSCA-CTIPVIN-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2560-BUSCA-CNAC
+      *--------------------------------------------------------------
+       2560-BUSCA-CNAC.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2560-BUSCA-CNAC    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              MOVE CON-CTABELA-CNAC     TO WS-CTABELA
+              MOVE COCD5305-CNAC        TO WS-CCOD
+              MOVE SPACES               TO WS-C2COD
+              MOVE SPACES               TO WS-DESCRICAO
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC   TO WS-DESCRICAO
+              END-IF
+           END-IF.
+
+       2560-BUSCA-CNAC-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-VAL-TAB-ART05
+      *--------------------------------------------------------------
+       2200-VAL-TAB-ART05.
+      *
+           INITIALIZE TGCL2000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL2000-CTABELA
+           MOVE WS-CCOD                   TO TGCL2000-CCOD
+           MOVE WS-C2COD                  TO TGCL2000-C2COD
+
+           PERFORM CALL-TGCP2000
+              THRU CALL-TGCP2000-EXIT.
+
+       2200-VAL-TAB-ART05-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6231-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV6231-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV6231-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+      *
+       3000-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+           COPY VIAP0016.
+           COPY AQCP0005.
+           COPY ARCP2720.
+           COPY TGCP1000.
+           COPY TGCP2000.

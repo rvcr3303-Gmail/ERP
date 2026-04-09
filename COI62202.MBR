@@ -1,0 +1,270 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI62202.
+      ******************************************************************
+      *     PROGRAMA COI62202.
+      *
+      *     Pessoas Particulares
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI62202         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD5304 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV6220.
+       COPY COCV6221.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY WACK0002.
+       COPY WACL0025.
+       COPY ETCL0002.
+      *
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT5303   PIC X(08) VALUE 'COVT5303'.
+           05 CON-N-DEFINIDO PIC X(02) VALUE 'ND'.
+           05 CON-009        PIC X(02) VALUE '009'.
+           05 CON-1          PIC 9(01) VALUE 1.
+           05 CON-DOC-INIT   PIC X(07) VALUE '9999999'.
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'COI62202'.
+           05 WS-ERRO-CC             PIC  9(01) VALUE ZEROS.
+           05 WS-NUMDOC              PIC  X(50) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI62202         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+      *
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+      *
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV6220-MSG.
+           MOVE COCV6220-ASE               TO COCV6221-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6220-ADE       TO COCV6221-ADE.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-OBTEM-DADOS
+                 THRU 2299-OBTEM-DADOS-EXIT
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2200-OBTEM-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Valida número de documento
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6220-CTIPDOC NOT EQUAL CON-N-DEFINIDO
+               PERFORM 2215-VALIDA-NR-DOC
+                  THRU 2215-VALIDA-NR-DOC-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF COCV6220-CTIPDOC EQUAL CON-N-DEFINIDO
+                 MOVE CON-DOC-INIT TO COCV6220-CNUMDOC
+                                      COCV6221-CNUMDOC
+              ELSE
+                 PERFORM 2210-TIPDOC-DEFINIDO
+                    THRU 2219-TIPDOC-DEFINIDO-EXIT
+              END-IF
+           END-IF.
+
+       2299-OBTEM-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+       2215-VALIDA-NR-DOC.
+      *--------------------------------------------------------------
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2215-VALIDA-NR-DOC ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF  VIAL0002-SEM-ERROS
+               INITIALIZE ETCL0002-COMMAREA
+                          WACL0025-COMMAREA
+
+               MOVE COCV6220-CTIPDOC       TO   WACL0025-TIPO-DOC
+               MOVE COCV6220-CNUMDOC       TO   WACL0025-NR-DOCUMENTO
+               MOVE WACK0002-BACKOFFICE    TO   WACL0025-CANAL
+
+               CALL WACL0025-NM-ROTINA     USING ETCL0002-COMMAREA
+                                                 WACL0025-COMMAREA
+
+               IF NOT ETCL0002-SEM-ERROS
+                  MOVE VIAK0002-ERROS-FUNCAO
+                    TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO
+                    TO COCV6221-CNUMDOC-S
+
+                  EVALUATE COCV6220-CTIPDOC
+                     WHEN '001'
+                     MOVE COCK0001-PP-FORM-INV
+                       TO COCV6221-CNUMDOC-MSG
+                     WHEN '002'
+                     MOVE COCK0001-BI-FORM-INV
+                       TO COCV6221-CNUMDOC-MSG
+                     WHEN '003'
+                     MOVE COCK0001-NF-FORM-INV
+                       TO COCV6221-CNUMDOC-MSG
+                     WHEN '009'
+                     MOVE COCK0001-CC-FORM-INV
+                       TO COCV6221-CNUMDOC-MSG
+                  END-EVALUATE
+
+                  MOVE COCK0002-CAPLIC
+                    TO COCV6221-CNUMDOC-CAPLIC
+               END-IF
+           END-IF.
+
+       2215-VALIDA-NR-DOC-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2210-TIPDOC-DEFINIDO
+      *--------------------------------------------------------------
+       2210-TIPDOC-DEFINIDO.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2210-TIPDOC-DEFINIDO' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+
+           MOVE COCV6220-CTIPDOC           TO COCD5304-CTIPDOC
+           MOVE COCV6220-CNUMDOC           TO COCD5304-CNUMDOC
+
+           EXEC SQL
+                 SELECT
+                       CNUMDOC
+                 INTO
+                       :COCD5304-CNUMDOC
+                 FROM COVT5303_PESSOAS
+                 WHERE CTIPDOC = :COCD5304-CTIPDOC
+                   AND CNUMDOC = :COCD5304-CNUMDOC
+           END-EXEC.
+      *
+           MOVE CON-COVT5303
+             TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                  MOVE VIAK0002-ERROS-FUNCAO
+                    TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO
+                    TO COCV6221-CPESSOA-S
+                  MOVE COCK0001-CPESSOA-EXISTS
+                    TO COCV6221-CPESSOA-MSG
+                  MOVE COCK0002-CAPLIC
+                    TO COCV6221-CPESSOA-CAPLIC
+              END-IF
+           END-IF.
+      *
+       2219-TIPDOC-DEFINIDO-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6221-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV6221-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV6221-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+      *
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

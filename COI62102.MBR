@@ -1,0 +1,549 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI62102.
+      ******************************************************************
+      *     PROGRAMA COI62102.
+      *
+      *     Pessoas Particulares
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI62102         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD5305 END-EXEC.
+           EXEC SQL INCLUDE COCD7101 END-EXEC.
+           EXEC SQL INCLUDE COCD7001 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV6210.
+       COPY COCV6211.
+
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+      *
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT5305 PIC X(08) VALUE 'COVT5305'.
+           05 CON-COVT7101 PIC X(08) VALUE 'COVT7101'.
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'COI62102'.
+           05 WS-HOR-NDIAS           PIC S9(5)V99 COMP-3.
+           05 WS-TOT-ZHORAS          PIC S9(5) COMP-3.
+           05 WS-TOT-NDIAS           PIC S9(5)V99 COMP-3.
+           05 WS-TOT-NDIAS-REG       PIC S9(5)V99 COMP-3.
+           05 WS-SALDO-FERIAS        PIC S9(05)V9(02).
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI62102         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+      *
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+      *
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV6210-MSG.
+           MOVE COCV6210-ASE               TO COCV6211-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6210-ADE       TO COCV6211-ADE.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2130-CALCULA-SALDO-FERIAS
+                 THRU 2199-CALCULA-SALDO-FERIAS-EXIT
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6210-CPESSOA          TO COCD5305-CPESSOA
+      *
+           EXEC SQL
+                 SELECT
+                       CPESSOA
+                     , CTIPO
+                     , ZCUNICO
+                     , IVIA
+                     , ISUBEMP
+                     , ISUBREC
+                     , ICLIENTE
+                     , IOUTROS
+                     , CEMPRESA
+                     , NTRABALHADOR
+                     , CUTILIZA
+                     , CFUNCIONARIO
+                     , GNOME
+                     , GNOMER
+                     , CPARMNEM
+                     , ISTATUS
+                     , CTITULO
+                     , CCPP
+                     , CHABILIT
+                     , CTIPPARTI
+                     , DADESAO
+                     , DCANCEL
+                     , CTIPDOC
+                     , CNUMDOC
+                     , CBENEFIC
+                     , CCATPROF
+                     , DNASC
+                     , GLOCALIDADE
+                     , DOBITO
+                     , CGENERO
+                     , CESTCIVIL
+                     , CCONTACTO
+                     , CIDIOMA
+                     , CUSERID
+                     , HTIMEST
+                     , IENVCOMP
+                     , CCUSTO
+                     , CTARIFA
+                     , CTIPDOC2
+                     , CNUMDOC2
+                     , CTIPVIN
+                     , CNAC
+                 INTO
+                       :COCD5305-CPESSOA
+                     , :COCD5305-CTIPO
+                     , :COCD5305-ZCUNICO
+                     , :COCD5305-IVIA
+                     , :COCD5305-ISUBEMP
+                     , :COCD5305-ISUBREC
+                     , :COCD5305-ICLIENTE
+                     , :COCD5305-IOUTROS
+                     , :COCD5305-CEMPRESA
+                     , :COCD5305-NTRABALHADOR
+                     , :COCD5305-CUTILIZA
+                     , :COCD5305-CFUNCIONARIO
+                     , :COCD5305-GNOME
+                     , :COCD5305-GNOMER
+                     , :COCD5305-CPARMNEM
+                     , :COCD5305-ISTATUS
+                     , :COCD5305-CTITULO
+                     , :COCD5305-CCPP
+                     , :COCD5305-CHABILIT
+                     , :COCD5305-CTIPPARTI
+                     , :COCD5305-DADESAO
+                     , :COCD5305-DCANCEL
+                     , :COCD5305-CTIPDOC
+                     , :COCD5305-CNUMDOC
+                     , :COCD5305-CBENEFIC
+                     , :COCD5305-CCATPROF
+                     , :COCD5305-DNASC
+                     , :COCD5305-GLOCALIDADE
+                     , :COCD5305-DOBITO
+                     , :COCD5305-CGENERO
+                     , :COCD5305-CESTCIVIL
+                     , :COCD5305-CCONTACTO
+                     , :COCD5305-CIDIOMA
+                     , :COCD5305-CUSERID
+                     , :COCD5305-HTIMEST
+                     , :COCD5305-IENVCOMP
+                     , :COCD5305-CCUSTO
+                     , :COCD5305-CTARIFA
+                     , :COCD5305-CTIPDOC2
+                     , :COCD5305-CNUMDOC2
+                     , :COCD5305-CTIPVIN
+                     , :COCD5305-CNAC
+                 FROM COVT5305_PESSOAS
+                 WHERE
+                    CPESSOA = :COCD5305-CPESSOA
+           END-EXEC
+      *
+           MOVE CON-COVT5305
+             TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV6211-CPESSOA-S
+                    MOVE COCK0001-CPESSOA-EXISTS
+                      TO COCV6211-CPESSOA-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV6211-CPESSOA-CAPLIC
+                 ELSE
+                    MOVE COCD5305-CPESSOA
+                      TO COCV6211-CPESSOA
+                    MOVE COCD5305-CTIPO
+                      TO COCV6211-CTIPO
+                    MOVE COCD5305-ZCUNICO
+                      TO COCV6211-ZCUNICO
+                    MOVE COCD5305-IVIA
+                      TO COCV6211-IVIA
+                    MOVE COCD5305-ISUBEMP
+                      TO COCV6211-ISUBEMP
+                    MOVE COCD5305-ISUBREC
+                      TO COCV6211-ISUBREC
+                    MOVE COCD5305-ICLIENTE
+                      TO COCV6211-ICLIENTE
+                    MOVE COCD5305-IOUTROS
+                      TO COCV6211-IOUTROS
+                    MOVE COCD5305-CEMPRESA
+                      TO COCV6211-CEMPRESA
+                    MOVE COCD5305-NTRABALHADOR
+                      TO COCV6211-NTRABALHADOR
+                    MOVE COCD5305-CUTILIZA
+                      TO COCV6211-CUTILIZA
+                    MOVE COCD5305-CFUNCIONARIO
+                      TO COCV6211-CFUNCIONARIO
+                    MOVE COCD5305-GNOME
+                      TO COCV6211-GNOME
+                    MOVE COCD5305-GNOMER
+                      TO COCV6211-GNOMER
+                    MOVE COCD5305-CPARMNEM
+                      TO COCV6211-CPARMNEM
+                    MOVE COCD5305-ISTATUS
+                      TO COCV6211-ISTATUS
+                    MOVE COCD5305-CTITULO
+                      TO COCV6211-CTITULO
+                    MOVE COCD5305-CCPP
+                      TO COCV6211-CCPP
+                    MOVE COCD5305-CHABILIT
+                      TO COCV6211-CHABILIT
+                    MOVE COCD5305-CTIPPARTI
+                      TO COCV6211-CTIPPARTI
+                    MOVE COCD5305-DADESAO
+                      TO COCV6211-DADESAO
+                    MOVE COCD5305-DCANCEL
+                      TO COCV6211-DCANCEL
+                    MOVE COCD5305-CTIPDOC
+                      TO COCV6211-CTIPDOC
+                    MOVE COCD5305-CNUMDOC
+                      TO COCV6211-CNUMDOC
+                    MOVE COCD5305-CTIPDOC2
+                      TO COCV6211-CTIPDOC2
+                    MOVE COCD5305-CNUMDOC2
+                      TO COCV6211-CNUMDOC2
+                    MOVE COCD5305-CBENEFIC
+                      TO COCV6211-CBENEFIC
+                    MOVE COCD5305-CCATPROF
+                      TO COCV6211-CCATPROF
+                    MOVE COCD5305-DNASC
+                      TO COCV6211-DNASC
+                    MOVE COCD5305-GLOCALIDADE
+                      TO COCV6211-GLOCALIDADE
+                    MOVE COCD5305-DOBITO
+                      TO COCV6211-DOBITO
+                    MOVE COCD5305-CGENERO
+                      TO COCV6211-CGENERO
+                    MOVE COCD5305-CESTCIVIL
+                      TO COCV6211-CESTCIVIL
+                    MOVE COCD5305-CCONTACTO
+                      TO COCV6211-CCONTACTO
+                    MOVE COCD5305-CIDIOMA
+                      TO COCV6211-CIDIOMA
+                    MOVE COCD5305-CUSERID
+                      TO COCV6211-CUSERID
+                    MOVE COCD5305-HTIMEST
+                      TO COCV6211-HTIMEST
+                    MOVE COCD5305-IENVCOMP
+                      TO COCV6211-IENVCOMP
+                    MOVE COCD5305-CCUSTO
+                      TO COCV6211-CCUSTO
+                    MOVE COCD5305-CTARIFA
+                      TO COCV6211-CTARIFA
+                    MOVE COCD5305-CTIPVIN
+                      TO COCV6211-CTIPVIN
+                    MOVE COCD5305-CNAC
+                      TO COCV6211-CNAC
+                    IF NOT VIAL0001-VISUALIZACAO
+                        CONTINUE
+                    END-IF
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV6211-CPESSOA-S
+                    MOVE COCK0001-CPESSOA-N-EXISTS
+                      TO COCV6211-CPESSOA-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV6211-CPESSOA-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+      *
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2130-CALCULA-SALDO-FERIAS
+      *--------------------------------------------------------------
+       2130-CALCULA-SALDO-FERIAS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2130-CALCULA-SALDO-FERIAS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2110-OBTEM-FERIAS-ATRIB
+                 THRU 2199-OBTEM-FERIAS-ATRIB-EXIT
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'resultado 2110  '      TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS '   TO VIAL0015-CAMPO-NM(1)
+              MOVE VIAL0002-IND-ERROS      TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2120-OBTEM-HORAS-FERIAS
+                 THRU 2199-OBTEM-HORAS-FERIAS-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             COMPUTE WS-SALDO-FERIAS = WS-TOT-NDIAS - WS-HOR-NDIAS
+             MOVE WS-SALDO-FERIAS TO COCV6211-SFERIAS
+           ELSE
+             MOVE ZEROES          TO COCV6211-SFERIAS
+           END-IF.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2130-CALCULA-SALDO-FERIAS-EXIT'
+                                                  TO VIAL0015-CALLER-ID
+              MOVE 'WS-SALDO-FERIAS'    TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-SALDO-FERIAS      TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-TOT-NDIAS   '    TO VIAL0015-CAMPO-NM(2)
+              MOVE WS-TOT-NDIAS         TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'WS-HOR-NDIAS   '    TO VIAL0015-CAMPO-NM(3)
+              MOVE WS-HOR-NDIAS         TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       2199-CALCULA-SALDO-FERIAS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2110-OBTEM-FERIAS-ATRIB
+      *--------------------------------------------------------------
+       2110-OBTEM-FERIAS-ATRIB.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-OBTEM-FERIAS-ATRIB' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCD5305-NTRABALHADOR    TO COCD7101-CIDEMP
+      *
+           EXEC SQL
+                 SELECT IFNULL(SUM(NDIAS), 0),
+                        IFNULL(SUM(NDIASREG), 0)
+                 INTO  :WS-TOT-NDIAS,
+                       :WS-TOT-NDIAS-REG
+                 FROM COVT7101
+                 WHERE
+                    CIDEMP  = :COCD7101-CIDEMP
+           END-EXEC
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2110- SQLCODE    '     TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE     '          TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+
+           MOVE CON-COVT7101               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-TOT-NDIAS = WS-TOT-NDIAS + WS-TOT-NDIAS-REG
+              ELSE
+                 IF DB2-NOTFND
+                    MOVE ZEROES            TO WS-TOT-NDIAS
+                    MOVE ZEROES            TO WS-TOT-NDIAS-REG
+                 END-IF
+              END-IF
+           END-IF.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2110- dados      '     TO VIAL0015-CALLER-ID
+              MOVE 'WS-TOT-NDIAS'          TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-TOT-NDIAS            TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-TOT-NDIAS-REG '     TO VIAL0015-CAMPO-NM(2)
+              MOVE WS-TOT-NDIAS-REG        TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       2199-OBTEM-FERIAS-ATRIB-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2120-OBTEM-HORAS-FERIAS
+      *--------------------------------------------------------------
+       2120-OBTEM-HORAS-FERIAS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2120-OBTEM-HORAS-FERIAS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCD5305-NTRABALHADOR      TO COCD7001-CIDEMP
+      *
+           EXEC SQL
+                 SELECT IFNULL(SUM(ZHORAS), 0)
+                 INTO :WS-TOT-ZHORAS
+                 FROM COVT7001
+                 WHERE
+                    CIDEMP  = :COCD7001-CIDEMP
+           END-EXEC.
+      *
+           MOVE CON-COVT7101
+             TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    CONTINUE
+                 ELSE
+                    COMPUTE WS-HOR-NDIAS = WS-TOT-ZHORAS / 8
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV6211-CPESSOA-S
+                    MOVE COCK0001-CPESSOA-N-EXISTS
+                      TO COCV6211-CPESSOA-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV6211-CPESSOA-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2120-OBTEM-HORAS-FERIAS' TO VIAL0015-CALLER-ID
+              MOVE 'WS-TOT-ZHORAS'      TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-TOT-ZHORAS        TO VIAL0015-CAMPO-VLR(1)
+           END-IF.
+      *
+       2199-OBTEM-HORAS-FERIAS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              MOVE 'WS-SALDO-FERIAS'    TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-SALDO-FERIAS      TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV6211-SFERIAS'   TO VIAL0015-CAMPO-NM(2)
+              MOVE COCV6211-SFERIAS     TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV6211-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV6211-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV6211-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+      *
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
