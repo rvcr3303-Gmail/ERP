@@ -1,0 +1,784 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. COM50005.
+
+      ******************************************************************
+      *                       ARQUITECTURA BATCH                       *
+      ******************************************************************
+      * OBJECTIVO: Calculo do valor do imposto                         *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+      *SPECIAL-NAMES.
+      *    DECIMAL-POINT IS COMMA.
+
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       01  FILLER                       PIC  X(40)
+            VALUE 'INICIO WORKING-STORAGE DO COM50005      '.
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC X(10) VALUE 'COM50005'.
+           05 WS-COVT2507               PIC X(10) VALUE 'COVT2507'.
+           05 WS-COVT5403               PIC X(10) VALUE 'COVT5403'.
+           05 WS-COVT6702               PIC X(10) VALUE 'COVT6702'.
+           05 CON-DATA-MIN              PIC X(10) VALUE '0001-01-01'.
+           05 CON-A                     PIC X(01) VALUE 'A'.
+           05 CON-B                     PIC X(01) VALUE 'B'.
+           05 CON-C                     PIC X(01) VALUE 'C'.
+           05 CON-1                     PIC X(01) VALUE '1'.
+           05 CON-2                     PIC X(01) VALUE '2'.
+           05 CON-3                     PIC X(01) VALUE '3'.
+           05 CON-4                     PIC X(01) VALUE '4'.
+           05 CON-001-P                 PIC S9(01)V9(02) VALUE 0.01.
+           05 CON-001-N                 PIC S9(01)V9(02) VALUE -0.01.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-DATA-REF         PIC X(10)  VALUE SPACES.
+           05 WS-LIQ-TEMP         PIC S9(15)V9(03) VALUE ZEROS.
+           05 WS-LIQ-INT          PIC S9(15)       VALUE ZEROS.
+           05 WS-RESULT-I         PIC S9(15)V9(03) VALUE ZEROS.
+           05 WS-RESULT-F         PIC S9(15)V9(02) VALUE ZEROS.
+           05 WS-RESULT-S         PIC S9(15)V9(02) VALUE ZEROS.
+           05 WS-RESULT-F-1       PIC S9(15)V9(01) VALUE ZEROS.
+           05 WS-RESULT-F-0       PIC S9(15)       VALUE ZEROS.
+           05 WS-RET1             PIC S9(15)V9(03) VALUE ZEROS.
+           05 WS-ICA              PIC S9(15)V9(03) VALUE ZEROS.
+           05 WS-RET-IVA          PIC S9(15)V9(03) VALUE ZEROS.
+           05 WS-FACTOR           PIC S9(15)V9(05) VALUE ZEROS.
+           05 WS-EMP-CPAIS-ORI    PIC X(03)        VALUE SPACES.
+           05 WS-FRN-CTIPO        PIC X(03)        VALUE SPACES.
+           05 WS-FRN-CSIGLA       PIC X(03)        VALUE SPACES.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY COCK0001.
+           EXEC SQL INCLUDE COCK0002 END-EXEC.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAL0015.
+           COPY VIACK001.
+           COPY VIAW0005.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+           EXEC SQL INCLUDE COCD2508 END-EXEC.
+           EXEC SQL INCLUDE COCD5403 END-EXEC.
+           EXEC SQL INCLUDE COCD6702 END-EXEC.
+
+      ******************************************************************
+       01  FILLER                      PIC X(40)
+            VALUE 'FIM DA WORKING-STORAGE COM50005         '.
+
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+           COPY ETCL0002.
+           COPY COCL5005.
+
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                COCL5005-COMMAREA.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+
+           INITIALIZE WS-VARIAVEIS.
+           MOVE ZEROS                      TO COCL5005-NTAXAMOUNT.
+           MOVE ZEROS                      TO COCL5005-NRETAMOUNT.
+           MOVE ZEROS                      TO COCL5005-NRETTAX.
+           MOVE SPACES                     TO COCL5005-STATUS.
+           MOVE ZEROS                      TO WS-RESULT-I
+           MOVE ZEROS                      TO WS-RESULT-F
+           MOVE ZEROS                      TO WS-RESULT-F-1
+           MOVE ZEROS                      TO WS-RESULT-F-0
+
+           MOVE ZEROS                      TO COCL5005-RESULT-I
+           MOVE ZEROS                      TO COCL5005-RESULT-F
+
+           PERFORM 1100-VALIDAR-DADOS-INPUT
+              THRU 1100-VALIDAR-DADOS-INPUT-EXIT.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDAR-DADOS-INPUT.
+      ******************************************************************
+
+      *    Data de validade para o imposto
+           IF COCL5005-DDATAEMISS EQUAL SPACES
+           OR COCL5005-DDATAEMISS EQUAL CON-DATA-MIN
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE COCK0001-ERR-DDATAEMISS  TO ETCL0002-NR-ERRO
+              MOVE COCK0002-CAPLIC          TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+      *    Codigo do imposto
+           IF ETCL0002-SEM-ERROS
+             IF COCL5005-CIMPOSTO EQUAL SPACES
+               SET  ETCL0002-ERROS-FUNCAO        TO TRUE
+               MOVE COCK0001-ERR-CIMPOSTO        TO ETCL0002-NR-ERRO
+               MOVE COCK0002-CAPLIC             TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+      *
+      *    Codigo de empresa
+           IF ETCL0002-SEM-ERROS
+             IF COCL5005-CEMPRESA EQUAL SPACES
+               SET  ETCL0002-ERROS-FUNCAO       TO TRUE
+               MOVE COCK0001-IDEMPRESA-N-EXISTS TO ETCL0002-NR-ERRO
+               MOVE COCK0002-CAPLIC             TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+      *
+      *
+      *    Codigo de projecto
+           IF ETCL0002-SEM-ERROS
+             IF COCL5005-NIDPROJECTO EQUAL SPACES
+               SET  ETCL0002-ERROS-FUNCAO         TO TRUE
+               MOVE COCK0001-NIDPROJECTO-N-EXISTS TO ETCL0002-NR-ERRO
+               MOVE COCK0002-CAPLIC             TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+      *
+      *    Tipo de evento
+           IF ETCL0002-SEM-ERROS
+             IF COCL5005-CTIP-EVEN EQUAL SPACES
+               SET  ETCL0002-ERROS-FUNCAO      TO TRUE
+               MOVE COCK0001-TIP-EVENT-N-EXIST TO ETCL0002-NR-ERRO
+               MOVE COCK0002-CAPLIC            TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+      *
+      *    Codigo de fornecedor
+           IF ETCL0002-SEM-ERROS
+             IF COCL5005-CTIP-EVEN EQUAL COCK0002-EVEN-DESPESA
+               IF COCL5005-GFORNECED EQUAL SPACES
+                 SET  ETCL0002-ERROS-FUNCAO       TO TRUE
+                 MOVE COCK0001-IDEMPRESA-N-EXISTS TO ETCL0002-NR-ERRO
+                 MOVE COCK0002-CAPLIC           TO ETCL0002-CAPLIC-ERRO
+               END-IF
+             END-IF
+           END-IF.
+      *
+      *    Numero de factura
+      **R  IF COCL5005-NIDINVOICE  EQUAL ZEROES
+      **R    SET  ETCL0002-ERROS-FUNCAO        TO TRUE
+      **R    MOVE COCK0001-NIDINVOICE-N-EXISTS TO ETCL0002-NR-ERRO
+      **R    MOVE COCK0002-CAPLIC              TO ETCL0002-CAPLIC-ERRO
+      **R  END-IF.
+      *
+      *
+      *    Valor de incidencia do imposto
+           IF ETCL0002-SEM-ERROS
+             IF COCL5005-NTOTALAMOUNT EQUAL ZEROS
+               SET  ETCL0002-ERROS-FUNCAO     TO TRUE
+               MOVE COCK0001-ERR-NTOTALAMOUNT TO ETCL0002-NR-ERRO
+               MOVE COCK0002-CAPLIC           TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+      *
+       1100-VALIDAR-DADOS-INPUT-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             PERFORM 2400-OBT-PAIS-EMP
+                THRU 2400-OBT-PAIS-EMP-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             IF COCL5005-CTIP-EVEN EQUAL COCK0002-EVEN-DESPESA
+               PERFORM 2400-OBT-DADOS-FORN
+                  THRU 2400-OBT-DADOS-FORN-EXIT
+             ELSE
+               MOVE SPACES TO WS-FRN-CTIPO
+             END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2500-CALC-IMPOSTO
+                 THRU 2500-CALC-IMPOSTO-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2500-CALC-IMPOSTO.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2500-CALC-IMPOSTO    ' TO VIAL0015-CALLER-ID
+              MOVE 'COCL5005-CIMPOSTO    '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCL5005-CIMPOSTO        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCL5005-DDATAEMISS  '   TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCL5005-DDATAEMISS      TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCL5005-CEMPRESA    '   TO VIAL0015-CAMPO-NM(3)
+              MOVE  COCL5005-CEMPRESA        TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'COCL5005-CMOEDA      '   TO VIAL0015-CAMPO-NM(4)
+              MOVE  COCL5005-CMOEDA          TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'WS-EMP-CPAIS-ORI     '   TO VIAL0015-CAMPO-NM(5)
+              MOVE  WS-EMP-CPAIS-ORI         TO VIAL0015-CAMPO-VLR(5)
+              MOVE 'WS-FRN-CTIPO         '   TO VIAL0015-CAMPO-NM(6)
+              MOVE  WS-FRN-CTIPO             TO VIAL0015-CAMPO-VLR(6)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCL5005-CIMPOSTO          TO COCD2508-CIMPOSTO.
+           MOVE COCL5005-DDATAEMISS        TO WS-DATA-REF.
+           MOVE COCL5005-CMOEDA            TO COCD2508-CMOEDA.
+           MOVE COCL5005-CPAIS             TO COCD2508-CPAIS.
+           MOVE WS-EMP-CPAIS-ORI           TO COCD2508-CPAISORI.
+           MOVE WS-FRN-CTIPO               TO COCD2508-CTIPO.
+           MOVE COCL5005-CTIP-EVEN         TO COCD2508-CTIPEVEN.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2510-VAL-IMPOSTO
+                 THRU 2510-VAL-IMPOSTO-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             PERFORM 2600-CALCULAR
+                THRU 2600-CALCULAR-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             PERFORM 2700-ARREDONDAR
+                THRU 2700-ARREDONDAR-EXIT
+           END-IF
+
+           IF ETCL0002-SEM-ERROS
+             IF COCD2508-PRETENC NOT EQUAL ZEROES
+               PERFORM 2650-CALC-SPEC
+                  THRU 2650-CALC-SPEC-EXIT
+             END-IF
+           END-IF.
+
+       2500-CALC-IMPOSTO-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2510-VAL-IMPOSTO.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2510-VAL-IMPOSTO     ' TO VIAL0015-CALLER-ID
+              MOVE 'COCD2508-CIMPOSTO    '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCD2508-CIMPOSTO        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCD2508-CMOEDA      '   TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCD2508-CMOEDA          TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCD2508-CPAIS       '   TO VIAL0015-CAMPO-NM(3)
+              MOVE  COCD2508-CPAIS           TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'COCD2508-CPAISORI    '   TO VIAL0015-CAMPO-NM(4)
+              MOVE  COCD2508-CPAISORI        TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'COCD2508-CTIPO       '   TO VIAL0015-CAMPO-NM(5)
+              MOVE  COCD2508-CTIPO           TO VIAL0015-CAMPO-VLR(5)
+              MOVE 'COCD2508-CTIPEVEN    '   TO VIAL0015-CAMPO-NM(6)
+              MOVE  COCD2508-CTIPEVEN        TO VIAL0015-CAMPO-VLR(6)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+                 SELECT
+                       CIMPOSTO
+                     , DINITREG
+                     , DFIMREG
+                     , CTIPCALC
+                     , TPERCENT
+                     , MMINAMT
+                     , MFIXAMT
+                     , CTIPARR
+                     , CTIPDEC
+                     , CUSERID
+                     , HTIMEST
+                     , CMOEDA
+                     , CPAIS
+                     , CPAISORI
+                     , CTIPO
+                     , PRETENC
+                     , ZFACTOR
+                     , PRETIVA
+                 INTO
+                       :COCD2508-CIMPOSTO
+                     , :COCD2508-DINITREG
+                     , :COCD2508-DFIMREG
+                     , :COCD2508-CTIPCALC
+                     , :COCD2508-TPERCENT
+                     , :COCD2508-MMINAMT
+                     , :COCD2508-MFIXAMT
+                     , :COCD2508-CTIPARR
+                     , :COCD2508-CTIPDEC
+                     , :COCD2508-CUSERID
+                     , :COCD2508-HTIMEST
+                     , :COCD2508-CMOEDA
+                     , :COCD2508-CPAIS
+                     , :COCD2508-CPAISORI
+                     , :COCD2508-CTIPO
+                     , :COCD2508-PRETENC
+                     , :COCD2508-ZFACTOR
+                     , :COCD2508-PRETIVA
+                 FROM COVT2508
+                 WHERE  CIMPOSTO =  :COCD2508-CIMPOSTO
+                   AND  CMOEDA   =  :COCD2508-CMOEDA
+                   AND  CPAIS    =  :COCD2508-CPAIS
+                   AND  CPAISORI =  :COCD2508-CPAISORI
+                   AND  CTIPO    =  :COCD2508-CTIPO
+                   AND (CTIPEVEN =  :COCD2508-CTIPEVEN
+                    OR  CTIPEVEN =  :COCK0002-EVEN-AMBOS)
+                   AND  DINITREG <= :WS-DATA-REF
+                   AND  DFIMREG  >= :WS-DATA-REF
+           END-EXEC
+
+           MOVE WS-COVT2507
+             TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE ZEROS                TO WS-RESULT-I
+                 MOVE ZEROS                TO WS-RESULT-F
+                 MOVE '1'                  TO COCL5005-STATUS
+                 SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+                 MOVE COCK0001-ERR-CIMPOSTO    TO ETCL0002-NR-ERRO
+                 MOVE COCK0002-CAPLIC          TO ETCL0002-CAPLIC-ERRO
+              ELSE
+                CONTINUE
+              END-IF
+           END-IF.
+
+       2510-VAL-IMPOSTO-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2400-OBT-PAIS-EMP.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2400-OBT-PAIS-EMP    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *
+           MOVE COCL5005-CEMPRESA      TO COCD5403-CEMPRESA
+           MOVE SPACES                 TO WS-EMP-CPAIS-ORI
+      *
+           EXEC SQL
+             SELECT GNOME
+                  , CPAIS
+               INTO :COCD5403-GNOME
+                  , :COCD5403-CPAIS
+               FROM COVT5403_EMPRESAS
+            WHERE CEMPRESA = :COCD5403-CEMPRESA
+           END-EXEC.
+      *
+           MOVE WS-COVT5403 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE ZEROS                    TO WS-RESULT-I
+                 MOVE ZEROS                    TO WS-RESULT-F
+                 MOVE '1'                      TO COCL5005-STATUS
+                 SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+                 MOVE COCK0001-ERR-CIMPOSTO    TO ETCL0002-NR-ERRO
+                 MOVE COCK0002-CAPLIC          TO ETCL0002-CAPLIC-ERRO
+              ELSE
+                MOVE COCD5403-CPAIS            TO WS-EMP-CPAIS-ORI
+              END-IF
+           END-IF.
+
+       2400-OBT-PAIS-EMP-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2400-OBT-DADOS-FORN.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2400-OBT-DADOS-FORN.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF COCL5005-GFORNECED EQUAL SPACES
+             PERFORM 2400-OBT-DADOS-EXP
+                THRU 2400-OBT-DADOS-EXP-EXIT
+           ELSE
+             MOVE COCL5005-GFORNECED TO WS-FRN-CSIGLA
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             PERFORM 2400-OBT-DADOS-EMPF
+                THRU 2400-OBT-DADOS-EMPF-EXIT
+           END-IF.
+
+       2400-OBT-DADOS-FORN-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2400-OBT-DADOS-EXP.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2400-OBT-DADOS-EXP.' TO VIAL0015-CALLER-ID
+              MOVE 'COCL5005-NIDPROJECTO '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCL5005-NIDPROJECTO     TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *
+           MOVE COCL5005-NIDPROJECTO   TO COCD6702-NIDPROJECTO
+           MOVE COCL5005-NIDINVOICE    TO COCD6702-NIDINVOICE
+           MOVE SPACES                 TO WS-FRN-CTIPO
+      *
+           EXEC SQL
+             SELECT GCLIENTE
+               INTO :COCD6702-GCLIENTE
+               FROM COVT6702_EXPENSES
+            WHERE NIDPROJECTO = :COCD6702-NIDPROJECTO
+              AND NIDINVOICE  = :COCD6702-NIDINVOICE
+           END-EXEC.
+      *
+           MOVE WS-COVT6702 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE ZEROS                    TO WS-RESULT-I
+                 MOVE ZEROS                    TO WS-RESULT-F
+                 MOVE '1'                      TO COCL5005-STATUS
+                 SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+                 MOVE COCK0001-NIDPROJECTO-N-EXISTS TO ETCL0002-NR-ERRO
+                 MOVE COCK0002-CAPLIC          TO ETCL0002-CAPLIC-ERRO
+              ELSE
+                MOVE COCD6702-GCLIENTE           TO WS-FRN-CSIGLA
+              END-IF
+           END-IF.
+
+       2400-OBT-DADOS-EXP-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2400-OBT-DADOS-EMPF.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2400-OBT-DADOS-EMPF.' TO VIAL0015-CALLER-ID
+              MOVE 'WS-FRN-CSIGLA        '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-FRN-CSIGLA            TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCD6702-GCLIENTE     '  TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCD6702-GCLIENTE        TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *
+           MOVE WS-FRN-CSIGLA         TO COCD5403-CSIGLA
+           MOVE SPACES                TO WS-FRN-CTIPO
+      *
+           EXEC SQL
+             SELECT CTIPO, CPAIS
+               INTO :COCD5403-CTIPO,
+                    :COCD5403-CPAIS
+               FROM COVT5403_EMPRESAS
+            WHERE CSIGLA      = :COCD5403-CSIGLA
+           END-EXEC.
+      *
+           MOVE WS-COVT5403 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE ZEROS                    TO WS-RESULT-I
+                 MOVE ZEROS                    TO WS-RESULT-F
+                 MOVE '1'                      TO COCL5005-STATUS
+                 SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+                 MOVE COCK0001-ERR-CIMPOSTO    TO ETCL0002-NR-ERRO
+                 MOVE COCK0002-CAPLIC          TO ETCL0002-CAPLIC-ERRO
+              ELSE
+                MOVE COCD5403-CTIPO            TO WS-FRN-CTIPO
+                MOVE COCD5403-CPAIS            TO WS-EMP-CPAIS-ORI
+              END-IF
+           END-IF.
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2400-OBT-DADOS-EMPF-EXIT.' TO VIAL0015-CALLER-ID
+              MOVE 'WS-FRN-CSIGLA        '     TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-FRN-CSIGLA              TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCD6702-GCLIENTE     '    TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCD6702-GCLIENTE          TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'WS-EMP-CPAIS-ORI      '    TO VIAL0015-CAMPO-NM(3)
+              MOVE  WS-EMP-CPAIS-ORI           TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2400-OBT-DADOS-EMPF-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2600-CALCULAR.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2600-CALCULAR        ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      **R TIPO DE CALCULO ACRESCENTADO
+           IF COCD2508-CTIPCALC = COCK0002-TIPCIMP-ACR
+              COMPUTE WS-RESULT-I  = ( COCL5005-NTOTALAMOUNT
+                                   *   COCD2508-TPERCENT )
+                                   /   100
+           END-IF.
+
+      **R TIPO DE CALCULO RETIDO
+           IF COCD2508-CTIPCALC = COCK0002-TIPCIMP-RET
+              COMPUTE WS-RESULT-I  = (( COCL5005-NTOTALAMOUNT
+                                   *   COCD2508-TPERCENT )
+                                   /   100)
+           END-IF.
+
+           IF COCD2508-CTIPCALC = COCK0002-TIPCIMP-B
+              COMPUTE WS-RESULT-I  = ( COCL5005-NTOTALAMOUNT
+                                   *   COCD2508-TPERCENT )
+                                   /   100
+              IF WS-RESULT-I  < COCD2508-MMINAMT
+                 MOVE COCD2508-MMINAMT TO WS-RESULT-I
+              END-IF
+           END-IF.
+
+           IF COCD2508-CTIPCALC = COCK0002-TIPCIMP-FIX
+              MOVE COCD2508-MFIXAMT TO WS-RESULT-I
+           END-IF.
+
+       2600-CALCULAR-EXIT.
+           EXIT.
+      ******************************************************************
+       2700-ARREDONDAR.
+      ******************************************************************
+
+      *--------------------------------------------------------------
+      * Nota: o arredondamento está a ser efectuado sempre
+      *       à segunda decimal. Não tem em conta o parametro
+      *       da definição do imposto.
+      *--------------------------------------------------------------
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2700-ARREDONDAR      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *    Arredondamento Comercial
+           IF COCD2508-CTIPARR = COCK0002-TIPARR-COMER
+              IF COCD2508-CTIPDEC = COCK0002-TIPDEC-DOIS-DEC
+                COMPUTE WS-RESULT-F ROUNDED = WS-RESULT-I * 1
+              END-IF
+              IF COCD2508-CTIPDEC = COCK0002-TIPDEC-UM-DEC
+                COMPUTE WS-RESULT-F-1 ROUNDED = WS-RESULT-I * 1
+                MOVE    WS-RESULT-F-1 TO WS-RESULT-F
+              END-IF
+              IF COCD2508-CTIPDEC = COCK0002-TIPDEC-INTEIRO
+                COMPUTE WS-RESULT-F-0 ROUNDED = WS-RESULT-I * 1
+                MOVE    WS-RESULT-F-0 TO WS-RESULT-F
+              END-IF
+           END-IF.
+
+      *    Arredondamento para cima (sempre mais 1)
+           IF COCD2508-CTIPARR = COCK0002-TIPARR-CIMA
+              IF COCL5005-NTOTALAMOUNT > ZEROS
+                 COMPUTE WS-RESULT-F = WS-RESULT-I + CON-001-P
+              ELSE
+                 COMPUTE WS-RESULT-F = WS-RESULT-I + CON-001-N
+              END-IF
+           END-IF.
+
+      *    Arredondamento para baixo (sempre menos 1)
+           IF COCD2508-CTIPARR = COCK0002-TIPARR-BAIXO
+              IF COCL5005-NTOTALAMOUNT > ZEROS
+                 COMPUTE WS-RESULT-F = WS-RESULT-I - CON-001-P
+              ELSE
+                 COMPUTE WS-RESULT-F = WS-RESULT-I - CON-001-N
+              END-IF
+           END-IF.
+
+      *    Arredondamento Truncado
+           IF COCD2508-CTIPARR = COCK0002-TIPARR-TRUNC
+              MOVE WS-RESULT-I TO WS-RESULT-F
+           END-IF.
+
+       2700-ARREDONDAR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2650-CALC-SPEC.
+      ******************************************************************
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2650-CALC-SPEC.      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      **R RETENCAO DE 4% SOBRE O VALOR BRUTO
+           COMPUTE WS-RET1 = COCL5005-NTOTALAMOUNT * COCD2508-PRETENC
+      **R ARREDONDA
+           COMPUTE WS-RESULT-S   ROUNDED = WS-RET1 * 1
+           MOVE WS-RESULT-S   TO WS-RET1
+      **R DISPLAY
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2650-CALC-SPEC.      ' TO VIAL0015-CALLER-ID
+              MOVE 'WS-RET1              '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-RET1                  TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      **R RETENCAO ICA  (9.66/1000)
+      **R  COMPUTE WS-FACTOR = 9.66 / 1000
+           COMPUTE WS-ICA = COCL5005-NTOTALAMOUNT * COCD2508-ZFACTOR
+      **R ARREDONDA
+           COMPUTE WS-RESULT-S   ROUNDED = WS-ICA  * 1
+           MOVE WS-RESULT-S   TO WS-ICA
+      **R DISPLAY
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2650-CALC-SPEC.      ' TO VIAL0015-CALLER-ID
+              MOVE 'WS-ICA               '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-ICA                   TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      **R RETENCAO IVA (15%)
+           COMPUTE WS-RET-IVA = WS-RESULT-F * 0.15
+      **AF Nova coluna para calculo da retencao do IVA em vez de ser fixo
+           COMPUTE WS-RET-IVA = WS-RESULT-F * COCD2508-PRETIVA
+      **R ARREDONDA
+           COMPUTE WS-RESULT-S   ROUNDED = WS-RET-IVA  * 1
+           MOVE WS-RESULT-S   TO WS-RET-IVA
+      **R DISPLAY
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2650-CALC-SPEC.      ' TO VIAL0015-CALLER-ID
+              MOVE 'WS-RET-IVA           '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-RET-IVA               TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      **R TOTAL DE RETENCOES E IMPOSTO
+           COMPUTE COCL5005-NRETAMOUNT = WS-RET1 +
+                   WS-ICA.
+
+           MOVE WS-RET-IVA TO COCL5005-NRETTAX.
+
+       2650-CALC-SPEC-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           IF ETCL0002-DEBUG-SIM
+              MOVE '3000-FIM-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              MOVE 'WS-RESULT-I          '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-RESULT-I              TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-RESULT-F          '   TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-RESULT-F              TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCL5005-NRETAMOUNT  '   TO VIAL0015-CAMPO-NM(3)
+              MOVE  COCL5005-NRETAMOUNT      TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'COCL5005-NRETTAX     '   TO VIAL0015-CAMPO-NM(3)
+              MOVE  COCL5005-NRETTAX         TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE WS-RESULT-I TO COCL5005-RESULT-I.
+           MOVE WS-RESULT-F TO COCL5005-RESULT-F.
+
+           IF COCD2508-CTIPCALC = COCK0002-TIPCIMP-RET
+             MOVE WS-RESULT-F TO COCL5005-NRETAMOUNT
+           ELSE
+             MOVE WS-RESULT-F TO COCL5005-NTAXAMOUNT
+           END-IF.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.
+           COPY VIAP0015.
+
+      ******************************************************************

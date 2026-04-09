@@ -1,0 +1,601 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI68900.
+      ******************************************************************
+      *     PROGRAMA COI68900.                                         *
+      *                                                                *
+      *     Lista despesas funcionários                                *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI68900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD4804 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV6890.
+       COPY COCV6891.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY AQCW0005.
+
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT4804    PIC X(08) VALUE 'COVT4804'.
+           05 CON-DPP         PIC X(03) VALUE 'DPP'.
+
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-IND                    PIC  9(10).
+           05 WS-TABELA-INTERNA.
+              10 WS-CIDPROJ             PIC  X(08)  VALUE SPACES.
+              10 WS-GPROJ               PIC  X(40)  VALUE SPACES.
+              10 WS-TABELAS-DIAS        OCCURS 31 TIMES.
+                 15 WS-NHORAS           PIC  9(01)V9(02).
+           05 WS-DTMESANO.
+              10 WS-ANO                 PIC  X(04)  VALUE SPACES.
+              10 FILLER                 PIC  X(01)  VALUE '-'.
+              10 WS-MES                 PIC  X(02)  VALUE SPACES.
+              10 FILLER                 PIC  X(01)  VALUE '-'.
+              10 WS-DIA                 PIC  X(02)  VALUE '01'.
+           05 WS-DTMESANO-D.
+              10 WS-DTMESANO-D-ANO      PIC  X(04)  VALUE SPACES.
+              10 FILLER                 PIC  X(01)  VALUE '-'.
+              10 WS-DTMESANO-D-MES      PIC  X(02)  VALUE SPACES.
+              10 FILLER                 PIC  X(01)  VALUE '-'.
+              10 WS-DTMESANO-D-DIA      PIC  X(02)  VALUE '01'.
+
+
+      *--- Chave para documentos (CIDEMP, DTMESANO, CIDDESP,
+      *---                        CIDPROJ, DTPROC)
+           05 WS-CCHAVE.
+              10 WS-CCHAVE-01      PIC X(03).
+              10 WS-CCHAVE-02      PIC X(10).
+              10 WS-CCHAVE-03      PIC X(03).
+              10 WS-CCHAVE-04      PIC X(08).
+              10 WS-CCHAVE-05      PIC X(10).
+
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'COI68900'.
+
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+       01  WS-CURSOR-VARS.
+           05 WS-CFUNCIONARIO-MIN       PIC  X(03) VALUE SPACES.
+           05 WS-CFUNCIONARIO-MAX       PIC  X(03) VALUE SPACES.
+
+           05 WS-GPROJ-MIN              PIC  X(10) VALUE SPACES.
+           05 WS-GPROJ-MAX              PIC  X(10) VALUE SPACES.
+
+           05 WS-DTMESANO-MIN           PIC  X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DTMESANO-MIN.
+              10 WS-ANO-MIN             PIC  X(04)  VALUE SPACES.
+              10 WS-T1-MIN              PIC  X(01)  VALUE '-'.
+              10 WS-MES-MIN             PIC  X(02)  VALUE SPACES.
+              10 WS-T2-MIN              PIC  X(01)  VALUE '-'.
+              10 WS-DIA-MIN             PIC  X(02)  VALUE '01'.
+
+           05 WS-DTMESANO-MAX           PIC  X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DTMESANO-MAX.
+              10 WS-ANO-MAX             PIC  X(04)  VALUE SPACES.
+              10 WS-T1-MAX              PIC  X(01)  VALUE '-'.
+              10 WS-MES-MAX             PIC  X(02)  VALUE SPACES.
+              10 WS-T2-MAX              PIC  X(01)  VALUE '-'.
+              10 WS-DIA-MAX             PIC  X(02)  VALUE '01'.
+
+           05 FILLER                    PIC  X(01) VALUE SPACES.
+
+           EXEC SQL
+                DECLARE CURCOT01 CURSOR FOR
+                 SELECT
+                        CIDEMP
+                      , DTMESANO
+                      , CIDDESP
+                      , TIPODESPESA
+                      , MVLR
+                      , DTREG
+                      , CMOED
+                      , MCAMBDIA
+                      , MCONTRVLR
+                      , CIDCLIENTE
+                      , GCLIENTE
+                      , CIDPROJ
+                      , GPROJ
+                      , NSEQ
+                      , GOBSERV
+                      , CUSERAPR
+                      , DDTAPR
+                      , CSITU
+                      , CEMPRESA
+                      , DTPROC
+                      , CUSER01
+                      , CUSER02
+                      , CUSER03
+                   FROM COVT4804_EXPENSE
+                  WHERE ( CIDEMP    > :COCD4804-CIDEMP
+                     OR  (CIDEMP    = :COCD4804-CIDEMP
+                    AND   CIDPROJ   > :COCD4804-CIDPROJ)
+                     OR  (CIDEMP    = :COCD4804-CIDEMP
+                    AND   CIDPROJ   = :COCD4804-CIDPROJ
+                    AND   DTMESANO  > :COCD4804-DTMESANO)
+                     OR  (CIDEMP    = :COCD4804-CIDEMP
+                    AND   CIDPROJ   = :COCD4804-CIDPROJ
+                    AND   DTMESANO  = :COCD4804-DTMESANO
+                    AND   NSEQ     >= :COCD4804-NSEQ))
+                    AND   CIDEMP   >= :WS-CFUNCIONARIO-MIN
+                    AND   CIDEMP   <= :WS-CFUNCIONARIO-MAX
+                    AND   CIDPROJ  >= :WS-GPROJ-MIN
+                    AND   CIDPROJ  <= :WS-GPROJ-MAX
+                    AND   DTMESANO >= :WS-DTMESANO-MIN
+                    AND   DTMESANO <= :WS-DTMESANO-MAX
+               ORDER BY CIDEMP
+                      , CIDPROJ
+                      , DTMESANO
+                      , NSEQ
+           END-EXEC.
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI68900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV6890-MSG.
+           MOVE COCV6890-ASE               TO COCV6891-ASE.
+
+           INITIALIZE WS-VARIAVEIS
+                      COCV6891-ADE          REPLACING NUMERIC BY ZEROES
+                                                 ALPHANUMERIC BY SPACES.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6890-ADE                TO COCV6891-ADE.
+
+           PERFORM 2010-VALIDACOES
+              THRU 2019-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE COCV6891-DIMINUI-LENGTH =
+                            COCV6891-INDICE-INVERSO *
+                            COCV6891-LENGTH-OCCUR
+                    COMPUTE COCV6891-LENGTH =
+                            COCV6891-LENGTH -
+                            COCV6891-DIMINUI-LENGTH
+
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV6891-CFUNCIONARIO-S
+                    MOVE COCK0001-EXPENSE-N-EXISTS
+                      TO COCV6891-CFUNCIONARIO-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV6891-CFUNCIONARIO-CAPLIC
+                 END-IF
+              END-IF
+
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2010-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF COCV6890-CANO NOT EQUAL SPACES
+             MOVE COCV6890-CANO              TO WS-ANO
+           ELSE
+             MOVE '0001'                     TO WS-ANO
+           END-IF.
+
+           IF COCV6890-CANO NOT EQUAL SPACES AND
+              COCV6890-CMES NOT EQUAL SPACES
+              MOVE COCV6890-CMES             TO WS-MES
+           ELSE
+              MOVE '01'                      TO WS-MES
+           END-IF.
+
+           MOVE '01'                         TO WS-DIA.
+
+           IF COCV6890-CFUNCIONARIO EQUAL SPACES
+              MOVE SPACES                  TO WS-CFUNCIONARIO-MIN
+              MOVE ALL '9'                 TO WS-CFUNCIONARIO-MAX
+           ELSE
+              MOVE COCV6890-CFUNCIONARIO   TO WS-CFUNCIONARIO-MIN
+                                              WS-CFUNCIONARIO-MAX
+           END-IF.
+
+           IF COCV6890-GPROJ EQUAL SPACES
+              MOVE SPACES                  TO WS-GPROJ-MIN
+              MOVE ALL '9'                 TO WS-GPROJ-MAX
+           ELSE
+              MOVE COCV6890-GPROJ          TO WS-GPROJ-MIN
+                                              WS-GPROJ-MAX
+           END-IF.
+
+           IF COCV6890-CANO EQUAL SPACES AND
+              COCV6890-CMES EQUAL SPACES
+              MOVE VIAK0002-DATA-MINIMA    TO WS-DTMESANO-MIN
+              MOVE VIAK0002-DATA-MAXIMA    TO WS-DTMESANO-MAX
+              MOVE '-' TO WS-T1-MIN
+              MOVE '-' TO WS-T2-MIN
+              MOVE '-' TO WS-T1-MAX
+              MOVE '-' TO WS-T2-MAX
+           ELSE
+             IF COCV6890-CANO NOT EQUAL SPACES AND
+                COCV6890-CMES EQUAL SPACES
+                MOVE COCV6890-CANO           TO WS-ANO-MIN
+                MOVE COCV6890-CANO           TO WS-ANO-MAX
+                MOVE VIAK0002-MES-MIN        TO WS-MES-MIN
+                MOVE VIAK0002-MES-MAX        TO WS-MES-MAX
+                MOVE VIAK0002-DIA-MIN        TO WS-DIA-MIN
+                MOVE VIAK0002-DIA-MAX        TO WS-DIA-MAX
+              MOVE '-' TO WS-T1-MIN
+              MOVE '-' TO WS-T2-MIN
+              MOVE '-' TO WS-T1-MAX
+              MOVE '-' TO WS-T2-MAX
+             ELSE
+               IF COCV6890-CMES NOT EQUAL SPACES AND
+                  COCV6890-CANO EQUAL SPACES
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV6891-CMES-S
+                    MOVE COCK0001-DT-INCORRECT
+                      TO COCV6891-CMES-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV6891-CMES-CAPLIC
+               ELSE
+                 IF COCV6890-CMES NOT EQUAL SPACES AND
+                    COCV6890-CANO NOT EQUAL SPACES
+                    MOVE COCV6890-CANO           TO WS-ANO-MIN
+                    MOVE COCV6890-CANO           TO WS-ANO-MAX
+                    MOVE COCV6890-CMES           TO WS-MES-MIN
+                    MOVE COCV6890-CMES           TO WS-MES-MAX
+                    MOVE VIAK0002-DIA-MIN        TO WS-DIA-MIN
+                    MOVE VIAK0002-DIA-MIN        TO WS-DIA-MAX
+                    MOVE '-' TO WS-T1-MIN
+                    MOVE '-' TO WS-T2-MIN
+                    MOVE '-' TO WS-T1-MAX
+                    MOVE '-' TO WS-T2-MAX
+                 END-IF
+               END-IF
+             END-IF
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2010-VALIDACOES-EXIT'      TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6890-CFUNCIONARIO-PAG  TO COCD4804-CIDEMP.
+           MOVE COCV6890-GPROJ-PAG         TO COCD4804-CIDPROJ.
+           MOVE COCV6890-DTMESANO-PAG      TO COCD4804-DTMESANO.
+           MOVE COCV6890-CSEQ-PAG          TO COCD4804-NSEQ.
+
+       2019-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2020-OPEN' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+               OPEN CURCOT01
+           END-EXEC.
+
+           MOVE CON-COVT4804               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2030-FETCH' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+              FETCH CURCOT01
+              INTO
+                  :COCD4804-CIDEMP
+                , :COCD4804-DTMESANO
+                , :COCD4804-CIDDESP
+                , :COCD4804-TIPODESPESA
+                , :COCD4804-MVLR
+                , :COCD4804-DTREG
+                , :COCD4804-CMOED
+                , :COCD4804-MCAMBDIA
+                , :COCD4804-MCONTRVLR
+                , :COCD4804-CIDCLIENTE
+                , :COCD4804-GCLIENTE
+                , :COCD4804-CIDPROJ
+                , :COCD4804-GPROJ
+                , :COCD4804-NSEQ
+                , :COCD4804-GOBSERV
+                , :COCD4804-CUSERAPR
+                , :COCD4804-DDTAPR
+                , :COCD4804-CSITU
+                , :COCD4804-CEMPRESA
+                , :COCD4804-DTPROC
+                , :COCD4804-CUSER01
+                , :COCD4804-CUSER02
+                , :COCD4804-CUSER03
+           END-EXEC
+
+           MOVE CON-COVT4804               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2040-CONTINUA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ZEROES                     TO COCV6891-INDICE.
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR COCV6891-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT COCV6891-PAGINA-CHEIA
+                    COMPUTE COCV6891-INDICE-INVERSO EQUAL
+                         COCV6891-INDICE-INVERSO - COCV6891-INDICE
+                    COMPUTE COCV6891-DIMINUI-LENGTH EQUAL
+                         COCV6891-INDICE-INVERSO * COCV6891-LENGTH-OCCUR
+                    COMPUTE COCV6891-LENGTH EQUAL COCV6891-LENGTH -
+                         COCV6891-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+              IF DB2-NOTFND
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2050-TRATA-OCCURS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           ADD 1 TO COCV6891-INDICE.
+
+           MOVE COCD4804-CIDEMP       TO COCV6891-D-CFUNCIONARIO
+                                         (COCV6891-INDICE).
+
+           MOVE COCD4804-CIDPROJ      TO COCV6891-D-GPROJ
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-DTMESANO     TO COCV6891-D-DTMESANO
+                                         (COCV6891-INDICE).
+
+           MOVE COCD4804-DTMESANO     TO WS-DTMESANO-D.
+           MOVE WS-DTMESANO-D-ANO     TO COCV6891-D-CANO
+                                         (COCV6891-INDICE).
+           MOVE WS-DTMESANO-D-MES     TO COCV6891-D-CMES
+                                         (COCV6891-INDICE).
+
+           MOVE COCD4804-NSEQ         TO COCV6891-D-SEQ
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-CIDDESP      TO COCV6891-D-TIPODESPESA
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-MVLR         TO COCV6891-D-MVLR
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-DTREG        TO COCV6891-D-DTREG
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-CMOED        TO COCV6891-D-CMOED
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-MCAMBDIA     TO COCV6891-D-CAMBIO
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-GOBSERV      TO COCV6891-D-GOBSERV
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-CUSERAPR     TO COCV6891-D-CAPROVADO
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-DDTAPR       TO COCV6891-D-DTAPROV
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-CSITU        TO COCV6891-D-CSITDSP
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-MCONTRVLR    TO COCV6891-D-CTRVLR
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-CEMPRESA     TO COCV6891-D-CEMPRESA
+                                         (COCV6891-INDICE).
+           MOVE COCD4804-CUSER01      TO
+                COCV6891-D-CAPROVADOR-1(COCV6891-INDICE).
+           MOVE COCD4804-CUSER02      TO
+                COCV6891-D-CAPROVADOR-2(COCV6891-INDICE).
+           MOVE COCD4804-CUSER03      TO
+                COCV6891-D-CAPROVADOR-3(COCV6891-INDICE).
+
+           MOVE CON-DPP
+             TO COCV6891-D-CFAMCON(COCV6891-INDICE).
+           MOVE COCD4804-CIDEMP
+             TO WS-CCHAVE-01.
+           MOVE COCD4804-DTMESANO
+             TO WS-CCHAVE-02.
+           MOVE COCD4804-CIDDESP
+             TO WS-CCHAVE-03.
+           MOVE COCD4804-CIDPROJ
+             TO WS-CCHAVE-04.
+           MOVE COCD4804-DTPROC
+             TO WS-CCHAVE-05.
+           MOVE WS-CCHAVE
+             TO COCV6891-D-CCHAVE(COCV6891-INDICE).
+
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2070-CLOSE' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+               CLOSE CURCOT01
+           END-EXEC.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6891-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV6891-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV6891-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE COCV6891-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

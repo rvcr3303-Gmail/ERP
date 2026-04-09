@@ -1,0 +1,383 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI68202.
+      ******************************************************************
+      *     PROGRAMA COI68202.
+      *
+      *     Expense Reprt - Modificação, Consulta, Eliminação
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI68202         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD4805 END-EXEC.
+           EXEC SQL INCLUDE COCD3401 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV6820.
+       COPY COCV6821.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+      *
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT4805 PIC X(08) VALUE 'COVT4805'.
+           05 CON-COVT3401 PIC X(08) VALUE 'COVT3401'.
+           05 CON-01       PIC X(02) VALUE '01'.
+           05 CON-SEP      PIC X(01) VALUE '-'.
+
+       01  WS-VARIAVEIS.
+           05 WS-X                 PIC 9(04) VALUE ZEROS.
+           05 WS-DTMESANO          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DTMESANO.
+              10 WS-DTMESANO-ANO   PIC X(04).
+              10 WS-DTMESANO-SEP1  PIC X(01).
+              10 WS-DTMESANO-MES   PIC X(02).
+              10 WS-DTMESANO-SEP2  PIC X(01).
+              10 WS-DTMESANO-DIA   PIC X(02).
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'COI68202'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI68202         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+      *    CALL 'ARREBENTA'.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV6820-MSG.
+           MOVE COCV6820-ASE               TO COCV6821-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6820-ADE       TO COCV6821-ADE.
+      *
+      *--- Verifica se o periodo está aberto
+      *
+           MOVE COCV6820-CANO            TO COCD3401-ZANO
+           MOVE COCV6820-CMES            TO COCD3401-ZMES
+      *
+           EXEC SQL
+             SELECT CSITUER
+               INTO :COCD3401-CSITUER
+               FROM COVT3401_PERIODO
+            WHERE ZANO     = :COCD3401-ZANO
+              AND ZMES     = :COCD3401-ZMES
+            FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT3401               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK AND COCD3401-CSITUER = COCK0002-SITU-ABERTO
+                 CONTINUE
+              ELSE
+                 MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO TO COCV6821-CANO-S
+                 MOVE COCK0001-CPER-INV      TO COCV6821-CANO-MSG
+                 MOVE COCK0002-CAPLIC        TO COCV6821-CANO-CAPLIC
+              END-IF
+           END-IF.
+      *
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2099-PROC-PROGRAMA-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'COCV6820-ADE         '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCV6820-ADE             TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6820-CFUNCIONARIO
+             TO COCD4805-CIDEMP
+           MOVE COCV6820-CEMPRESA
+             TO COCD4805-CEMPRESA
+
+           MOVE COCV6820-CANO
+             TO WS-DTMESANO-ANO
+           MOVE COCV6820-CMES
+             TO WS-DTMESANO-MES
+           MOVE CON-01
+             TO WS-DTMESANO-DIA
+           MOVE CON-SEP
+             TO WS-DTMESANO-SEP1
+           MOVE CON-SEP
+             TO WS-DTMESANO-SEP2
+           MOVE WS-DTMESANO
+             TO COCD4805-DTMESANO
+
+           MOVE COCV6820-SEQ
+             TO COCD4805-NSEQ
+
+           EXEC SQL
+                 SELECT
+                       CNUMFICH
+                     , CIDEMP
+                     , GNOMEEMP
+                     , DTPROC
+                     , DTMESANO
+                     , GPAIS
+                     , GEMPRESA
+                     , CMOEDPAIS
+                     , CIDDESP
+                     , TIPODESPESA
+                     , MVLR
+                     , DTREG
+                     , CMOED
+                     , MCAMBDIA
+                     , MCAMBCORR
+                     , MCONTRVLR
+                     , CIDCLIENTE
+                     , GCLIENTE
+                     , CIDPROJ
+                     , GPROJ
+                     , GNEGOC
+                     , GOBSERV
+                     , CUSERID
+                     , HTIMEST
+                     , CEMPRESA
+                     , CPAIS
+                     , NSEQ
+                     , CSITU
+                     , GTRAJECTO
+                     , NKMS
+                     , GMOTIVO
+                     , CUSERAPR
+                     , DDTAPR
+                     , IPAYROLL
+                     , NVALKMS
+                 INTO
+                       :COCD4805-CNUMFICH
+                     , :COCD4805-CIDEMP
+                     , :COCD4805-GNOMEEMP
+                     , :COCD4805-DTPROC
+                     , :COCD4805-DTMESANO
+                     , :COCD4805-GPAIS
+                     , :COCD4805-GEMPRESA
+                     , :COCD4805-CMOEDPAIS
+                     , :COCD4805-CIDDESP
+                     , :COCD4805-TIPODESPESA
+                     , :COCD4805-MVLR
+                     , :COCD4805-DTREG
+                     , :COCD4805-CMOED
+                     , :COCD4805-MCAMBDIA
+                     , :COCD4805-MCAMBCORR
+                     , :COCD4805-MCONTRVLR
+                     , :COCD4805-CIDCLIENTE
+                     , :COCD4805-GCLIENTE
+                     , :COCD4805-CIDPROJ
+                     , :COCD4805-GPROJ
+                     , :COCD4805-GNEGOC
+                     , :COCD4805-GOBSERV
+                     , :COCD4805-CUSERID
+                     , :COCD4805-HTIMEST
+                     , :COCD4805-CEMPRESA
+                     , :COCD4805-CPAIS
+                     , :COCD4805-NSEQ
+                     , :COCD4805-CSITU
+                     , :COCD4805-GTRAJECTO
+                     , :COCD4805-NKMS
+                     , :COCD4805-GMOTIVO
+                     , :COCD4805-CUSERAPR
+                     , :COCD4805-DDTAPR
+                     , :COCD4805-IPAYROLL
+                     , :COCD4805-NVALKMS
+                 FROM COVT4805_EXPENSE
+                 WHERE CIDEMP   = :COCD4805-CIDEMP
+                 AND   CEMPRESA = :COCD4805-CEMPRESA
+                 AND   DTMESANO = :COCD4805-DTMESANO
+                 AND   NSEQ     = :COCD4805-NSEQ
+           END-EXEC
+
+
+           MOVE CON-COVT4805
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+      *--- Se função de Eliminar e
+      *--- se despesa já aprovada não pode apagar
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF  VIAL0001-ANULACAO
+                 AND COCD4805-CUSERAPR NOT EQUAL SPACES
+                     MOVE VIAK0002-ERROS-FUNCAO
+                       TO VIAL0002-IND-ERROS
+                     MOVE COCK0002-STATUS-ACTIVO
+                       TO COCV6821-CFUNCIONARIO-S
+                     MOVE COCK0001-JA-APROVADO-E
+                       TO COCV6821-CFUNCIONARIO-MSG
+                     MOVE COCK0002-CAPLIC
+                       TO COCV6821-CFUNCIONARIO-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV6821-CFUNCIONARIO-S
+                    MOVE COCK0001-CFUNCIONARIO-EXISTS
+                      TO COCV6821-CFUNCIONARIO-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV6821-CFUNCIONARIO-CAPLIC
+                 ELSE
+                    MOVE COCD4805-CEMPRESA  TO COCV6821-CEMPRESA
+                    MOVE COCD4805-CIDEMP    TO COCV6821-CFUNCIONARIO
+                    MOVE COCD4805-DTMESANO  TO COCV6821-DTMESANO
+                    MOVE COCD4805-NSEQ      TO COCV6821-SEQ
+                    MOVE COCD4805-CIDPROJ   TO COCV6821-CIDPROJ
+                    MOVE COCD4805-CIDDESP   TO COCV6821-CIDDESP
+                    MOVE COCD4805-DTREG     TO COCV6821-DTREG
+                    MOVE COCD4805-MVLR      TO COCV6821-MVLR
+                    MOVE COCD4805-CMOED     TO COCV6821-CMOED
+                    MOVE COCD4805-GOBSERV   TO COCV6821-GOBSERV
+                    MOVE COCD4805-GTRAJECTO TO COCV6821-GTRAJECTO
+                    MOVE COCD4805-NKMS      TO COCV6821-NKMS
+                    MOVE COCD4805-GMOTIVO   TO COCV6821-GMOTIVO
+                    MOVE COCD4805-CUSERAPR  TO COCV6821-CAPROVADO
+                    MOVE COCD4805-DDTAPR    TO COCV6821-DTAPROV
+                    MOVE COCD4805-CSITU     TO COCV6821-CSITDSP
+                    MOVE COCD4805-MCONTRVLR TO COCV6821-CTRVLR
+                    MOVE COCD4805-IPAYROLL  TO COCV6821-IPAYROLL
+                    MOVE COCD4805-NVALKMS   TO COCV6821-NVALKMS
+
+                    IF NOT VIAL0001-VISUALIZACAO
+                        CONTINUE
+                    END-IF
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV6821-CFUNCIONARIO-S
+                    MOVE COCK0001-CFUNCIONARIO-N-EXISTS
+                      TO COCV6821-CFUNCIONARIO-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV6821-CFUNCIONARIO-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6821-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV6821-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV6821-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

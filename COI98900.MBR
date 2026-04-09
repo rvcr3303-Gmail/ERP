@@ -1,0 +1,379 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI98900.
+      ******************************************************************
+      *     PROGRAMA COI98900.                                         *
+      *                                                                *
+      *     Browse Parametrização Tipos Documento
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI98900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD7501 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV9890.
+       COPY COCV9891.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY ARCL0039.
+       COPY ETCL0002.
+      *
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT7501 PIC X(08) VALUE 'COVT7501'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+       01  WS-CURSOR-VARS.
+           05 WS-CFAMD-MIN               PIC X(03) VALUE SPACES.
+           05 WS-CFAMD-MAX               PIC X(03) VALUE SPACES.
+           05 WS-CCODDOC-MIN             PIC X(20) VALUE SPACES.
+           05 WS-CCODDOC-MAX             PIC X(20) VALUE SPACES.
+
+           EXEC SQL
+                DECLARE CURCOT01 CURSOR FOR
+                 SELECT
+                       CFAMD
+                     , CCODDOC
+                     , COBG
+                     , DDATINI
+                     , DDATFIM
+                     , CUSERID
+                     , HTIMEST
+                 FROM COVT7501
+
+                 WHERE     CFAMD    >= :WS-CFAMD-MIN
+                 AND       CFAMD    <= :WS-CFAMD-MAX
+
+                 AND       CCODDOC  >= :WS-CCODDOC-MIN
+                 AND       CCODDOC  <= :WS-CCODDOC-MAX
+
+                 AND   ( ( CFAMD     > :COCD7501-CFAMD )
+
+                 OR      ( CFAMD     = :COCD7501-CFAMD
+                 AND       CCODDOC   > :COCD7501-CCODDOC )
+
+                 OR      ( CFAMD     = :COCD7501-CFAMD
+                 AND       CCODDOC   = :COCD7501-CCODDOC
+                 AND       DDATINI  >= :COCD7501-DDATINI ) )
+
+                 ORDER BY
+                       CFAMD, CCODDOC, DDATINI
+           END-EXEC.
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI98900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV9890-MSG.
+           MOVE COCV9890-ASE               TO COCV9891-ASE.
+
+           MOVE ZEROES                     TO COCV9891-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 9899-LIMPA-OCCURS-EXIT
+             UNTIL COCV9891-PAGINA-CHEIA.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+
+           ADD 1                       TO COCV9891-INDICE.
+
+           MOVE SPACES TO COCV9891-D-CFAMD(COCV9891-INDICE)
+                          COCV9891-D-CCODDOC(COCV9891-INDICE)
+                          COCV9891-D-COBG(COCV9891-INDICE)
+
+           MOVE VIAK0002-DATA-MINIMA
+                       TO COCV9891-D-DDATINI(COCV9891-INDICE)
+                          COCV9891-D-DDATFIM(COCV9891-INDICE).
+
+       9899-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           MOVE COCV9890-CFAMD        TO COCV9891-CFAMD.
+           MOVE COCV9890-CCODDOC      TO COCV9891-CCODDOC.
+           MOVE COCV9890-CFAMDPAG     TO COCV9891-CFAMDPAG.
+           MOVE COCV9890-CCODDOCPAG   TO COCV9891-CCODDOCPAG.
+           MOVE COCV9890-DDATINIPAG   TO COCV9891-DDATINIPAG.
+
+
+           PERFORM 2010-VALIDACOES
+              THRU 2019-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE COCV9891-DIMINUI-LENGTH EQUAL
+                         COCV9891-INDICE-INVERSO * COCV9891-LENGTH-OCCUR
+                    COMPUTE COCV9891-LENGTH EQUAL COCV9891-LENGTH
+                         - COCV9891-DIMINUI-LENGTH
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV9891-CFAMD-S
+                    MOVE COCK0001-CFAMD-N-EXISTS
+                      TO COCV9891-CFAMD-MSG
+                 END-IF
+              END-IF
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+
+           CONTINUE.
+
+       2019-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+           IF COCV9890-CFAMD = SPACES
+              MOVE SPACES         TO WS-CFAMD-MIN
+              MOVE ALL "9"        TO WS-CFAMD-MAX
+           ELSE
+              MOVE COCV9890-CFAMD TO WS-CFAMD-MIN
+              MOVE COCV9890-CFAMD TO WS-CFAMD-MAX
+           END-IF.
+
+           IF COCV9890-CCODDOC = SPACES
+              MOVE SPACES           TO WS-CCODDOC-MIN
+              MOVE ALL "9"          TO WS-CCODDOC-MAX
+           ELSE
+              MOVE COCV9890-CCODDOC TO WS-CCODDOC-MIN
+              MOVE COCV9890-CCODDOC TO WS-CCODDOC-MAX
+           END-IF.
+
+           MOVE COCV9890-CFAMDPAG          TO COCD7501-CFAMD.
+           MOVE COCV9890-CCODDOCPAG        TO COCD7501-CCODDOC.
+           MOVE COCV9890-DDATINIPAG        TO COCD7501-DDATINI.
+
+           SET SW-CURSOR-NONE TO TRUE
+
+           IF SW-CURSOR-NONE
+              SET SW-CURSOR-1 TO TRUE
+           END-IF
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        OPEN CURCOT01
+                    END-EXEC
+           END-EVALUATE.
+
+           MOVE CON-COVT7501               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                       FETCH CURCOT01
+                       INTO
+                           :COCD7501-CFAMD
+                         , :COCD7501-CCODDOC
+                         , :COCD7501-COBG
+                         , :COCD7501-DDATINI
+                         , :COCD7501-DDATFIM
+                         , :COCD7501-CUSERID
+                         , :COCD7501-HTIMEST
+                    END-EXEC
+
+           END-EVALUATE.
+
+           MOVE CON-COVT7501               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+
+           MOVE ZEROES                     TO COCV9891-INDICE.
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR COCV9891-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT COCV9891-PAGINA-CHEIA
+                    COMPUTE COCV9891-INDICE-INVERSO EQUAL
+                         COCV9891-INDICE-INVERSO - COCV9891-INDICE
+                    COMPUTE COCV9891-DIMINUI-LENGTH EQUAL
+                         COCV9891-INDICE-INVERSO * COCV9891-LENGTH-OCCUR
+                    COMPUTE COCV9891-LENGTH EQUAL COCV9891-LENGTH -
+                         COCV9891-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+
+           ADD 1                       TO COCV9891-INDICE.
+           MOVE COCD7501-CFAMD
+             TO COCV9891-D-CFAMD(COCV9891-INDICE).
+           MOVE COCD7501-CCODDOC
+             TO COCV9891-D-CCODDOC(COCV9891-INDICE).
+           MOVE COCD7501-COBG
+             TO COCV9891-D-COBG(COCV9891-INDICE).
+           MOVE COCD7501-DDATINI
+             TO COCV9891-D-DDATINI(COCV9891-INDICE).
+           MOVE COCD7501-DDATFIM
+             TO COCV9891-D-DDATFIM(COCV9891-INDICE).
+
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        CLOSE CURCOT01
+                    END-EXEC
+           END-EVALUATE.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF COCV9890-NMAXLIST EQUAL ZEROES
+              MOVE VIAL0001-CAPLIC         TO ARCL0039-CAPLIC
+              MOVE VIAL0001-COPCAO         TO ARCL0039-COPCAO
+              PERFORM ARCR0039-NMAXLIST
+                 THRU ARCR0039-NMAXLIST-EXIT
+
+              IF ETCL0002-ABEND-DB2
+                 MOVE ETCL0002-TABLE-NAME  TO VIAL0002-TABLE-NAME
+                 MOVE ETCL0002-SQLCA       TO VIAL0002-SQLCA
+              END-IF
+
+              MOVE ARCL0039-NMAXLIST       TO COCV9891-NMAXLIST
+           ELSE
+              MOVE COCV9890-NMAXLIST       TO COCV9891-NMAXLIST
+           END-IF.
+
+           MOVE COCV9891-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV9891-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV9891-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE COCV9891-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+           EXEC SQL INCLUDE ARCR0039 END-EXEC.
+      *==============================================================

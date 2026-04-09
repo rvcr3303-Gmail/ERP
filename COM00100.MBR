@@ -1,0 +1,1087 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. COM00100.
+
+      ******************************************************************
+      *                       ERP VIA                                  *
+      ******************************************************************
+      * OBJECTIVO: ROTINA STANDARD DE VALIDACAO DE DADOS DE PROJECTO   *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+      *SPECIAL-NAMES.
+      *    DECIMAL-POINT IS COMMA.
+
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       01  FILLER                       PIC  X(40)
+            VALUE 'INICIO WORKING-STORAGE DO COM00100      '.
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC X(10) VALUE 'COM00100'.
+           05 WS-COVT3605               PIC X(10) VALUE 'COVT3605'.
+           05 WS-COVT5403               PIC X(10) VALUE 'COVT5403'.
+           05 WS-COVT5305               PIC X(10) VALUE 'COVT5305'.
+           05 WS-COVT6600               PIC X(10) VALUE 'COVT6600'.
+           05 WS-COVT5502               PIC X(10) VALUE 'COVT5502'.
+           05 WS-ARVT0104               PIC X(10) VALUE 'ARVT0104'.
+           05 CON-DATA-MIN              PIC X(10) VALUE '0001-01-01'.
+           05 CON-4                     PIC X(01) VALUE '4'.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-FACTOR           PIC S9(15)V9(05) VALUE ZEROS.
+           05 WS-ZCUNICO          PIC X(10) VALUE SPACES.
+           05 WS-CUTILIZA         PIC X(20) VALUE SPACES.
+           05 WS-EMPRESAS         PIC X(10) VALUE SPACES.
+           05 WS-NIDPROJECTO      PIC X(10) VALUE SPACES.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY COCK0001.
+           COPY COCK0002.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAL0015.
+           COPY VIACK001.
+           COPY VIAW0005.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+           EXEC SQL INCLUDE COCD3605 END-EXEC.
+           EXEC SQL INCLUDE COCD5403 END-EXEC.
+           EXEC SQL INCLUDE COCD5502 END-EXEC.
+           EXEC SQL INCLUDE COCD5305 END-EXEC.
+           EXEC SQL INCLUDE COCD6600 END-EXEC.
+           EXEC SQL INCLUDE ARCD0104 END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40)
+            VALUE 'FIM DA WORKING-STORAGE COM00100         '.
+
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+           COPY ETCL0002.
+           COPY COCL0010.
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                COCL0010-COMMAREA.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+
+           INITIALIZE WS-VARIAVEIS.
+
+           PERFORM 1100-VALIDAR-DADOS-INPUT
+              THRU 1100-VALIDAR-DADOS-INPUT-EXIT.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDAR-DADOS-INPUT.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1100-VALIDAR-DADOS-INPUT'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF COCL0010-TIPOP = SPACES
+             SET ETCL0002-ERROS-FUNCAO TO TRUE
+             MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+             MOVE COCK0001-VAR-ESP TO ETCL0002-NR-ERRO
+           END-IF.
+
+       1100-VALIDAR-DADOS-INPUT-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2100-VAL-PROJECTO
+                 THRU 2100-VAL-PROJECTO-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2300-OBT-RESPONS
+                 THRU 2300-OBT-RESPONS-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2100-VAL-PROJECTO.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2100-VAL-PROJECTO    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCL0010-NIDPROJECTO TO COCD3605-NIDPROJECTO.
+
+           EXEC SQL
+                 SELECT
+                        GDESCPROJECT, BACTIVE, NPERCENTALERT,
+                        NBUDGET, NBUDCTRV, CMOEDA, RESPONS,
+                        CLIENTE, DENDDATE
+                   INTO
+                        :COCD3605-GDESCPROJECT, :COCD3605-BACTIVE,
+                        :COCD3605-NPERCENTALERT, :COCD3605-NBUDGET,
+                        :COCD3605-NBUDCTRV, :COCD3605-CMOEDA,
+                        :COCD3605-RESPONS, :COCD3605-CLIENTE,
+                        :COCD3605-DENDDATE
+                   FROM
+                        COVT3605_PROJECTS
+                  WHERE
+                        NIDPROJECTO = :COCD3605-NIDPROJECTO
+           END-EXEC
+
+           MOVE WS-COVT3605 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-PROJ-NAO-EXIST TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF
+
+           IF ETCL0002-SEM-ERROS
+              IF COCL0010-TIPOP = COCK0002-CONSULTA
+                NEXT SENTENCE
+              ELSE
+                IF  COCD3605-BACTIVE = COCK0002-BACTIVE-ENCERR
+                    SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                    MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                    MOVE COCK0001-PROJECT-INACT TO ETCL0002-NR-ERRO
+                END-IF
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             MOVE COCD3605-GDESCPROJECT  TO COCL0010-GDESCPROJECT
+             MOVE COCD3605-BACTIVE       TO COCL0010-BACTIVE
+             MOVE COCD3605-NPERCENTALERT TO COCL0010-NPERCENTALERT
+             MOVE COCD3605-NBUDGET       TO COCL0010-NBUDGET
+             MOVE COCD3605-NBUDCTRV      TO COCL0010-NBUDCTRV
+             MOVE COCD3605-CMOEDA        TO COCL0010-CMOEDA
+             MOVE COCD3605-RESPONS       TO COCL0010-RESP-PRJ
+             MOVE COCD3605-DENDDATE      TO COCL0010-DENDDATE
+      *      MOVE COCD3605-CLIENTE       TO COCL0010-RESP-CLI
+           END-IF.
+
+       2100-VAL-PROJECTO-EXIT.
+           EXIT.
+      ******************************************************************
+       2110-OBT-UTIL.
+      ******************************************************************
+
+      * Acesso à tabela para obtenção do utilizador usando o número de
+      * trabalhador.
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2110-OBT-UTIL' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD3605-RESPONS TO COCD5305-NTRABALHADOR.
+
+           EXEC SQL
+                 SELECT
+                        CUTILIZA
+                   INTO
+                        :COCD5305-CUTILIZA
+
+                   FROM
+                        COVT5305_PESSOAS
+                  WHERE
+                        NTRABALHADOR = :COCD5305-NTRABALHADOR
+           END-EXEC
+
+           MOVE WS-COVT5305 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-COD-FUN-N-EXIST TO ETCL0002-NR-ERRO
+              ELSE
+                IF DB2-OK
+                   MOVE COCD5305-CUTILIZA   TO COCL0010-CUTILIZA
+                END-IF
+              END-IF
+           END-IF.
+
+
+       2110-OBT-UTIL-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2120-OBT-INF-RESP-PROJ.
+      ******************************************************************
+
+      * Chamada aos parágrafos de obtenção de utilizador e de contacto
+      * do responsável do projecto.
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2120-OBT-INF-RESP-PROJ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2110-OBT-UTIL
+                 THRU 2110-OBT-UTIL-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2130-OBT-VIA-EMAIL-MGR
+                 THRU 2130-OBT-VIA-EMAIL-MGR-EXIT
+           END-IF.
+
+       2120-OBT-INF-RESP-PROJ-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2130-OBT-VIA-EMAIL-MGR.
+      ******************************************************************
+
+      * Acesso à tabela para obter o contacto do responsável do projecto
+      * usando o código de utilizador.
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2130-OBT-VIA-EMAIL-MGR'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD5305-CUTILIZA       TO WS-CUTILIZA
+           INSPECT WS-CUTILIZA
+                      REPLACING LEADING ZEROES BY SPACES.
+           MOVE FUNCTION TRIM(WS-CUTILIZA) TO ARCD0104-GUSERNAME.
+
+           EXEC SQL
+                 SELECT
+                        GEMAIL
+                   INTO
+                        :ARCD0104-GEMAIL
+                   FROM
+                        ARVT0104
+                  WHERE
+                        GUSERNAME = :ARCD0104-GUSERNAME
+           END-EXEC
+
+           MOVE WS-ARVT0104 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-USER-N-EXISTS TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              MOVE COCD3605-RESPONS TO COCL0010-RESP-PRJ
+              MOVE ARCD0104-GEMAIL  TO COCL0010-VIA-EMAIL-MGR
+           END-IF.
+
+       2130-OBT-VIA-EMAIL-MGR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2200-CALCULA-SALDOS.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2200-CALCULA-SALDOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2200-CALCULA-SALDOS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2300-OBT-RESPONS.
+      ******************************************************************
+
+      * Chamada aos parágrafos de obtenção de informação do responsável do
+      * projecto e do responsável de cliente. As informações obtidas para
+      * resposta da rotina são: nr. de colaborador e email de contacto.
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2300-OBT-RESPONS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2120-OBT-INF-RESP-PROJ
+                 THRU 2120-OBT-INF-RESP-PROJ-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2500-OBT-CONTACTO-CLI
+                 THRU 2500-OBT-CONTACTO-CLI-EXIT
+           END-IF.
+
+       2300-OBT-RESPONS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2400-OBT-CLI.
+      ******************************************************************
+
+      * Acesso à tabela para obtenção do cliente usando
+      * a sigla
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2400-OBT-CLI' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD3605-CLIENTE TO COCD5403-CSIGLA.
+
+           EXEC SQL
+                 SELECT
+                        ZCUNICO, CTIPDOC, CNUMDOC
+                   INTO
+                        :COCD5403-ZCUNICO, :COCD5403-CTIPDOC,
+                        :COCD5403-CNUMDOC
+                   FROM
+                        COVT5403_EMPRESAS
+                  WHERE
+                        CSIGLA = :COCD5403-CSIGLA
+           END-EXEC
+
+
+           MOVE WS-COVT5403 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-CLIENTE-N-EXISTS TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              MOVE COCD5403-CTIPDOC   TO COCL0010-CTIPDOC
+              MOVE COCD5403-CNUMDOC   TO COCL0010-CNUMDOC
+           END-IF.
+
+       2400-OBT-CLI-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2500-OBT-CONTACTO-CLI.
+      ******************************************************************
+
+      * Chamada aos parágrafos de informação para a obtenção
+      * de contacto do cliente.
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2500-OBT-CONTACTO-CLI' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2400-OBT-CLI
+                 THRU 2400-OBT-CLI-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2530-OBT-VIA-EMAIL-CLI
+                 THRU 2530-OBT-VIA-EMAIL-CLI-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              IF COCD5502-GEMAILPROF = SPACES
+                 CONTINUE
+              ELSE
+                 PERFORM 2510-OBT-USER-CLI
+                    THRU 2510-OBT-USER-CLI-EXIT
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2520-OBT-FUNC-RESP-CLI
+                 THRU 2520-OBT-FUNC-RESP-CLI-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2550-EMAIL-RESP-CLI-EMP
+                 THRU 2550-EMAIL-RESP-CLI-EMP-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2560-EMAIL-CLI-RESP-PRJ
+                 THRU 2560-EMAIL-CLI-RESP-PRJ-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2600-OBT-CUSERS
+                 THRU 2600-OBT-CUSERS-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              IF COCD6600-CUSER01 NOT EQUAL SPACES
+                 PERFORM 2700-OBT-NIV1-EMAIL
+                    THRU 2700-OBT-NIV1-EMAIL-EXIT
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              IF COCD6600-CUSER02 NOT EQUAL SPACES
+                 PERFORM 2800-OBT-NIV2-EMAIL
+                    THRU 2800-OBT-NIV2-EMAIL-EXIT
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              IF COCD6600-CUSER01 NOT EQUAL SPACES
+                 PERFORM 2900-OBT-NIV1-NTRAB
+                    THRU 2900-OBT-NIV1-NTRAB-EXIT
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              IF COCD6600-CUSER02 NOT EQUAL SPACES
+                 PERFORM 2910-OBT-NIV2-NTRAB
+                    THRU 2910-OBT-NIV2-NTRAB-EXIT
+              END-IF
+           END-IF.
+
+       2500-OBT-CONTACTO-CLI-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2530-OBT-VIA-EMAIL-CLI.
+      ******************************************************************
+
+      * Obtenção do contacto do cliente
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2530-OBT-VIA-EMAIL-CLI' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD5403-ZCUNICO        TO WS-ZCUNICO
+
+           INSPECT WS-ZCUNICO
+                      REPLACING LEADING ZEROES BY SPACES.
+
+           MOVE FUNCTION TRIM(WS-ZCUNICO) TO WS-EMPRESAS.
+           MOVE WS-EMPRESAS               TO COCD5502-ZREF.
+
+           MOVE COCK0002-CFAMCON-CLIENTE TO COCD5502-CFAMCON.
+           MOVE COCK0002-TIPCON-MANAGER  TO COCD5502-CTIPCON.
+
+           EXEC SQL
+                 SELECT
+                        GEMAILPROF
+                   INTO
+                        :COCD5502-GEMAILPROF
+                   FROM
+                        COVT5502_CONTACTOS
+                  WHERE
+                        CFAMCON = :COCD5502-CFAMCON
+                    AND CTIPCON = :COCD5502-CTIPCON
+                    AND ZREF    = :COCD5502-ZREF
+           END-EXEC
+
+           MOVE WS-COVT5502 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+                MOVE COCD5502-GEMAILPROF TO COCL0010-VIA-EMAIL-CLI
+              ELSE
+                 IF DB2-NOTFND
+                    IF COCL0010-TIPOP = COCK0002-CONSULTA
+                       MOVE SPACES TO COCD5502-GEMAILPROF
+                    ELSE
+                     SET ETCL0002-ERROS-FUNCAO TO TRUE
+                     MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                     MOVE COCK0001-USER-N-EXISTS TO ETCL0002-NR-ERRO
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+       2530-OBT-VIA-EMAIL-CLI-EXIT.
+           EXIT.
+      *******************************************************************
+       2510-OBT-USER-CLI.
+      *******************************************************************
+
+      *Acesso à tabela para obtenção do nome de utilizador usando o email do
+      * responsável do cliente
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2510-OBT-USER-CLI' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCL0010-VIA-EMAIL-CLI TO ARCD0104-GEMAIL
+
+           EXEC SQL
+                 SELECT
+                        GUSERNAME
+                   INTO
+                        :ARCD0104-GUSERNAME
+                   FROM
+                        ARVT0104
+                  WHERE
+                        GEMAIL = :ARCD0104-GEMAIL
+           END-EXEC
+
+           MOVE WS-ARVT0104 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-USER-N-EXISTS TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2540-OBT-VIA-EMAIL-PRJ
+                 THRU 2540-OBT-VIA-EMAIL-PRJ-EXIT
+           END-IF.
+
+       2510-OBT-USER-CLI-EXIT.
+           EXIT.
+
+      *******************************************************************
+       2540-OBT-VIA-EMAIL-PRJ.
+      *******************************************************************
+
+      * Acesso à tabela para obtenção do contacto do responsável do cliente
+      * usando o nome do utilizador do responsável do cliente
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2540-OBT-VIA-EMAIL-PRJ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCK0002-CFAMCON-PROJECTO TO COCD5502-CFAMCON.
+           MOVE COCL0010-NIDPROJECTO     TO COCD5502-ZREF.
+           MOVE COCK0002-TIPCON-MANAGER  TO COCD5502-CTIPCON.
+
+           EXEC SQL
+                 SELECT
+                        GEMAILPROF
+                   INTO
+                        :COCD5502-GEMAILPROF
+                   FROM
+                        COVT5502_CONTACTOS
+                  WHERE
+                        CFAMCON = :COCD5502-CFAMCON AND
+                        CTIPCON = :COCD5502-CTIPCON AND
+                           ZREF = :COCD5502-ZREF
+           END-EXEC
+
+           MOVE WS-COVT5502 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+                MOVE COCD5502-GEMAILPROF TO COCL0010-VIA-EMAIL-PRJ
+              ELSE
+                 IF DB2-NOTFND
+                    IF COCL0010-TIPOP = COCK0002-CONSULTA
+                       MOVE SPACES TO COCD5502-GEMAILPROF
+                    ELSE
+                     SET ETCL0002-ERROS-FUNCAO TO TRUE
+                     MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                     MOVE COCK0001-USER-N-EXISTS TO ETCL0002-NR-ERRO
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+       2540-OBT-VIA-EMAIL-PRJ-EXIT.
+           EXIT.
+
+      *******************************************************************
+       2520-OBT-FUNC-RESP-CLI.
+      *******************************************************************
+
+      * Acesso à tabela para obtenção do número de trabalhador usando o
+      * nome de utilizador
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2520-OBT-FUNC-RESP-CLI' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCD0104-GUSERNAME TO COCD5305-CUTILIZA
+
+           EXEC SQL
+                 SELECT
+                        NTRABALHADOR
+                   INTO
+                        :COCD5305-NTRABALHADOR
+                   FROM
+                        COVT5305_PESSOAS
+                  WHERE
+                        CUTILIZA = :COCD5305-CUTILIZA
+           END-EXEC
+
+           MOVE WS-COVT5305 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-USER-N-EXISTS TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              MOVE COCD5305-NTRABALHADOR TO COCL0010-RESP-CLI
+           END-IF.
+
+       2520-OBT-FUNC-RESP-CLI-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2550-EMAIL-RESP-CLI-EMP.
+      ******************************************************************
+
+      * Obtenção do email do cliente responsável pela empresa
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2550-EMAIL-RESP-CLI-EMP' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD5403-ZCUNICO        TO WS-ZCUNICO
+
+           INSPECT WS-ZCUNICO
+                      REPLACING LEADING ZEROES BY SPACES.
+
+           MOVE FUNCTION TRIM(WS-ZCUNICO) TO WS-EMPRESAS.
+           MOVE WS-EMPRESAS               TO COCD5502-ZREF.
+
+           MOVE COCK0002-CFAMCON-CLIENTE TO COCD5502-CFAMCON.
+           MOVE COCK0002-TIPCON-GERAL    TO COCD5502-CTIPCON.
+
+           EXEC SQL
+                 SELECT
+                        GEMAILPROF, GNOME, GMORADA
+                   INTO
+                        :COCD5502-GEMAILPROF, :COCD5502-GNOME,
+                        :COCD5502-GMORADA
+                   FROM
+                        COVT5502_CONTACTOS
+                  WHERE
+                        CFAMCON = :COCD5502-CFAMCON
+                    AND CTIPCON = :COCD5502-CTIPCON
+                    AND    ZREF = :COCD5502-ZREF
+           END-EXEC
+
+           MOVE WS-COVT5502 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+                MOVE COCD5502-GEMAILPROF TO COCL0010-CLI-EMAIL-EMP
+                MOVE COCD5502-GNOME      TO COCL0010-GNOME
+                MOVE COCD5502-GMORADA    TO COCL0010-GMORADA
+              ELSE
+                 IF DB2-NOTFND
+                    IF COCL0010-TIPOP = COCK0002-CONSULTA
+                       MOVE SPACES TO COCD5502-GEMAILPROF
+                    ELSE
+                     SET ETCL0002-ERROS-FUNCAO TO TRUE
+                     MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                     MOVE COCK0001-USER-N-EXISTS TO ETCL0002-NR-ERRO
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+       2550-EMAIL-RESP-CLI-EMP-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2560-EMAIL-CLI-RESP-PRJ.
+      ******************************************************************
+
+      * Obtenção do email do cliente responsável pelo projecto
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2560-EMAIL-CLI-RESP-PRJ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCK0002-CFAMCON-PROJECTO TO COCD5502-CFAMCON.
+           MOVE COCL0010-NIDPROJECTO      TO COCD5502-ZREF.
+           MOVE COCK0002-TIPCON-CLI       TO COCD5502-CTIPCON.
+
+           EXEC SQL
+                 SELECT
+                        GEMAILPROF
+                   INTO
+                        :COCD5502-GEMAILPROF
+                   FROM
+                        COVT5502_CONTACTOS
+                  WHERE
+                        CFAMCON = :COCD5502-CFAMCON AND
+                        CTIPCON = :COCD5502-CTIPCON AND
+                           ZREF = :COCD5502-ZREF
+           END-EXEC
+
+           MOVE WS-COVT5502 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+                MOVE COCD5502-GEMAILPROF TO COCL0010-CLI-EMAIL-PRJ
+              ELSE
+                 IF DB2-NOTFND
+                    IF COCL0010-TIPOP = COCK0002-CONSULTA
+                       MOVE SPACES TO COCD5502-GEMAILPROF
+                    ELSE
+                     SET ETCL0002-ERROS-FUNCAO TO TRUE
+                     MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                     MOVE COCK0001-USER-N-EXISTS TO ETCL0002-NR-ERRO
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+       2560-EMAIL-CLI-RESP-PRJ-EXIT.
+           EXIT.
+      ******************************************************************
+       2600-OBT-CUSERS.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2600-OBT-CUSERS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCL0010-NIDPROJECTO TO COCD6600-NIDPROJECTO
+
+           EXEC SQL
+                 SELECT
+                        CUSER01, CUSER02
+                   INTO
+                        :COCD6600-CUSER01, :COCD6600-CUSER02
+                   FROM
+                        COVT6600
+                  WHERE
+                        NIDPROJECTO = :COCD6600-NIDPROJECTO
+           END-EXEC.
+
+           MOVE WS-COVT6600 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+           THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+             IF DB2-OK
+               MOVE COCD6600-CUSER01 TO COCL0010-CUSRNIV1-NTRAB
+               MOVE COCD6600-CUSER02 TO COCL0010-CUSRNIV2-NTRAB
+             ELSE
+               IF DB2-NOTFND
+                 IF COCL0010-TIPOP = COCK0002-CONSULTA
+                    MOVE SPACES TO COCD6600-CUSER01
+                    MOVE SPACES TO COCD6600-CUSER02
+                   ELSE
+                    SET ETCL0002-ERROS-FUNCAO TO TRUE
+                    MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                    MOVE COCK0001-USER-N-EXISTS TO ETCL0002-NR-ERRO
+                 END-IF
+               END-IF
+             END-IF
+           END-IF.
+
+       2600-OBT-CUSERS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2700-OBT-NIV1-EMAIL.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2700-OBT-NIV1-EMAIL' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD6600-CUSER01 TO  ARCD0104-GUSERNAME
+
+           EXEC SQL
+                 SELECT
+                        GEMAIL
+                   INTO
+                        :ARCD0104-GEMAIL
+                   FROM
+                        ARVT0104
+                  WHERE
+                        GUSERNAME = :ARCD0104-GUSERNAME
+           END-EXEC.
+
+           MOVE WS-ARVT0104 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE ARCD0104-GEMAIL TO COCL0010-CUSRNIV1-MAIL
+              ELSE
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-PROJ-NAO-EXIST TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+       2700-OBT-NIV1-EMAIL-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2800-OBT-NIV2-EMAIL.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2800-OBT-NIV2-EMAIL' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD6600-CUSER02 TO  ARCD0104-GUSERNAME
+
+           EXEC SQL
+                 SELECT
+                        GEMAIL
+                   INTO
+                        :ARCD0104-GEMAIL
+                   FROM
+                        ARVT0104
+                  WHERE
+                        GUSERNAME = :ARCD0104-GUSERNAME
+           END-EXEC.
+
+           MOVE WS-ARVT0104 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+              MOVE ARCD0104-GEMAIL TO COCL0010-CUSRNIV2-MAIL
+              ELSE
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-PROJ-NAO-EXIST TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+       2800-OBT-NIV2-EMAIL-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2900-OBT-NIV1-NTRAB.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2900-OBT-NIV1-NTRAB' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD6600-CUSER01 TO COCD5305-CUTILIZA
+
+           EXEC SQL
+                 SELECT
+                        NTRABALHADOR
+                   INTO
+                        :COCD5305-NTRABALHADOR
+                   FROM
+                        COVT5305_PESSOAS
+                  WHERE
+                        CUTILIZA = :COCD5305-CUTILIZA
+           END-EXEC.
+
+           MOVE WS-COVT5305 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+              MOVE COCD5305-NTRABALHADOR TO COCL0010-CUSRNIV1-NTRAB
+              ELSE
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-PROJ-NAO-EXIST TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+       2900-OBT-NIV1-NTRAB-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2910-OBT-NIV2-NTRAB.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2910-OBT-NIV2-NTRAB' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD6600-CUSER02 TO COCD5305-CUTILIZA
+
+           EXEC SQL
+                 SELECT
+                        NTRABALHADOR
+                   INTO
+                        :COCD5305-NTRABALHADOR
+                   FROM
+                        COVT5305_PESSOAS
+                  WHERE
+                        CUTILIZA = :COCD5305-CUTILIZA
+           END-EXEC.
+
+           MOVE WS-COVT5305 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+              MOVE COCD5305-NTRABALHADOR TO COCL0010-CUSRNIV2-NTRAB
+              ELSE
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-PROJ-NAO-EXIST TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+       2910-OBT-NIV2-NTRAB-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           IF ETCL0002-DEBUG-SIM
+              MOVE '3000-FIM-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.
+           COPY VIAP0015.
+
+      ******************************************************************

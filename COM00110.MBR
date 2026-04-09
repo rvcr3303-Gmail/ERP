@@ -1,0 +1,303 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. COM00110.
+
+      ******************************************************************
+      *                       ERP VIA                                  *
+      ******************************************************************
+      * OBJECTIVO: ROTINA STANDARD DE VALIDACAO DE DADOS DE PROJECTO   *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+      *SPECIAL-NAMES.
+      *    DECIMAL-POINT IS COMMA.
+
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       01  FILLER                       PIC  X(40)
+            VALUE 'INICIO WORKING-STORAGE DO COM00110      '.
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC X(10) VALUE 'COM00110'.
+           05 CON-DATA-MIN              PIC X(10) VALUE '0001-01-01'.
+           05 CON-4                     PIC X(01) VALUE '4'.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-FACTOR           PIC S9(15)V9(05) VALUE ZEROS.
+           05 WS-ZCUNICO          PIC X(10) VALUE SPACES.
+           05 WS-CUTILIZA         PIC X(20) VALUE SPACES.
+           05 WS-EMPRESAS         PIC X(10) VALUE SPACES.
+           05 WS-NIDPROJECTO      PIC X(10) VALUE SPACES.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY COCK0001.
+           COPY COCK0002.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAL0015.
+           COPY VIACK001.
+           COPY VIAW0005.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40)
+            VALUE 'FIM DA WORKING-STORAGE COM00110       '.
+
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+           COPY ETCL0002.
+           COPY COCL0011.
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                COCL0011-COMMAREA.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+
+           INITIALIZE WS-VARIAVEIS.
+
+           IF ETCL0002-SEM-ERROS
+             MOVE ZEROS  TO COCL0011-GMORADA-S
+             MOVE SPACES TO COCL0011-GMORADA-CAPLIC
+             MOVE ZEROS  TO COCL0011-GMORADA-MSG
+
+             MOVE ZEROS  TO COCL0011-GEMAILPROF-S
+             MOVE SPACES TO COCL0011-GEMAILPROF-CAPLIC
+             MOVE ZEROS  TO COCL0011-GEMAILPROF-MSG
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 1100-OBT-FAM-CONT
+                 THRU 1100-OBT-FAM-CONT-EXIT
+           END-IF.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-OBT-FAM-CONT.
+      ******************************************************************
+
+      * Chamada aos parágrafos de informação para a obtenção
+      * de familia de contacto.
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1100-OBT-FAM-CONT' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       1100-OBT-FAM-CONT-EXIT.
+           EXIT.
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             IF COCL0011-CFAMCON = COCK0002-CFAMCON-CLIENTE AND
+                COCL0011-CTIPCON = COCK0002-TIPCON-MANAGER
+                PERFORM 2100-VALIDA-VIA-CLI
+                   THRU 2100-VALIDA-VIA-CLI-EXIT
+             END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             IF COCL0011-CFAMCON = COCK0002-CFAMCON-CLIENTE AND
+                COCL0011-CTIPCON = COCK0002-TIPCON-GERAL
+                PERFORM 2200-VALIDA-VIA-CLI-GER
+                   THRU 2200-VALIDA-VIA-CLI-GER-EXIT
+             END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             IF COCL0011-CFAMCON = COCK0002-CFAMCON-CLIENTE AND
+                COCL0011-CTIPCON = COCK0002-CFAMCON-PROJECTO
+                PERFORM 2300-VALIDA-VIA-CLI-PROJ
+                   THRU 2300-VALIDA-VIA-CLI-PROJ-EXIT
+             END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             IF COCL0011-CFAMCON = COCK0002-CFAMCON-PESSOAS AND
+                COCL0011-CTIPCON = COCK0002-TIPCON-PESSOAS
+                PERFORM 2400-VALIDA-VIA-CLI-PESS
+                   THRU 2400-VALIDA-VIA-CLI-PESS-EXIT
+             END-IF
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+       2100-VALIDA-VIA-CLI.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2100-VALIDA-VIA-CLI'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF COCL0011-GEMAILPROF = SPACES
+             SET ETCL0002-ERROS-FUNCAO TO TRUE
+             SET COCL0011-GEMAILPROF-1 TO TRUE
+             MOVE COCK0002-CAPLIC TO COCL0011-GEMAILPROF-CAPLIC
+             MOVE COCK0001-EMAIL-PROF-N-EXIST TO
+                  COCL0011-GEMAILPROF-MSG
+           END-IF.
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2100-VALIDA-VIA-CLI-EXIT'  TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-IND-ERROS'      TO VIAL0015-CAMPO-NM(1)
+              MOVE ETCL0002-IND-ERROS        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCL0011-GEMAILPROF-MSG' TO VIAL0015-CAMPO-NM(2)
+              MOVE COCL0011-GEMAILPROF-MSG   TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2100-VALIDA-VIA-CLI-EXIT.
+           EXIT.
+      ******************************************************************
+       2200-VALIDA-VIA-CLI-GER.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2200-VALIDAR-VIA-CLI-GER' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF COCL0011-GMORADA = SPACES OR
+              COCL0011-CCODPOS = SPACES OR
+              COCL0011-GLOCPOS = SPACES OR
+              COCL0011-CPAIS   = SPACES
+              SET ETCL0002-ERROS-FUNCAO TO TRUE
+              SET COCL0011-GMORADA-1 TO TRUE
+              MOVE COCK0002-CAPLIC TO COCL0011-GMORADA-CAPLIC
+              MOVE COCK0001-MORADA-INVALIDA TO COCL0011-GMORADA-MSG
+           END-IF.
+
+       2200-VALIDA-VIA-CLI-GER-EXIT.
+           EXIT.
+      ******************************************************************
+       2300-VALIDA-VIA-CLI-PROJ.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2300-VALIDA-VIA-CLI-PROJ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF COCL0011-GMORADA  = SPACES
+             SET ETCL0002-ERROS-FUNCAO TO TRUE
+             SET COCL0011-GMORADA-1 TO TRUE
+             MOVE COCK0002-CAPLIC TO COCL0011-GMORADA-CAPLIC
+             MOVE COCK0001-MORADA-INVALIDA TO COCL0011-GMORADA-MSG
+           END-IF.
+
+       2300-VALIDA-VIA-CLI-PROJ-EXIT.
+           EXIT.
+      ******************************************************************
+       2400-VALIDA-VIA-CLI-PESS.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2400-VALIDA-VIA-CLI-PESS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF COCL0011-GMORADA    = SPACES OR
+              COCL0011-GTELEFONE1 = SPACES
+             SET ETCL0002-ERROS-FUNCAO TO TRUE
+             SET COCL0011-GMORADA-1 TO TRUE
+             MOVE COCK0002-CAPLIC TO COCL0011-GMORADA-CAPLIC
+             MOVE COCK0001-MORADA-INVALIDA TO COCL0011-GMORADA-MSG
+           END-IF.
+
+       2400-VALIDA-VIA-CLI-PESS-EXIT.
+           EXIT.
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           IF ETCL0002-DEBUG-SIM
+              MOVE '3000-FIM-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-IND-ERROS'      TO VIAL0015-CAMPO-NM(1)
+              MOVE ETCL0002-IND-ERROS        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCL0011-GEMAILPROF-MSG' TO VIAL0015-CAMPO-NM(2)
+              MOVE COCL0011-GEMAILPROF-MSG   TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCL0011-GMORADA-MSG   ' TO VIAL0015-CAMPO-NM(3)
+              MOVE COCL0011-GMORADA-MSG      TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.
+           COPY VIAP0015.
+
+      ******************************************************************

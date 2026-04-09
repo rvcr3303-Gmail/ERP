@@ -1,0 +1,324 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI77202.
+      ******************************************************************
+      *     PROGRAMA COI77202.                                         *
+      *                                                                *
+      *     Anulação de Factura                                        *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI77202         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD5012 END-EXEC.
+           EXEC SQL INCLUDE COCD3600 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV7720.
+       COPY COCV7721.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT5012 PIC X(08) VALUE 'COVT5012'.
+           05 CON-COVT3600 PIC X(08) VALUE 'COVT3600'.
+           05 CON-1        PIC X(01) VALUE '1'.
+           05 CON-2        PIC X(01) VALUE '2'.
+           05 CON-3        PIC X(01) VALUE '3'.
+
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'COI77202'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI77202         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA'    TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT      TO COCV7720-MSG.
+           MOVE COCV7720-ASE                 TO COCV7721-ASE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 1500-VALIDACOES
+                 THRU 1500-VALIDACOES-EXIT
+           END-IF.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1500-VALIDACOES
+      *--------------------------------------------------------------
+       1500-VALIDACOES.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1500-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF COCV7720-REFINVOICE EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO    TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO   TO COCV7721-REFINVOICE-S
+               MOVE COCK0001-STATUS-NAOEMIT  TO COCV7721-REFINVOICE-MSG
+               MOVE COCK0002-CAPLIC
+                                        TO COCV7721-REFINVOICE-CAPLIC
+             END-IF
+           END-IF.
+
+       1500-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV7720-ADE       TO COCV7721-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2160-OBTEM-DADOS
+                 THRU 2160-OBTEM-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      * Obtem dados modificação
+      *--------------------------------------------------------------
+       2160-OBTEM-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2160-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV7720-NIDPROJECTO  TO COCD5012-NIDPROJECTO.
+           MOVE COCV7720-REFINVOICE   TO COCD5012-GREFINV.
+
+           EXEC SQL
+                SELECT
+                       NIDINVOICE
+                     , NIDPROJECTO
+                     , GCLIENTE
+                     , DDATAINSER
+                     , DDATAEMISS
+                     , DDATAEMIS2
+                     , DDATEDUE
+                     , CPRAZO
+                     , NTOTALAMOUNT
+                     , NTAXAMOUNT
+                     , GDESCINVOICE
+                     , CSTATUS
+                     , CUSERID
+                     , HTIMEST
+                     , GREFINV
+                     , DPAG
+                     , CTIPDOC
+                     , CMOEDA
+                     , CIMPOSTO
+                     , NOTAS
+                     , NTOTPAG
+                     , NTAXPAG
+                     , NTOTRET
+                     , NTAXRET
+                     , GREFNCR
+                     , DDATEMINCR
+                     , CMOTANU
+                     , CTIPANU
+                     , NTOTNCR
+                     , NTAXNCR
+                 INTO
+                       :COCD5012-NIDINVOICE
+                     , :COCD5012-NIDPROJECTO
+                     , :COCD5012-GCLIENTE
+                     , :COCD5012-DDATAINSER
+                     , :COCD5012-DDATAEMISS
+                     , :COCD5012-DDATAEMIS2
+                     , :COCD5012-DDATEDUE
+                     , :COCD5012-CPRAZO
+                     , :COCD5012-NTOTALAMOUNT
+                     , :COCD5012-NTAXAMOUNT
+                     , :COCD5012-GDESCINVOICE
+                     , :COCD5012-CSTATUS
+                     , :COCD5012-CUSERID
+                     , :COCD5012-HTIMEST
+                     , :COCD5012-GREFINV
+                     , :COCD5012-DPAG
+                     , :COCD5012-CTIPDOC
+                     , :COCD5012-CMOEDA
+                     , :COCD5012-CIMPOSTO
+                     , :COCD5012-NOTAS
+                     , :COCD5012-NTOTPAG
+                     , :COCD5012-NTAXPAG
+                     , :COCD5012-NTOTRET
+                     , :COCD5012-NTAXRET
+                     , :COCD5012-GREFNCR
+                     , :COCD5012-DDATEMINCR
+                     , :COCD5012-CMOTANU
+                     , :COCD5012-CTIPANU
+                     , :COCD5012-NTOTNCR
+                     , :COCD5012-NTAXNCR
+                  FROM  COVT5012_INVOICES
+                 WHERE  GREFINV     = :COCD5012-GREFINV
+                   AND  NIDPROJECTO = :COCD5012-NIDPROJECTO
+           END-EXEC.
+
+           MOVE CON-COVT5012  TO VIAL0002-TABLE-NAME.
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *--------------------------------------------------*
+      *--- Só pode anular a factura se o status for   ---*
+      *--- 9 - Pendente de Emissão de Nota de Crédito ---*
+      *--------------------------------------------------*
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF COCD5012-CSTATUS = COCK0002-CSTATUS-PENC
+                    CONTINUE
+                 ELSE
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV7721-REFINVOICE-S
+                    MOVE COCK0001-ANUL-NAO-PODE
+                      TO COCV7721-REFINVOICE-MSG
+                       MOVE COCK0002-CAPLIC
+                         TO COCV7721-REFINVOICE-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE COCD5012-NIDINVOICE    TO COCV7721-NIDINVOICE
+                 MOVE COCD5012-NIDPROJECTO   TO COCV7721-NIDPROJECTO
+                 MOVE COCD5012-GCLIENTE      TO COCV7721-GCLIENTE
+                 MOVE COCD5012-DDATAINSER    TO COCV7721-DDATAINSER
+                 MOVE COCD5012-DDATAEMISS    TO COCV7721-DDATAEMISS
+                 MOVE COCD5012-DDATAEMIS2    TO COCV7721-DDATAEMIS2
+                 MOVE COCD5012-DDATEDUE      TO COCV7721-DDATEDUE
+                 MOVE COCD5012-CPRAZO        TO COCV7721-CPRAZO
+                 MOVE COCD5012-NTOTALAMOUNT  TO COCV7721-NTOTALAMOUNT
+                 MOVE COCD5012-NTAXAMOUNT    TO COCV7721-NTAXAMOUNT
+                 MOVE COCD5012-GDESCINVOICE  TO COCV7721-GDESCINVOICE
+                 MOVE COCD5012-CSTATUS       TO COCV7721-CSTATUS
+                 MOVE COCD5012-GREFINV       TO COCV7721-REFINVOICE
+                 MOVE COCD5012-DPAG          TO COCV7721-DDATEPAG
+                 MOVE COCD5012-CMOEDA        TO COCV7721-CMOEDA
+                 MOVE COCD5012-CIMPOSTO      TO COCV7721-CIMPOSTO
+                 MOVE COCD5012-NOTAS         TO COCV7721-NOTAS
+      **R        MOVE COCD5012-NTOTPAG       TO COCV7721-NVALREC
+      **R        MOVE COCD5012-NTAXPAG       TO COCV7721-NTAXREC
+                 MOVE ZEROES                 TO COCV7721-NVALREC
+                 MOVE ZEROES                 TO COCV7721-NTAXREC
+                 COMPUTE COCV7721-NVALTOT = COCD5012-NTOTALAMOUNT +
+                                            COCD5012-NTAXAMOUNT
+                 MOVE COCD5012-GREFNCR       TO COCV7721-REFNCR
+                 MOVE COCD5012-DDATEMINCR    TO COCV7721-DDATEMINCR
+                 MOVE COCD5012-CMOTANU       TO COCV7721-CMOTANU
+                 MOVE COCD5012-CTIPANU       TO COCV7721-CTIPANU
+                 MOVE COCD5012-NTOTNCR       TO COCV7721-NTOTNCR
+                 MOVE COCD5012-NTAXNCR       TO COCV7721-NTAXNCR
+
+              ELSE
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO
+                   TO COCV7721-REFINVOICE-S
+                 MOVE COCK0001-REFINVOICE-N-EXISTS
+                   TO COCV7721-REFINVOICE-MSG
+                 MOVE COCK0002-CAPLIC
+                   TO COCV7721-REFINVOICE-CAPLIC
+              END-IF
+           END-IF.
+
+       2160-OBTEM-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              MOVE 'COCV7721-GDESCINVOICE'   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCV7721-GDESCINVOICE    TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'SQLCODE              '   TO VIAL0015-CAMPO-NM(2)
+              MOVE  SQLCODE                  TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV7721-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV7721-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV7721-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

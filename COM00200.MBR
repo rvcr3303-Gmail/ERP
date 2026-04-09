@@ -1,0 +1,231 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. COM00200.
+
+      ******************************************************************
+      *                       ERP VIA                                  *
+      ******************************************************************
+      * OBJECTIVO: ROTINA STANDARD DE VALIDACAO DE DADOS DE PROJECTO   *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+      *SPECIAL-NAMES.
+      *    DECIMAL-POINT IS COMMA.
+
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       01  FILLER                       PIC  X(40)
+            VALUE 'INICIO WORKING-STORAGE DO COM00200      '.
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC X(10) VALUE 'COM00200'.
+           05 WS-COVT2700               PIC X(10) VALUE 'COVT2700'.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-FACTOR           PIC S9(15)V9(05) VALUE ZEROS.
+           05 WS-ZCUNICO          PIC X(10) VALUE SPACES.
+           05 WS-CUTILIZA         PIC X(20) VALUE SPACES.
+           05 WS-EMPRESAS         PIC X(10) VALUE SPACES.
+           05 WS-NIDPROJECTO      PIC X(10) VALUE SPACES.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY COCK0001.
+           COPY COCK0002.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAL0015.
+           COPY VIACK001.
+           COPY VIAW0005.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+           EXEC SQL INCLUDE COCD2700 END-EXEC.
+           EXEC SQL INCLUDE ARCD0104 END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40)
+            VALUE 'FIM DA WORKING-STORAGE COM00200         '.
+
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+           COPY ETCL0002.
+           COPY COCL0020.
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                COCL0020-COMMAREA.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+
+           INITIALIZE WS-VARIAVEIS.
+
+           PERFORM 1100-VALIDAR-DADOS-INPUT
+              THRU 1100-VALIDAR-DADOS-INPUT-EXIT.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDAR-DADOS-INPUT.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1100-VALIDAR-DADOS-INPUT'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF COCL0020-CTIPMOV = SPACES
+             SET ETCL0002-ERROS-FUNCAO TO TRUE
+             MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+             MOVE COCK0001-VAR-ESP TO ETCL0002-NR-ERRO
+           END-IF.
+
+       1100-VALIDAR-DADOS-INPUT-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2100-VAL-MOVIMENTO
+                 THRU 2100-VAL-MOVIMENTO-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2100-VAL-MOVIMENTO.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2100-VAL-MOVIMENTO    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCL0020-CTIPMOV   TO   COCD2700-CTIPMOV
+           MOVE COCL0020-CSINAL    TO   COCD2700-CSINAL
+
+           EXEC SQL
+                 SELECT
+                        CTIPMOV, GDESC, CSINAL,
+                        NCONTADB, NCONTACR,
+                        CUSERID ,HTIMEST
+                   INTO
+                        :COCD2700-CTIPMOV ,
+                        :COCD2700-GDESC   ,
+                        :COCD2700-CSINAL  ,
+                        :COCD2700-NCONTADB,
+                        :COCD2700-NCONTACR,
+                        :COCD2700-CUSERID,
+                        :COCD2700-HTIMEST
+                   FROM
+                        COVT2700_TIPMOV
+                  WHERE
+                        CTIPMOV = :COCD2700-CTIPMOV
+           END-EXEC
+
+           MOVE WS-COVT2700 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 SET  ETCL0002-ERROS-FUNCAO TO TRUE
+                 MOVE COCK0002-CAPLIC TO ETCL0002-CAPLIC-ERRO
+                 MOVE COCK0001-PROJ-NAO-EXIST TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             MOVE COCD2700-CTIPMOV       TO COCL0020-CTIPMOV
+             MOVE COCD2700-GDESC         TO COCL0020-GDESC
+             MOVE COCD2700-CSINAL        TO COCL0020-CSINAL
+             MOVE COCD2700-NCONTADB      TO COCL0020-NCONTADB
+             MOVE COCD2700-NCONTACR      TO COCL0020-NCONTACR
+             MOVE COCD2700-CUSERID       TO COCL0020-CUSERID
+           ELSE
+             CONTINUE
+           END-IF.
+
+       2100-VAL-MOVIMENTO-EXIT.
+           EXIT.
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           IF ETCL0002-DEBUG-SIM
+              MOVE '3000-FIM-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.
+           COPY VIAP0015.
+
+      ******************************************************************

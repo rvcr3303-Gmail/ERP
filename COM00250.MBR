@@ -1,0 +1,709 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. COM00250.
+
+      ******************************************************************
+      *                       ERP VIA CONSULTING                       *
+      ******************************************************************
+      * OBJECTIVO: Paga uma despesa orcamentada. Se o valor não corres-*
+      * ponder, faz o pagamento alterando o valor da factura mas nao   *
+      * altera o valor orcamentado                                     *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+      *SPECIAL-NAMES.
+      *    DECIMAL-POINT IS COMMA.
+
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       01  FILLER                       PIC  X(40)
+            VALUE 'INICIO WORKING-STORAGE DO COM00250      '.
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC X(10) VALUE 'COM00250'.
+           05 WS-COVT6401               PIC X(10) VALUE 'COVT6401'.
+           05 WS-COVT5403               PIC X(10) VALUE 'COVT5403'.
+           05 WS-COVT6702               PIC X(10) VALUE 'COVT6702'.
+           05 CON-DATA-MIN              PIC X(10) VALUE '0001-01-01'.
+           05 CON-A                     PIC X(01) VALUE 'A'.
+           05 CON-B                     PIC X(01) VALUE 'B'.
+           05 CON-C                     PIC X(01) VALUE 'C'.
+           05 CON-1                     PIC X(01) VALUE '1'.
+           05 CON-2                     PIC X(01) VALUE '2'.
+           05 CON-3                     PIC X(01) VALUE '3'.
+           05 CON-4                     PIC X(01) VALUE '4'.
+           05 CON-001-P                 PIC S9(01)V9(02) VALUE 0.01.
+           05 CON-001-N                 PIC S9(01)V9(02) VALUE -0.01.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-DATA-REF         PIC X(10)              VALUE SPACES.
+           05 WS-DATA-REF         PIC X(10)              VALUE SPACES.
+           05 WS-NSEQ             PIC S9(10)      COMP-3 VALUE ZEROES.
+           05 WS-NVALLIQ          PIC S9(15)V9(2) COMP-3 VALUE ZEROES.
+           05 WS-MVOR             PIC S9(15)V9(2) COMP-3 VALUE ZEROES.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY COCK0001.
+           EXEC SQL INCLUDE COCK0002 END-EXEC.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAL0015.
+           COPY VIACK001.
+           COPY VIAW0005.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+           EXEC SQL INCLUDE COCD6401 END-EXEC.
+           EXEC SQL INCLUDE COCD6702 END-EXEC.
+
+      ******************************************************************
+       01  FILLER                      PIC X(40)
+            VALUE 'FIM DA WORKING-STORAGE COM00250         '.
+
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+           COPY ETCL0002.
+           COPY COCL0250.
+
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                COCL0250-COMMAREA.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+
+           INITIALIZE WS-VARIAVEIS.
+
+           PERFORM 1100-VALIDAR-DADOS-INPUT
+              THRU 1100-VALIDAR-DADOS-INPUT-EXIT.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDAR-DADOS-INPUT.
+      ******************************************************************
+
+      *    Data de validade para o imposto
+           IF COCL0250-NIDINVOICE EQUAL ZEROES
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE COCK0001-NIDINVOICE-N-EXISTS TO ETCL0002-NR-ERRO
+              MOVE COCK0002-CAPLIC          TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+             IF COCL0250-MVALOR   EQUAL ZEROES
+               SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+               MOVE COCK0001-VALOR-OBRIGAT   TO ETCL0002-NR-ERRO
+               MOVE COCK0002-CAPLIC          TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+      *
+      *    Codigo de projecto
+           IF ETCL0002-SEM-ERROS
+             IF COCL0250-NIDPROJECTO EQUAL SPACES
+               SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+               MOVE COCK0001-NIDPROJECTO-N-EXISTS TO ETCL0002-NR-ERRO
+               MOVE COCK0002-CAPLIC          TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+             IF COCL0250-GCLIENTE    EQUAL SPACES
+               SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+               MOVE COCK0001-CLIENTE-N-EXISTS     TO ETCL0002-NR-ERRO
+               MOVE COCK0002-CAPLIC          TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+             IF COCL0250-DPAG       EQUAL SPACES
+             OR COCL0250-DPAG       EQUAL CON-DATA-MIN
+               SET  ETCL0002-ERROS-FUNCAO   TO TRUE
+               MOVE COCK0001-DPAG-OBRIGAT   TO ETCL0002-NR-ERRO
+               MOVE COCK0002-CAPLIC         TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+      *
+       1100-VALIDAR-DADOS-INPUT-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0024-TRATA-DEBUG
+                 THRU VIAP0024-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             PERFORM 2510-OBT-FACT
+                THRU 2510-OBT-FACT-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             PERFORM 22113-OBTEM-SEQ
+                THRU 22113-OBTEM-SEQ-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             PERFORM 2215-UPDATE-MVOR
+                THRU 2215-UPDATE-MVOR-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             COMPUTE COCD6702-NTOTPAG = COCD6702-NTOTALAMOUNT -
+                                        COCD6702-NTOTRET
+             COMPUTE COCD6702-NTAXPAG = COCD6702-NTAXAMOUNT -
+                                        COCD6702-NTAXRET
+             PERFORM 2212-PAG-TOTAL
+                THRU 2212-PAG-TOTAL-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             PERFORM 2211-TRATA-MOV-TOT
+                THRU 2211-TRATA-MOV-TOT-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2510-OBT-FACT.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2510-OBT-FACT      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0024-TRATA-DEBUG
+                 THRU VIAP0024-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE DCLCOCD6702           REPLACING NUMERIC BY ZEROES
+                                                 ALPHANUMERIC BY SPACES
+
+           MOVE COCL0250-GCLIENTE        TO COCD6702-GCLIENTE
+           MOVE COCL0250-NIDINVOICE      TO COCD6702-NIDINVOICE
+           MOVE COCL0250-NIDPROJECTO     TO COCD6702-NIDPROJECTO
+
+           EXEC SQL
+                SELECT NIDINVOICE
+                     , NTOTALAMOUNT
+                     , NTOTRET
+                     , NTAXAMOUNT
+                     , NTAXRET
+                     , GREFINV
+                     , DDATAINSER
+                     , DDATAEMISS
+                     , DDATAEMIS2
+                     , DDATEDUE
+                     , CPRAZO
+                     , GDESCINVOICE
+                     , CSTATUS
+                     , GREFINV
+                     , CTIPDOC
+                     , CMOEDA
+                     , CIMPOSTO
+                     , NOTAS
+                     , NTOTPAG
+                     , NTAXPAG
+                  INTO :COCD6702-NIDINVOICE
+                     , :COCD6702-NTOTALAMOUNT
+                     , :COCD6702-NTOTRET
+                     , :COCD6702-NTAXAMOUNT
+                     , :COCD6702-NTAXRET
+                     , :COCD6702-GREFINV
+                     , :COCD6702-DDATAINSER
+                     , :COCD6702-DDATAEMISS
+                     , :COCD6702-DDATAEMIS2
+                     , :COCD6702-DDATEDUE
+                     , :COCD6702-CPRAZO
+                     , :COCD6702-GDESCINVOICE
+                     , :COCD6702-CSTATUS
+                     , :COCD6702-GREFINV
+                     , :COCD6702-CTIPDOC
+                     , :COCD6702-CMOEDA
+                     , :COCD6702-CIMPOSTO
+                     , :COCD6702-NOTAS
+                     , :COCD6702-NTOTPAG
+                     , :COCD6702-NTAXPAG
+                  FROM COVT6702_EXPENSES
+                 WHERE GCLIENTE    = :COCD6702-GCLIENTE
+                   AND NIDPROJECTO = :COCD6702-NIDPROJECTO
+                   AND NIDINVOICE  = :COCD6702-NIDINVOICE
+           END-EXEC.
+
+           MOVE WS-COVT6702 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           MOVE COCD6702-NTOTALAMOUNT TO WS-MVOR
+
+           IF ETCL0002-SEM-ERROS
+              IF ETCL0002-SQL-OK
+                PERFORM 2510-VAL-FACT
+                   THRU 2510-VAL-FACT-EXIT
+              ELSE
+                 SET  ETCL0002-ABEND-DB2  TO TRUE
+                 MOVE VIAK0001-ERRO-DB2   TO ETCL0002-NR-ERRO
+                 MOVE SQLCA               TO ETCL0002-SQLCA
+             END-IF
+           END-IF.
+
+       2510-OBT-FACT-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2510-VAL-FACT.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2510-VAL-FACT        ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0024-TRATA-DEBUG
+                 THRU VIAP0024-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF COCD6702-CSTATUS NOT EQUAL COCK0002-CSTATDP-ORCM AND
+              COCD6702-CSTATUS NOT EQUAL COCK0002-CSTATDP-RECB
+             SET  ETCL0002-ERROS-FUNCAO          TO TRUE
+             MOVE COCK0001-NIDINVOICE-N-EXISTS
+                                            TO ETCL0002-NR-ERRO
+             MOVE COCK0002-CAPLIC-CO       TO ETCL0002-CAPLIC-ERRO
+             MOVE 'Erro obt. factura     '  TO ETCL0002-GINFO-ERRO
+           END-IF
+
+           IF ETCL0002-SEM-ERROS
+             IF COCD6702-CSTATUS EQUAL COCK0002-CSTATDP-ORCM OR
+                COCD6702-CSTATUS EQUAL COCK0002-CSTATDP-RECB
+               IF COCD6702-NTAXAMOUNT NOT EQUAL ZEROES OR
+                  COCD6702-NTAXRET    NOT EQUAL ZEROES OR
+                  COCD6702-NTOTRET    NOT EQUAL ZEROES
+                 SET  ETCL0002-ERROS-FUNCAO     TO TRUE
+                 MOVE COCK0001-NIDINVOICE-N-EXISTS
+                                                TO ETCL0002-NR-ERRO
+                      MOVE COCK0002-CAPLIC-CO   TO ETCL0002-CAPLIC-ERRO
+                      MOVE 'Erro fact c/ imp      '
+                                                TO ETCL0002-GINFO-ERRO
+               END-IF
+             END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             IF COCD6702-CSTATUS EQUAL COCK0002-CSTATDP-ORCM OR
+                COCD6702-CSTATUS EQUAL COCK0002-CSTATDP-RECB
+               IF COCD6702-NTOTALAMOUNT EQUAL ZEROES
+      **R         COCD6702-NTOTALAMOUNT NOT EQUAL COCL0250-MVALOR
+                 SET  ETCL0002-ERROS-FUNCAO     TO TRUE
+                 MOVE COCK0001-ERR-NTOTALAMOUNT TO ETCL0002-NR-ERRO
+                 MOVE COCK0002-CAPLIC-CO        TO ETCL0002-CAPLIC-ERRO
+                 MOVE 'Erro fact montante    '  TO ETCL0002-GINFO-ERRO
+               END-IF
+             END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             IF COCD6702-CSTATUS = COCK0002-CSTATDP-ORCM
+               MOVE COCL0250-DPAG             TO COCD6702-DDATEDUE
+             END-IF
+           END-IF.
+
+       2510-VAL-FACT-EXIT.
+           EXIT.
+
+      ******************************************************************
+       22113-OBTEM-SEQ.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '22113-OBTEM-SEQ      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0024-TRATA-DEBUG
+                 THRU VIAP0024-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCL0250-NIDINVOICE  TO COCD6401-NIDINVOICE
+           MOVE COCL0250-NIDPROJECTO TO COCD6401-NIDPROJECTO
+
+           EXEC SQL
+              SELECT IFNULL(COUNT(NSEQ), 0)
+                INTO :WS-NSEQ
+                FROM COVT6401_INVPAY
+               WHERE NIDINVOICE  = :COCD6401-NIDINVOICE
+                 AND NIDPROJECTO = :COCD6401-NIDPROJECTO
+           END-EXEC.
+
+           MOVE WS-COVT6401               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+             IF ETCL0002-SQL-OK OR ETCL0002-SQL-NOTFND
+               ADD 1  TO WS-NSEQ
+             ELSE
+                 SET  ETCL0002-ABEND-DB2  TO TRUE
+                 MOVE VIAK0001-ERRO-DB2   TO ETCL0002-NR-ERRO
+                 MOVE SQLCA               TO ETCL0002-SQLCA
+             END-IF
+           END-IF.
+
+       22113-OBTEM-SEQ-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2211-TRATA-MOV-TOT.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2211-TRATA-MOV-TOT   ' TO VIAL0015-CALLER-ID
+              MOVE 'COCD6401-CIMPOSTO    '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCD6401-CIMPOSTO        TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0024-TRATA-DEBUG
+                 THRU VIAP0024-TRATA-DEBUG-EXIT
+           END-IF.
+           IF ETCL0002-SEM-ERROS
+             MOVE COCL0250-MVALOR TO COCD6702-NTOTALAMOUNT
+
+             COMPUTE COCD6401-NTOTPAG = COCD6702-NTOTALAMOUNT -
+                                        COCD6702-NTOTRET
+
+             COMPUTE COCD6401-NTAXPAG = COCD6702-NTAXAMOUNT -
+                                        COCD6702-NTAXRET
+
+             COMPUTE WS-NVALLIQ = (COCD6401-NTOTPAG +
+                                   COCD6401-NTAXPAG) -
+                                   COCL0250-MVALOR
+
+             IF WS-NVALLIQ NOT EQUAL ZEROES
+
+               SET  ETCL0002-ERROS-FUNCAO     TO TRUE
+               MOVE COCK0001-VALREC-NOTOT     TO ETCL0002-NR-ERRO
+                                                 ETCL0002-ST-ERRO
+               MOVE COCK0002-CAPLIC-CO        TO ETCL0002-CAPLIC-ERRO
+               MOVE 'O pagamento não é total' TO ETCL0002-GINFO-ERRO
+
+               MOVE 'O pagamento não é total' TO VIAL0015-CALLER-ID
+               MOVE 'WS-NVALLIQ       ' TO VIAL0015-CAMPO-NM (1)
+               MOVE  WS-NVALLIQ         TO VIAL0015-CAMPO-VLR(1)
+               PERFORM VIAP0024-TRATA-DEBUG
+                  THRU VIAP0024-TRATA-DEBUG-EXIT
+             END-IF
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+             PERFORM 22112-INSERE-DADOS
+                THRU 22112-INSERE-DADOS-EXIT
+           END-IF.
+
+       2211-TRATA-MOV-TOT-EXIT.
+           EXIT.
+
+      ******************************************************************
+       22112-INSERE-DADOS.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '22112-INSERE-DADOS   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0024-TRATA-DEBUG
+                 THRU VIAP0024-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD6702-CTIPFAC            TO COCD6401-CTIPFAC
+           MOVE COCD6702-GCLIENTE           TO COCD6401-GCLIENTE
+           MOVE COCD6702-DDATAINSER         TO COCD6401-DDATAINSER
+           MOVE COCD6702-DDATAEMISS         TO COCD6401-DDATAEMISS
+           MOVE COCD6702-DDATAEMIS2         TO COCD6401-DDATAEMIS2
+           MOVE COCD6702-DDATEDUE           TO COCD6401-DDATEDUE
+           MOVE COCD6702-CPRAZO             TO COCD6401-CPRAZO
+           MOVE COCL0250-MVALOR             TO COCD6401-NTOTALAMOUNT
+           MOVE COCD6702-NTAXAMOUNT         TO COCD6401-NTAXAMOUNT
+           MOVE COCD6702-GDESCINVOICE       TO COCD6401-GDESCINVOICE
+           MOVE COCD6702-CSTATUS            TO COCD6401-CSTATUS
+
+           MOVE COCD6702-GREFINV            TO COCD6401-GREFINV
+           MOVE COCD6702-CTIPDOC            TO COCD6401-CTIPDOC
+           MOVE COCD6702-CMOEDA             TO COCD6401-CMOEDA
+           MOVE COCD6702-CIMPOSTO           TO COCD6401-CIMPOSTO
+           MOVE COCD6702-NOTAS              TO COCD6401-NOTAS
+           MOVE COCD6702-NTOTPAG            TO COCD6401-NTOTPAG
+           MOVE COCD6702-NTAXPAG            TO COCD6401-NTAXPAG
+           MOVE COCD6702-NTOTRET            TO COCD6401-NTOTRET
+           MOVE COCD6702-NTAXRET            TO COCD6401-NTAXRET
+
+           MOVE COCL0250-NIDPROJECTO        TO COCD6401-NIDPROJECTO
+           MOVE COCL0250-NIDINVOICE         TO COCD6401-NIDINVOICE
+           MOVE WS-NSEQ                     TO COCD6401-NSEQ
+           MOVE COCL0250-DPAG               TO COCD6401-DPAG
+           MOVE COCK0002-CSTATDP-PAG        TO COCD6401-CSTATUS
+           MOVE WS-PROGNAME                 TO COCD6401-CUSERID.
+
+
+           EXEC SQL
+                INSERT INTO COVT6401_INVPAY
+                (
+                   NIDINVOICE
+                 , NSEQ
+                 , NIDPROJECTO
+                 , GCLIENTE
+                 , DDATAINSER
+                 , DDATAEMISS
+                 , DDATAEMIS2
+                 , DDATEDUE
+                 , CPRAZO
+                 , NTOTALAMOUNT
+                 , NTAXAMOUNT
+                 , GDESCINVOICE
+                 , CSTATUS
+                 , CUSERID
+                 , HTIMEST
+                 , GREFINV
+                 , DPAG
+                 , CTIPDOC
+                 , CMOEDA
+                 , CIMPOSTO
+                 , NOTAS
+                 , CTIPFAC
+                 , NTOTPAG
+                 , NTAXPAG
+                 , NTOTRET
+                 , NTAXRET
+                )
+                VALUES (
+                       :COCD6401-NIDINVOICE
+                     , :COCD6401-NSEQ
+                     , :COCD6401-NIDPROJECTO
+                     , :COCD6401-GCLIENTE
+                     , :COCD6401-DDATAINSER
+                     , :COCD6401-DDATAEMISS
+                     , :COCD6401-DDATAEMIS2
+                     , :COCD6401-DDATEDUE
+                     , :COCD6401-CPRAZO
+                     , :COCD6401-NTOTALAMOUNT
+                     , :COCD6401-NTAXAMOUNT
+                     , :COCD6401-GDESCINVOICE
+                     , :COCD6401-CSTATUS
+                     , :COCD6401-CUSERID
+                     ,  CURRENT TIMESTAMP
+                     , :COCD6401-GREFINV
+                     , :COCD6401-DPAG
+                     , :COCD6401-CTIPDOC
+                     , :COCD6401-CMOEDA
+                     , :COCD6401-CIMPOSTO
+                     , :COCD6401-NOTAS
+                     , :COCD6401-CTIPFAC
+                     , :COCD6401-NTOTPAG
+                     , :COCD6401-NTAXPAG
+                     , :COCD6401-NTOTRET
+                     , :COCD6401-NTAXRET
+                )
+           END-EXEC
+
+           MOVE WS-COVT6702               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT
+
+           IF ETCL0002-SEM-ERROS
+             IF NOT ETCL0002-SQL-OK
+                 SET  ETCL0002-ABEND-DB2  TO TRUE
+                 MOVE VIAK0001-ERRO-DB2   TO ETCL0002-NR-ERRO
+                 MOVE SQLCA               TO ETCL0002-SQLCA
+             END-IF
+           END-IF.
+
+       22112-INSERE-DADOS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2212-PAG-TOTAL.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2212-PAG-TOTAL       ' TO VIAL0015-CALLER-ID
+              MOVE 'COCD6401-CIMPOSTO    '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCD6401-CIMPOSTO        TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0024-TRATA-DEBUG
+                 THRU VIAP0024-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCL0250-NIDPROJECTO        TO COCD6702-NIDPROJECTO
+           MOVE COCL0250-NIDINVOICE         TO COCD6702-NIDINVOICE
+           MOVE COCL0250-DPAG               TO COCD6702-DPAG
+
+           IF COCD6702-DDATAEMIS2 > COCD6702-DPAG
+             MOVE COCD6702-DPAG TO COCD6702-DDATAEMIS2
+           END-IF
+
+           MOVE COCK0002-CSTATDP-PAG        TO COCD6702-CSTATUS
+           MOVE WS-PROGNAME                 TO COCD6702-CUSERID.
+
+           EXEC SQL
+                UPDATE COVT6702_EXPENSES
+                SET    CSTATUS      = :COCD6702-CSTATUS
+                     , CUSERID      = :COCD6702-CUSERID
+                     , HTIMEST      =  CURRENT TIMESTAMP
+                     , DPAG         = :COCD6702-DPAG
+                     , DDATEDUE     = :COCD6702-DDATEDUE
+                     , DDATAEMIS2   = :COCD6702-DDATAEMIS2
+                     , NTOTPAG      = :COCD6702-NTOTPAG
+                     , NTAXPAG      = :COCD6702-NTAXPAG
+                 WHERE GREFINV      = :COCD6702-GREFINV
+                   AND NIDPROJECTO  = :COCD6702-NIDPROJECTO
+                   AND NIDINVOICE   = :COCD6702-NIDINVOICE
+                   AND NTAXAMOUNT    = 0
+           END-EXEC.
+
+           MOVE WS-COVT6702               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+             IF ETCL0002-SQL-OK
+               CONTINUE
+             ELSE
+               IF ETCL0002-SQL-NOTFND
+                 SET  ETCL0002-ABEND-DB2             TO TRUE
+                 MOVE COCK0001-NIDINVOICE-N-EXISTS
+                                                TO ETCL0002-NR-ERRO
+                 MOVE COCK0002-CAPLIC-CO        TO ETCL0002-CAPLIC-ERRO
+                 MOVE 'Erro actual. factura  '  TO ETCL0002-GINFO-ERRO
+               ELSE
+                 SET  ETCL0002-ABEND-DB2  TO TRUE
+                 MOVE VIAK0001-ERRO-DB2   TO ETCL0002-NR-ERRO
+                 MOVE SQLCA               TO ETCL0002-SQLCA
+               END-IF
+             END-IF
+           END-IF.
+
+       2212-PAG-TOTAL-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2215-UPDATE-MVOR.
+      ******************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2215-UPDATE-MVOR     ' TO VIAL0015-CALLER-ID
+              MOVE 'COCD6401-CIMPOSTO    '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCD6401-CIMPOSTO        TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0024-TRATA-DEBUG
+                 THRU VIAP0024-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCL0250-NIDPROJECTO        TO COCD6702-NIDPROJECTO
+           MOVE COCL0250-NIDINVOICE         TO COCD6702-NIDINVOICE
+
+           EXEC SQL
+                UPDATE COVT6702_EXPENSES
+                SET    MVOR         = NTOTALAMOUNT
+                     , MVORCTRV     = NTOTCTRV
+                 WHERE GREFINV      = :COCD6702-GREFINV
+                   AND NIDPROJECTO  = :COCD6702-NIDPROJECTO
+                   AND NIDINVOICE   = :COCD6702-NIDINVOICE
+                   AND MVOR         = 0
+           END-EXEC.
+
+           MOVE WS-COVT6702               TO ETCL0002-TABLE-NAME.
+
+           MOVE 'DISPLAY UPDATE MVOR  ' TO VIAL0015-CALLER-ID
+           MOVE 'SQLCODE              '   TO VIAL0015-CAMPO-NM(1)
+           MOVE  SQLCODE                  TO VIAL0015-CAMPO-VLR(1)
+           MOVE 'WS-MVOR              '   TO VIAL0015-CAMPO-NM(2)
+           MOVE  WS-MVOR                  TO VIAL0015-CAMPO-VLR(2)
+           MOVE 'COCD6702-NIDPROJECTO '   TO VIAL0015-CAMPO-NM(3)
+           MOVE  COCD6702-NIDPROJECTO     TO VIAL0015-CAMPO-VLR(3)
+           MOVE 'COCD6702-NIDINVOICE  '   TO VIAL0015-CAMPO-NM(4)
+           MOVE  COCD6702-NIDINVOICE      TO VIAL0015-CAMPO-VLR(4)
+           MOVE 'COCD6702-GREFINV     '   TO VIAL0015-CAMPO-NM(5)
+           MOVE  COCD6702-GREFINV         TO VIAL0015-CAMPO-VLR(5)
+           PERFORM VIAP0024-TRATA-DEBUG
+              THRU VIAP0024-TRATA-DEBUG-EXIT
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+             IF ETCL0002-SQL-OK
+             OR ETCL0002-SQL-NOTFND
+               CONTINUE
+             ELSE
+               SET  ETCL0002-ABEND-DB2  TO TRUE
+               MOVE VIAK0001-ERRO-DB2   TO ETCL0002-NR-ERRO
+               MOVE SQLCA               TO ETCL0002-SQLCA
+             END-IF
+           END-IF.
+
+       2215-UPDATE-MVOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           IF ETCL0002-DEBUG-SIM
+              MOVE '3000-FIM-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0024-TRATA-DEBUG
+                 THRU VIAP0024-TRATA-DEBUG-EXIT
+           END-IF.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.
+           COPY VIAP0024.
+
+      ******************************************************************

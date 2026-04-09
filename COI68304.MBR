@@ -1,0 +1,1286 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI68304.
+      ******************************************************************
+      *     PROGRAMA COI68304.                                         *
+      *                                                                *
+      *     Expense Report - Inserção Despesa User
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI68304         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD2200 END-EXEC.
+           EXEC SQL INCLUDE ARCD0500 END-EXEC.
+           EXEC SQL INCLUDE COCD4805 END-EXEC.
+           EXEC SQL INCLUDE COCD3605 END-EXEC.
+           EXEC SQL INCLUDE COCD5403 END-EXEC.
+           EXEC SQL INCLUDE COCD5303 END-EXEC.
+           EXEC SQL INCLUDE COCD6600 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+       01 WS-SQL-AUXILIARY.
+         05 IND-NULL                       PIC S9(04) BINARY.
+
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV6830.
+       COPY COCV6831.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY ARCL2205.
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY TGCL2000.
+       COPY EXCL0200.
+       COPY ETCL0002.
+       COPY EXCK0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-CO       PIC X(02) VALUE 'CO'.
+           05 CON-VALKMS   PIC X(06) VALUE 'VALKMS'.
+           05 CON-COVT4805 PIC X(08) VALUE 'COVT4805'.
+           05 CON-ARVT0500 PIC X(08) VALUE 'ARVT0500'.
+           05 CON-COVT3605 PIC X(08) VALUE 'COVT3605'.
+           05 CON-COVT5403 PIC X(08) VALUE 'COVT5403'.
+           05 CON-COVT5303 PIC X(08) VALUE 'COVT5303'.
+           05 CON-COVT6600 PIC X(08) VALUE 'COVT6600'.
+           05 CON-CTABELA-CPAIS  PIC X(05) VALUE 'AR047'.
+           05 CON-CTABELA-LNEG   PIC X(05) VALUE 'CO702'.
+           05 CON-MANUAL   PIC X(06) VALUE 'MANUAL'.
+           05 CON-IN       PIC X(02) VALUE 'IN'.
+           05 CON-01       PIC X(02) VALUE '01'.
+           05 CON-SEP      PIC X(01) VALUE '-'.
+           05 CON-S        PIC X(01) VALUE 'S'.
+           05 CON-N        PIC X(01) VALUE 'N'.
+           05 CON-ESPACOS  PIC X(01) VALUE ' '.
+
+      *--------------------------------------------------------------
+      * PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-CTABELA-RELACAO      PIC X(05) VALUE 'CO854'.
+           05 WS-PROGNAME             PIC X(08) VALUE 'COI68304'.
+           05 WS-NSEQ            PIC S9(10)     COMP-3 VALUE ZEROS.
+           05 WS-VALKM           PIC 9(03)V9(3) COMP-3 VALUE ZEROS.
+           05 WS-GNOME                PIC X(40) VALUE SPACES.
+           05 WS-GPAIS                PIC X(40) VALUE SPACES.
+           05 WS-LNEG                 PIC X(40) VALUE SPACES.
+           05 WS-HA-REG-OUTRA-DESPESA PIC X(01) VALUE SPACES.
+
+           05 WS-GVALOR1           PIC X(50).
+           05 FILLER REDEFINES WS-GVALOR1.
+              10 WS-GVALOR1-9      PIC 9(6).
+              10 FILLER REDEFINES WS-GVALOR1-9.
+                 15 WS-GVALOR1-NUM PIC 9(03)V9(3).
+              10 WS-GVALOR1-RES    PIC X(43).
+
+           05 WS-DTMESANO          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DTMESANO.
+              10 WS-DTMESANO-ANO   PIC X(04).
+              10 WS-DTMESANO-SEP1  PIC X(01).
+              10 WS-DTMESANO-MES   PIC X(02).
+              10 WS-DTMESANO-SEP2  PIC X(01).
+              10 WS-DTMESANO-DIA   PIC X(02).
+           05 WS-EXDATA-1          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-EXDATA-1.
+              10 WS-EXDATA-1-ANO   PIC X(04).
+              10 WS-EXDATA-1-SEP1  PIC X(01).
+              10 WS-EXDATA-1-MES   PIC X(02).
+              10 WS-EXDATA-1-SEP2  PIC X(01).
+              10 WS-EXDATA-1-DIA   PIC X(02).
+           05 WS-EXDATA-2          PIC X(08) VALUE SPACES.
+           05 FILLER REDEFINES WS-EXDATA-2.
+              10 WS-EXDATA-2-ANO   PIC X(04).
+              10 WS-EXDATA-2-MES   PIC X(02).
+              10 WS-EXDATA-2-DIA   PIC X(02).
+           05 WS-CTABELA                   PIC X(05) VALUE SPACES.
+           05 WS-NUMERICO                  PIC 9(03).
+           05 FILLER REDEFINES WS-NUMERICO.
+              10 WS-CODIGO                 PIC X(03).
+           05 WS-CCOD                      PIC X(40) VALUE SPACES.
+           05 WS-C2COD                     PIC X(40) VALUE SPACES.
+           05 WS-CPAIS                     PIC X(03) VALUE SPACES.
+           05 WS-CMOED-FUNC                PIC X(03) VALUE SPACES.
+           05 WS-CMOED-CLI                 PIC X(03) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI68304         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV6830-MSG.
+           MOVE COCV6830-ASE               TO COCV6831-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6830-ADE               TO COCV6831-ADE.
+
+           PERFORM 2100-VALIDACOES
+              THRU 2199-VALIDACOES-EXIT
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-INSERE-DADOS
+                 THRU 2299-INSERE-DADOS-EXIT
+           END-iF
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2110-OBT-DADOS-FUNC
+                 THRU 2110-OBT-DADOS-FUNC-EXIT
+           END-iF
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2110-OBT-DADOS-EMPRESA
+                 THRU 2110-OBT-DADOS-EMPRESA-EXIT
+           END-iF
+      *----------------------------------------------------------------
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CEMPRESA     EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-CEMPRESA-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-CEMPRESA-MSG
+              MOVE COCK0002-CAPLIC    TO COCV6831-CEMPRESA-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CFUNCIONARIO EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-CFUNCIONARIO-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-CFUNCIONARIO-MSG
+              MOVE COCK0002-CAPLIC    TO COCV6831-CFUNCIONARIO-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CANO      EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-CANO-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-CANO-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-CANO-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CMES   EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-CMES-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-CMES-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-CMES-CAPLIC
+           END-IF.
+      *--- Se não for Payroll (N) e Projecto igual a espaços --> Erro
+      *--- pois o Projecto é obrigatório
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-IPAYROLL EQUAL CON-N
+           AND COCV6830-CIDPROJ  EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-CIDPROJ-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-CIDPROJ-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-CIDPROJ-CAPLIC
+           END-IF.
+
+      *--- Se não for Payroll (N) usa o Projecto para aceder ART05
+      *--- tabela CO854 para obter a despesa.
+      *--- Se a despesa que está na tabela não for igual à indicada
+      *--- no ecran --> Erro
+      *--- Se a leitura do ART05 não encontrar registo só tem que
+      *--- existir como Projecto no COT36_PROJECTS
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-IPAYROLL EQUAL CON-N
+              PERFORM 2600-VER-PROJECTO THRU 2600-VER-PROJECTO-EXIT
+              IF WS-HA-REG-OUTRA-DESPESA = CON-S
+                 MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO TO COCV6831-CIDPROJ-S
+                 MOVE COCK0001-CAMPO-INV     TO COCV6831-CIDPROJ-MSG
+                 MOVE COCK0002-CAPLIC        TO COCV6831-CIDPROJ-CAPLIC
+              END-IF
+           END-IF.
+      *--- Se é Payroll (S) e tem Projecto indicado --> Erro
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-IPAYROLL EQUAL CON-S
+           AND COCV6830-CIDPROJ  NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-CIDPROJ-S
+              MOVE COCK0001-CAMPO-INV     TO COCV6831-CIDPROJ-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-CIDPROJ-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDDESP EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-CIDDESP-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-CIDDESP-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-CIDDESP-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           IF  COCV6830-DTREG   EQUAL SPACES OR
+               COCV6830-DTREG   EQUAL COCK0002-DATA-MIN
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-DTREG-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-DTREG-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-DTREG-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-MVLR    EQUAL ZEROS
+           AND COCV6830-CIDDESP NOT EQUAL COCK0002-TIPDSP-VIATPRP
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-MVLR-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-MVLR-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-MVLR-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-MVLR    NOT EQUAL ZEROS
+           AND COCV6830-CIDDESP EQUAL COCK0002-TIPDSP-VIATPRP
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-MVLR-S
+              MOVE COCK0001-CAMPO-INV     TO COCV6831-MVLR-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-MVLR-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CMOED   EQUAL SPACES
+           AND COCV6830-CIDDESP NOT EQUAL COCK0002-TIPDSP-VIATPRP
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-CMOED-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-CMOED-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-CMOED-CAPLIC
+           END-IF.
+
+      *--- Se Tipo de despesa 004 - Deslocação em viatura própria, os
+      *--- campos GTRAJECTO, NKMS e GMOTIVO são obrigatórios.
+      *--- E o campo de Valor da Despesa não pode estar preenchido.
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDDESP EQUAL COCK0002-TIPDSP-VIATPRP
+           AND COCV6830-GTRAJECTO EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-GTRAJECTO-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-GTRAJECTO-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-GTRAJECTO-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDDESP EQUAL COCK0002-TIPDSP-VIATPRP
+           AND COCV6830-NKMS      EQUAL ZEROS
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-NKMS-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-NKMS-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-NKMS-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDDESP EQUAL COCK0002-TIPDSP-VIATPRP
+           AND COCV6830-GMOTIVO   EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-GMOTIVO-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV6831-GMOTIVO-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-GMOTIVO-CAPLIC
+           END-IF.
+
+      *--- Se Tipo de despesa diferente 004 - Deslocação em viatura
+      *--- própria, os campos GTRAJECTO, NKMS e GMOTIVO estarão
+      *--- obrigatóriamente vazios e Valor da Despesa é obrigatório.
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDDESP NOT EQUAL COCK0002-TIPDSP-VIATPRP
+           AND COCV6830-GTRAJECTO NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-GTRAJECTO-S
+              MOVE COCK0001-CAMPO-INVAL   TO COCV6831-GTRAJECTO-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-GTRAJECTO-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDDESP NOT EQUAL COCK0002-TIPDSP-VIATPRP
+           AND COCV6830-NKMS NOT EQUAL ZEROS
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-NKMS-S
+              MOVE COCK0001-CAMPO-INVAL   TO COCV6831-NKMS-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-NKMS-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDDESP NOT EQUAL COCK0002-TIPDSP-VIATPRP
+           AND COCV6830-GMOTIVO NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV6831-GMOTIVO-S
+              MOVE COCK0001-CAMPO-INVAL   TO COCV6831-GMOTIVO-MSG
+              MOVE COCK0002-CAPLIC        TO COCV6831-GMOTIVO-CAPLIC
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF COCV6830-IPAYROLL = CON-S
+                 PERFORM 2650-VER-DESPESA THRU 2650-VER-DESPESA-EXIT
+              END-IF
+           END-IF.
+      *
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDPROJ  NOT EQUAL SPACES
+               PERFORM 2800-LER-PROJECTO
+                  THRU 2800-LER-PROJECTO-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDPROJ  NOT EQUAL SPACES
+               PERFORM 2850-LER-RESPONS
+                  THRU 2850-LER-RESPONS-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CIDPROJ  NOT EQUAL SPACES
+               PERFORM 2900-LER-NIVEIS
+                  THRU 2900-LER-NIVEIS-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCD3605-CLIENTE  NOT EQUAL SPACES
+               PERFORM 2500-BUSCA-CLI
+                  THRU 2500-BUSCA-CLI-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+               PERFORM 2502-BUSCA-SEQ
+                  THRU 2502-BUSCA-SEQ-EXIT
+           END-IF.
+
+       2199-VALIDACOES-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * OBTEM DADOS DO FUNCIONARIO
+      *--------------------------------------------------------------
+       2110-OBT-DADOS-FUNC.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-OBT-DADOS-FUNC     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *
+      *--- LER COT53_PESSOAS com USER para obter o NTRABALHADOR
+      *
+           MOVE COCV6830-CUSERID       TO COCD5303-CUTILIZA.
+      *
+           EXEC SQL
+             SELECT NTRABALHADOR
+                  , GNOME
+                  , CEMPRESA
+                  , CUTILIZA
+               INTO :COCD5303-NTRABALHADOR
+                  , :COCD5303-GNOME
+                  , :COCD5303-CEMPRESA
+                  , :COCD5303-CUTILIZA
+               FROM COVT5303_PESSOAS
+            WHERE CUTILIZA = :COCD5303-CUTILIZA
+            FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT5303               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+             IF DB2-OK
+                MOVE COCD5303-GNOME        TO WS-GNOME
+             ELSE
+                MOVE SPACES                TO WS-GNOME
+             END-IF
+           END-IF.
+
+       2110-OBT-DADOS-FUNC-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * OBTEM DADOS DA EMPRESA DO FUNCIONARIO
+      *--------------------------------------------------------------
+       2110-OBT-DADOS-EMPRESA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-OBT-DADOS-EMPRESA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *
+      *--- LER COT54_EMPRESAS com CEMPRESA obter o CPAIS
+      *
+           MOVE COCD5303-CEMPRESA TO COCD5403-CEMPRESA
+
+           EXEC SQL
+                 SELECT CEMPRESA
+                      , CPAIS
+                      , CMOEDA
+                 INTO  :COCD5403-CEMPRESA
+                     , :COCD5403-CPAIS
+                     , :COCD5403-CMOEDA
+                 FROM COVT5403_EMPRESAS
+                 WHERE CEMPRESA = :COCD5403-CEMPRESA
+           END-EXEC
+
+           MOVE CON-COVT5403 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE COCD5403-CPAIS  TO WS-CPAIS
+                 MOVE COCD5403-CMOEDA TO WS-CMOED-FUNC
+              ELSE
+                 MOVE SPACES         TO WS-CPAIS
+                 MOVE SPACES         TO WS-CMOED-FUNC
+           END-IF.
+
+       2110-OBT-DADOS-EMPRESA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      * BUSCA O DESIGNAÇÃO DO CLIENTE
+      *--------------------------------------------------------------
+       2500-BUSCA-CLI.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-BUSCA-CLI     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD3605-CLIENTE  TO COCD5403-CSIGLA.
+
+           EXEC SQL
+                 SELECT CSIGLA, GNOME, CPAIS, CMOEDA
+                 INTO  :COCD5403-CSIGLA
+                     , :COCD5403-GNOME
+                     , :COCD5403-CPAIS
+                     , :COCD5403-CMOEDA
+                 FROM COVT5403_EMPRESAS
+                 WHERE CSIGLA   = :COCD5403-CSIGLA
+           END-EXEC
+
+           MOVE CON-COVT5403 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE COCD5403-CMOEDA TO WS-CMOED-CLI
+              ELSE
+                MOVE VIAK0002-ERROS-FUNCAO
+                  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                  TO COCV6831-CIDPROJ-S
+                MOVE COCK0001-CLIENTE-N-EXISTS
+                  TO COCV6831-CIDPROJ-MSG
+                MOVE COCK0002-CAPLIC
+                  TO COCV6831-CIDPROJ-CAPLIC
+              END-IF
+           END-IF.
+
+       2500-BUSCA-CLI-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * BUSCA O DESIGNAÇÃO DA EMPRESA
+      *--------------------------------------------------------------
+       2501-BUSCA-EMPRESA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2501-BUSCA-EMPRESA ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6830-CEMPRESA TO COCD5403-CEMPRESA.
+
+           EXEC SQL
+                 SELECT CSIGLA, GNOME, CPAIS, CMOEDA
+                 INTO  :COCD5403-CSIGLA
+                     , :COCD5403-GNOME
+                     , :COCD5403-CPAIS
+                     , :COCD5403-CMOEDA
+                 FROM COVT5403_EMPRESAS
+                 WHERE CEMPRESA = :COCD5403-CEMPRESA
+           END-EXEC
+
+           MOVE CON-COVT5403 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 CONTINUE
+              ELSE
+                MOVE VIAK0002-ERROS-FUNCAO
+                  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                  TO COCV6831-CEMPRESA-S
+                MOVE COCK0001-CLIENTE-N-EXISTS
+                  TO COCV6831-CEMPRESA-MSG
+                MOVE COCK0002-CAPLIC
+                  TO COCV6831-CEMPRESA-CAPLIC
+              END-IF
+           END-IF.
+
+       2501-BUSCA-EMPRESA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * BUSCA A SEQUENCIA
+      *--------------------------------------------------------------
+       2502-BUSCA-SEQ.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2502-BUSCA-SEQ     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6830-CEMPRESA TO COCD4805-CEMPRESA.
+           MOVE COCV6830-CANO
+             TO WS-DTMESANO-ANO
+           MOVE COCV6830-CMES
+             TO WS-DTMESANO-MES
+           MOVE CON-01
+             TO WS-DTMESANO-DIA
+           MOVE CON-SEP
+             TO WS-DTMESANO-SEP1
+           MOVE CON-SEP
+             TO WS-DTMESANO-SEP2
+           MOVE WS-DTMESANO
+             TO COCD4805-DTMESANO
+           MOVE COCV6830-CFUNCIONARIO TO COCD4805-CIDEMP.
+
+           EXEC SQL
+                 SELECT IFNULL(MAX(NSEQ), 0)
+                 INTO  :WS-NSEQ
+                 FROM COVT4805_EXPENSE
+                 WHERE CIDEMP   = :COCD4805-CIDEMP
+                 AND   DTMESANO = :COCD4805-DTMESANO
+                 AND   CEMPRESA = :COCD4805-CEMPRESA
+           END-EXEC
+
+           MOVE CON-COVT4805 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NSEQ = WS-NSEQ + 1
+              ELSE
+                 MOVE 1 TO WS-NSEQ
+              END-IF
+           END-IF.
+
+       2502-BUSCA-SEQ-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * BUSCA DESCRIÇÃO DO PAIS
+      *--------------------------------------------------------------
+       2503-BUSCA-PAIS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2503-BUSCA-PAIS    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-CPAIS NOT EQUAL SPACES
+              MOVE CON-CTABELA-CPAIS
+                TO WS-CTABELA
+              MOVE WS-CPAIS
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC
+                   TO WS-GPAIS
+              ELSE
+                 MOVE SPACES TO WS-GPAIS
+              END-IF
+           END-IF.
+
+       2503-BUSCA-PAIS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * BUSCA DESCRIÇÃO DA LINHA DE NEGÓCIO
+      *--------------------------------------------------------------
+       2504-BUSCA-LNEG.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2504-BUSCA-LNEG    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCD3605-LINHANEG NOT EQUAL SPACES
+              MOVE CON-CTABELA-LNEG
+                TO WS-CTABELA
+              MOVE COCD3605-LINHANEG
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC
+                   TO WS-LNEG
+              ELSE
+                 MOVE SPACES TO WS-LNEG
+              END-IF
+           END-IF.
+
+       2504-BUSCA-LNEG-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * ACEDE TABELA ART05 COM A TABELA "CO854" + CÓDIGO PROJECTO
+      *--------------------------------------------------------------
+       2600-VER-PROJECTO.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2600-VER-PROJECTO  ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE WS-CTABELA-RELACAO          TO ARCD0500-CTABELA.
+           MOVE COCV6830-CIDPROJ            TO ARCD0500-C2COD.
+
+           EXEC SQL
+                SELECT  CTABELA
+                     ,  CCOD
+                     ,  C2COD
+                     ,  GDESC
+                  INTO :ARCD0500-CTABELA
+                     , :ARCD0500-CCOD
+                     , :ARCD0500-C2COD
+                     , :ARCD0500-GDESC
+                  FROM  ARVT0500_CODESTABLE
+                 WHERE  CTABELA = :ARCD0500-CTABELA
+                   AND  C2COD   = :ARCD0500-C2COD
+                 FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-ARVT0500 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                IF ARCD0500-CCOD NOT = COCV6830-CIDDESP
+                   MOVE CON-S       TO WS-HA-REG-OUTRA-DESPESA
+                ELSE
+                   MOVE CON-ESPACOS TO WS-HA-REG-OUTRA-DESPESA
+                END-IF
+           WHEN OTHER
+                MOVE CON-ESPACOS    TO WS-HA-REG-OUTRA-DESPESA
+           END-EVALUATE.
+
+       2600-VER-PROJECTO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * ACEDE TABELA ART05 COM A TABELA "CO854" + CÓDIGO DESPESA
+      *--------------------------------------------------------------
+       2650-VER-DESPESA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2650-VER-DESPESA   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE WS-CTABELA-RELACAO          TO ARCD0500-CTABELA.
+           MOVE COCV6830-CIDDESP            TO ARCD0500-CCOD.
+
+           EXEC SQL
+                SELECT  CTABELA
+                     ,  CCOD
+                     ,  C2COD
+                     ,  GDESC
+                  INTO :ARCD0500-CTABELA
+                     , :ARCD0500-CCOD
+                     , :ARCD0500-C2COD
+                     , :ARCD0500-GDESC
+                  FROM  ARVT0500_CODESTABLE
+                 WHERE  CTABELA = :ARCD0500-CTABELA
+                   AND  CCOD    = :ARCD0500-CCOD
+                 FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-ARVT0500 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                MOVE ARCD0500-C2COD TO COCV6830-CIDPROJ
+           WHEN OTHER
+                MOVE SPACES         TO COCV6830-CIDPROJ
+           END-EVALUATE.
+
+       2650-VER-DESPESA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * ACEDE TABELA ART22 - PARAMETROS COM CPARAM = "VALKMS"
+      *--------------------------------------------------------------
+       2700-LER-VALKMS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2700-LER-VALKMS    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE ARCL2205-DATA.
+
+           MOVE CON-CO                  TO ARCL2205-CAPLIC.
+           MOVE CON-VALKMS              TO ARCL2205-CPARAM.
+
+           PERFORM CALL-ARM2206
+              THRU CALL-ARM2206-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              MOVE ARCL2205-GVALOR1        TO WS-GVALOR1
+              MOVE WS-GVALOR1-NUM          TO WS-VALKM
+           ELSE
+              MOVE ZEROS                   TO WS-VALKM
+           END-IF.
+
+       2700-LER-VALKMS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      * LER PROJECTOS
+      *--------------------------------------------------------------
+       2800-LER-PROJECTO.
+
+           MOVE COCV6830-CIDPROJ    TO COCD3605-NIDPROJECTO.
+           MOVE COCK0002-NAO        TO COCD3605-ICTACUST
+
+           EXEC SQL
+                 SELECT NIDPROJECTO
+                      , CPROJECT
+                      , CLIENTE
+                      , LINHANEG
+                      , RESPONS
+                 INTO  :COCD3605-NIDPROJECTO
+                    ,  :COCD3605-CPROJECT
+                    ,  :COCD3605-CLIENTE
+                    ,  :COCD3605-LINHANEG
+                    ,  :COCD3605-RESPONS
+                 FROM COVT3605_PROJECTS
+                 WHERE NIDPROJECTO = :COCD3605-NIDPROJECTO
+                   AND ICTACUST    = :COCD3605-ICTACUST
+           END-EXEC
+
+           MOVE CON-COVT3605
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF DB2-OK
+              CONTINUE
+           ELSE
+              MOVE VIAK0002-ERROS-FUNCAO
+                TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO
+                TO COCV6831-CIDPROJ-S
+              MOVE COCK0001-PROJ-NAO-EXIST
+                TO COCV6831-CIDPROJ-MSG
+              MOVE COCK0002-CAPLIC
+                TO COCV6831-CIDPROJ-CAPLIC
+           END-IF.
+
+       2800-LER-PROJECTO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * LER RESPONSAVEL
+      *--------------------------------------------------------------
+       2850-LER-RESPONS.
+
+           MOVE COCD3605-RESPONS       TO COCD5303-NTRABALHADOR.
+      *
+           EXEC SQL
+             SELECT NTRABALHADOR
+                  , GNOME
+                  , CEMPRESA
+                  , CUTILIZA
+               INTO :COCD5303-NTRABALHADOR
+                  , :COCD5303-GNOME
+                  , :COCD5303-CEMPRESA
+                  , :COCD5303-CUTILIZA
+               FROM COVT5303_PESSOAS
+            WHERE NTRABALHADOR = :COCD5303-NTRABALHADOR
+            FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT5303               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2850-LER-RESPONS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * LER NIVEIS DE APROVAÇÃO
+      *--------------------------------------------------------------
+       2900-LER-NIVEIS.
+
+           MOVE COCV6830-CIDPROJ    TO COCD6600-NIDPROJECTO.
+
+           EXEC SQL
+                 SELECT NIDPROJECTO
+                      , CUSER01
+                      , CUSER02
+                 INTO  :COCD6600-NIDPROJECTO
+                    ,  :COCD6600-CUSER01
+                    ,  :COCD6600-CUSER02
+                 FROM COVT6600
+                 WHERE NIDPROJECTO = :COCD6600-NIDPROJECTO
+           END-EXEC
+
+           MOVE CON-COVT6600
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF DB2-OK
+              CONTINUE
+           ELSE
+              CONTINUE
+           END-IF.
+
+       2900-LER-NIVEIS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2200-INSERE-DADOS
+      *--------------------------------------------------------------
+       2200-INSERE-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-INSERE-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *    IF COCV6830-IPAYROLL = CON-S
+      *       PERFORM 2650-VER-DESPESA THRU 2650-VER-DESPESA-EXIT
+      *    END-IF.
+
+           MOVE CON-MANUAL
+             TO COCD4805-CNUMFICH
+           MOVE COCV6830-CFUNCIONARIO
+             TO COCD4805-CIDEMP
+           MOVE WS-GNOME
+             TO COCD4805-GNOMEEMP
+           MOVE VIAL0001-DATA-PROCESSO-I
+             TO COCD4805-DTPROC
+
+           MOVE COCV6830-CANO
+             TO WS-DTMESANO-ANO
+           MOVE COCV6830-CMES
+             TO WS-DTMESANO-MES
+           MOVE CON-01
+             TO WS-DTMESANO-DIA
+           MOVE CON-SEP
+             TO WS-DTMESANO-SEP1
+           MOVE CON-SEP
+             TO WS-DTMESANO-SEP2
+           MOVE WS-DTMESANO
+             TO COCD4805-DTMESANO
+
+           MOVE COCV6830-CIDDESP
+             TO COCD4805-CIDDESP
+           MOVE COCV6830-XDESCCIDDESP
+             TO COCD4805-TIPODESPESA
+           MOVE COCV6830-MVLR
+             TO COCD4805-MVLR
+           MOVE COCV6830-DTREG
+             TO COCD4805-DTREG
+           MOVE COCV6830-CMOED
+             TO COCD4805-CMOED
+
+           MOVE COCD3605-CLIENTE
+             TO COCD4805-CIDCLIENTE
+           MOVE COCD5403-GNOME
+             TO COCD4805-GCLIENTE
+           MOVE COCV6830-CIDPROJ
+             TO COCD4805-CIDPROJ
+           MOVE COCD3605-CPROJECT
+             TO COCD4805-GPROJ
+           MOVE COCV6830-GOBSERV
+             TO COCD4805-GOBSERV
+           MOVE COCV6830-GTRAJECTO
+             TO COCD4805-GTRAJECTO
+           MOVE COCV6830-NKMS
+             TO COCD4805-NKMS
+           MOVE COCV6830-GMOTIVO
+             TO COCD4805-GMOTIVO
+           MOVE COCV6830-IPAYROLL
+             TO COCD4805-IPAYROLL
+           MOVE VIAL0001-CUTILIZA-I
+             TO COCD4805-CUSERID
+           MOVE SPACES
+             TO COCD4805-HTIMEST
+
+           PERFORM 2700-LER-VALKMS THRU 2700-LER-VALKMS.
+           COMPUTE COCV6830-NVALKMS = COCV6830-NKMS * WS-VALKM.
+           MOVE COCV6830-NVALKMS TO COCV6831-NVALKMS.
+           MOVE COCV6830-NVALKMS TO COCD4805-NVALKMS.
+
+           MOVE WS-NSEQ
+             TO COCD4805-NSEQ
+
+           MOVE CON-IN
+             TO COCD4805-CSITU
+
+      *--- Dados da Empresa
+           IF  VIAL0002-SEM-ERROS
+           AND COCV6830-CEMPRESA NOT EQUAL SPACES
+               PERFORM 2501-BUSCA-EMPRESA
+                  THRU 2501-BUSCA-EMPRESA-EXIT
+           END-IF.
+
+           MOVE COCD5403-GNOME
+             TO COCD4805-GEMPRESA
+
+      *--- Dados Pais
+           IF  VIAL0002-SEM-ERROS
+               PERFORM 2503-BUSCA-PAIS
+                  THRU 2503-BUSCA-PAIS-EXIT
+           END-IF.
+
+           MOVE WS-GPAIS
+             TO COCD4805-GPAIS
+
+      *--- Dados Linha Negócio
+           IF  VIAL0002-SEM-ERROS
+               PERFORM 2504-BUSCA-LNEG
+                  THRU 2504-BUSCA-LNEG-EXIT
+           END-IF.
+
+           MOVE WS-LNEG
+             TO COCD4805-GNEGOC
+
+           MOVE WS-CMOED-FUNC
+             TO COCD4805-CMOEDPAIS
+           MOVE COCV6830-CEMPRESA
+             TO COCD4805-CEMPRESA
+           MOVE WS-CPAIS
+             TO COCD4805-CPAIS
+           MOVE COCD5303-CUTILIZA
+             TO COCD4805-CUSER01
+           MOVE COCD6600-CUSER01
+             TO COCD4805-CUSER02
+           MOVE COCD6600-CUSER02
+             TO COCD4805-CUSER03
+           MOVE SPACES
+             TO COCD4805-CUSERAPR
+           MOVE COCK0002-DATA-MIN
+             TO COCD4805-DDTAPR
+
+           IF COCV6830-CMOED EQUAL WS-CMOED-FUNC
+             MOVE 1 TO EXCL0200-EXVALOR1
+           ELSE
+             PERFORM 2420-OBTEM-CAMBIO
+                THRU 2420-OBTEM-CAMBIO-EXIT
+           END-IF
+
+           MOVE EXCL0200-EXVALOR1
+             TO COCD4805-MCAMBDIA
+           MOVE ZEROES
+             TO COCD4805-MCAMBCORR
+
+           COMPUTE COCD4805-MCONTRVLR = COCV6830-MVLR
+                                      * EXCL0200-EXVALOR1
+
+           IF VIAL0002-SEM-ERROS
+
+           EXEC SQL
+                 INSERT INTO
+                COVT4805_EXPENSE
+                (
+                   CNUMFICH
+                 , CIDEMP
+                 , GNOMEEMP
+                 , DTPROC
+                 , DTMESANO
+                 , GPAIS
+                 , GEMPRESA
+                 , CMOEDPAIS
+                 , CIDDESP
+                 , TIPODESPESA
+                 , MVLR
+                 , DTREG
+                 , CMOED
+                 , MCAMBDIA
+                 , MCAMBCORR
+                 , MCONTRVLR
+                 , CIDCLIENTE
+                 , GCLIENTE
+                 , CIDPROJ
+                 , GPROJ
+                 , GNEGOC
+                 , GOBSERV
+                 , CUSERID
+                 , HTIMEST
+                 , CEMPRESA
+                 , CPAIS
+                 , NSEQ
+                 , CSITU
+                 , GTRAJECTO
+                 , NKMS
+                 , GMOTIVO
+                 , CUSER01
+                 , CUSER02
+                 , CUSER03
+                 , CUSERAPR
+                 , DDTAPR
+                 , IPAYROLL
+                 , NVALKMS
+                )
+                VALUES (
+                       :COCD4805-CNUMFICH
+                     , :COCD4805-CIDEMP
+                     , :COCD4805-GNOMEEMP
+                     , :COCD4805-DTPROC
+                     , :COCD4805-DTMESANO
+                     , :COCD4805-GPAIS
+                     , :COCD4805-GEMPRESA
+                     , :COCD4805-CMOEDPAIS
+                     , :COCD4805-CIDDESP
+                     , :COCD4805-TIPODESPESA
+                     , :COCD4805-MVLR
+                     , :COCD4805-DTREG
+                     , :COCD4805-CMOED
+                     , :COCD4805-MCAMBDIA
+                     , :COCD4805-MCAMBCORR
+                     , :COCD4805-MCONTRVLR
+                     , :COCD4805-CIDCLIENTE
+                     , :COCD4805-GCLIENTE
+                     , :COCD4805-CIDPROJ
+                     , :COCD4805-GPROJ
+                     , :COCD4805-GNEGOC
+                     , :COCD4805-GOBSERV
+                     , :COCD4805-CUSERID
+                     , CURRENT_TIMESTAMP
+                     , :COCD4805-CEMPRESA
+                     , :COCD4805-CPAIS
+                     , :COCD4805-NSEQ
+                     , :COCD4805-CSITU
+                     , :COCD4805-GTRAJECTO
+                     , :COCD4805-NKMS
+                     , :COCD4805-GMOTIVO
+                     , :COCD4805-CUSER01
+                     , :COCD4805-CUSER02
+                     , :COCD4805-CUSER03
+                     , :COCD4805-CUSERAPR
+                     , :COCD4805-DDTAPR
+                     , :COCD4805-IPAYROLL
+                     , :COCD4805-NVALKMS
+                )
+           END-EXEC
+
+
+              MOVE CON-COVT4805               TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-DUPREC
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                 ELSE
+                    IF NOT DB2-OK
+                       MOVE VIAK0002-ABEND-DB2
+                         TO VIAL0002-IND-ERROS
+                       MOVE VIAK0001-ERRO-DB2
+                         TO VIAL0002-COD-ERRO-GRAVE
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF
+
+
+           IF VIAL0002-SEM-ERROS
+                        CONTINUE
+           END-IF
+           .
+
+       2299-INSERE-DADOS-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                   OBTEM CAMBIO
+      ******************************************************************
+       2420-OBTEM-CAMBIO.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2420-OBTEM-CAMBIO' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *
+      *--- Busca câmbio
+      *
+           INITIALIZE EXCL0200-DATA    REPLACING NUMERIC BY ZEROES
+                                       ALPHANUMERIC BY SPACES.
+
+           MOVE COCV6830-CMOED         TO EXCL0200-EXMOEDORIG
+           MOVE WS-CMOED-FUNC          TO EXCL0200-EXMOEDDEST
+           MOVE COCV6830-DTREG         TO WS-EXDATA-1
+           MOVE WS-EXDATA-1-ANO        TO WS-EXDATA-2-ANO
+           MOVE WS-EXDATA-1-MES        TO WS-EXDATA-2-MES
+           MOVE WS-EXDATA-1-DIA        TO WS-EXDATA-2-DIA
+           MOVE WS-EXDATA-2            TO EXCL0200-EXDATA
+           MOVE ZEROES                 TO EXCL0200-EXHORA
+           MOVE EXCK0002-CAMB-COMERC   TO EXCL0200-EXTIPOCAMB
+
+            PERFORM CALL-EXR00200
+               THRU CALL-EXR00200-EXIT.
+
+       2420-OBTEM-CAMBIO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2200-VAL-TAB-ART05
+      *--------------------------------------------------------------
+       2200-VAL-TAB-ART05.
+      *
+           INITIALIZE TGCL2000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL2000-CTABELA
+           MOVE WS-CCOD                   TO TGCL2000-CCOD
+           MOVE WS-C2COD                  TO TGCL2000-C2COD
+
+           PERFORM CALL-TGCP2000
+              THRU CALL-TGCP2000-EXIT.
+
+       2200-VAL-TAB-ART05-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6831-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV6831-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV6831-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY ARCR2206.
+           COPY VIAP0010.
+           COPY VIAP0016.
+           COPY TGCP2000.
+           COPY EXCP0200.
