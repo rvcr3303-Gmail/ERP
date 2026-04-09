@@ -1,0 +1,362 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. VIAR0032.
+      ****************************************************************
+      *                                                              *
+      *     PROGRAMA VIAR0032.                                       *
+      *                                                              *
+      *     ACTUALIZACAO DA TABELA DE SEQUENCIADORES                 *
+      *                                                              *
+      ****************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+      *
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY AQCW0005.
+      ****************************************************************
+      *                   STATUS DB2                                 *
+      ****************************************************************
+       COPY VIAW0005.
+      ****************************************************************
+      *                   DECLARACOES DB2                            *
+      ****************************************************************
+           EXEC SQL INCLUDE ARCD0801 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      ****************************************************************
+      *                             VARIABLES                        *
+      ****************************************************************
+           EXEC SQL
+                DECLARE CURSOR_SEQ CURSOR FOR
+                SELECT CSEQUENCE, DPROC
+                  FROM ARVT0801_SEQUENCE
+                 WHERE CSEQUENCER   = :ARCD0801-CSEQUENCER
+             FOR UPDATE OF CSEQUENCE, DPROC
+           END-EXEC.
+      ****************************************************************
+      *                   CONSTANTES                                 *
+      ****************************************************************
+       01  CON-CONSTANTES.
+           05 CON-VIAT0801       PIC X(08) VALUE 'VIAT0801'.
+      ****************************************************************
+       LINKAGE SECTION.
+      *
+       COPY ETCL0002.
+       COPY VIAL0032.
+      *
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                VIAL0032-COMMAREA.
+      ****************************************************************
+      *           0000-MAINLINE                                      *
+      ****************************************************************
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2099-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3099-FIM-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      *                       1000-INICIO-PROGRAMA                     *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      *
+      *    SET ETCL0002-SEM-ERROS          TO TRUE.
+           MOVE VIAL0032-CSEQUEN           TO ARCD0801-CSEQUENCER.
+      *
+           PERFORM 1100-VAL-SEQUENCIADOR
+              THRU 1199-VAL-SEQUENCIADOR-EXIT.
+      *
+           EXEC SQL
+                OPEN CURSOR_SEQ
+           END-EXEC.
+
+           MOVE CON-VIAT0801               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF NOT DB2-OK
+              MOVE VIAK0002-ABEND-DB2   TO ETCL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2    TO ETCL0002-NR-ERRO
+           END-IF.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                1100-VAL-SEQUENCIADOR                           *
+      ******************************************************************
+       1100-VAL-SEQUENCIADOR.
+      *
+           EXEC SQL
+                SELECT CSEQUENCE, DPROC
+                  INTO :ARCD0801-CSEQUENCE,
+                       :ARCD0801-DPROC
+                  FROM ARVT0801_SEQUENCE
+                 WHERE CSEQUENCER   = :ARCD0801-CSEQUENCER
+           END-EXEC
+      *
+           MOVE CON-VIAT0801               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF DB2-NOTFND
+              IF VIAL0032-DATA-SEQ
+                PERFORM 1500-INSERE-SEQ-DATA
+                   THRU 1500-INSERE-SEQ-DATA-EXIT
+              ELSE
+                PERFORM 1500-INSERE-SEQUENC
+                   THRU 1500-INSERE-SEQUENC-EXIT
+              END-IF
+           ELSE
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ABEND-DB2   TO ETCL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2    TO ETCL0002-NR-ERRO
+              END-IF
+           END-IF.
+
+       1199-VAL-SEQUENCIADOR-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1500-INSERE-SEQUENC                      *
+      *                                                                *
+      ******************************************************************
+       1500-INSERE-SEQUENC.
+      *
+              MOVE VIAL0032-CSEQUEN        TO ARCD0801-CSEQUENCER
+              MOVE ZEROS                   TO ARCD0801-CSEQUENCE
+              MOVE 'VIAR0032'              TO ARCD0801-CUSERID
+              MOVE '0001-01-01'            TO ARCD0801-DPROC
+
+              EXEC SQL
+                INSERT INTO ARVT0801_SEQUENCE
+                            (CSEQUENCER ,
+                             CSEQUENCE  ,
+                             CUSERID    ,
+                             HTIMEST   )
+                VALUES( :ARCD0801-CSEQUENCER ,
+                        :ARCD0801-CSEQUENCE  ,
+                        :ARCD0801-CUSERID    ,
+                        CURRENT TIMESTAMP)
+              END-EXEC
+
+              MOVE CON-VIAT0801            TO ETCL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ABEND-DB2   TO ETCL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2    TO ETCL0002-NR-ERRO
+              END-IF.
+
+       1500-INSERE-SEQUENC-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1500-INSERE-SEQ-DATA                     *
+      *                                                                *
+      ******************************************************************
+       1500-INSERE-SEQ-DATA.
+      *
+              MOVE VIAL0032-CSEQUEN        TO ARCD0801-CSEQUENCER
+              MOVE ZEROS                   TO ARCD0801-CSEQUENCE
+              MOVE 'VIAR0032'              TO ARCD0801-CUSERID
+              MOVE ETCL0002-DATA-PROCESSO  TO ARCD0801-DPROC
+
+              EXEC SQL
+                INSERT INTO ARVT0801_SEQUENCE
+                            (CSEQUENCER ,
+                             CSEQUENCE  ,
+                             CUSERID    ,
+                             HTIMEST   ,
+                             DPROC      )
+                VALUES( :ARCD0801-CSEQUENCER ,
+                        :ARCD0801-CSEQUENCE  ,
+                        :ARCD0801-CUSERID    ,
+                        CURRENT TIMESTAMP    ,
+                        :ARCD0801-DPROC      )
+              END-EXEC
+
+              MOVE CON-VIAT0801            TO ETCL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ABEND-DB2   TO ETCL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2    TO ETCL0002-NR-ERRO
+              END-IF.
+
+       1500-INSERE-SEQ-DATA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       2000-PROC-PROGRAMA                       *
+      *                                                                *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      *
+           EXEC SQL
+                FETCH CURSOR_SEQ
+                  INTO :ARCD0801-CSEQUENCE,
+                       :ARCD0801-DPROC
+           END-EXEC.
+
+           MOVE CON-VIAT0801               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF DB2-OK
+              IF VIAL0032-VALIDA
+                 MOVE ARCD0801-CSEQUENCE   TO VIAL0032-NSEQUEN-1
+              ELSE
+                 IF VIAL0032-DATA-SEQ
+                   PERFORM 2010-SEQ-POR-DATA
+                      THRU 2010-SEQ-POR-DATA-EXIT
+                 ELSE
+                   PERFORM 2010-UPDATE-TABELA
+                      THRU 2010-UPDATE-TABELA-EXIT
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2      TO ETCL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2       TO ETCL0002-NR-ERRO
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                                                                *
+      *                       2010-UPDATE-TABELA                       *
+      *                                                                *
+      ******************************************************************
+       2010-UPDATE-TABELA.
+
+           IF VIAL0032-SOMA-1
+               ADD 1                        TO ARCD0801-CSEQUENCE
+               MOVE ARCD0801-CSEQUENCE      TO VIAL0032-NSEQUEN-1
+           ELSE
+              IF VIAL0032-FORCA-1
+                 MOVE 1                     TO ARCD0801-CSEQUENCE
+                                               VIAL0032-NSEQUEN-1
+              ELSE
+                 IF VIAL0032-SOMA-VALOR
+                    MOVE ARCD0801-CSEQUENCE TO VIAL0032-NSEQUEN-1
+                    ADD 1                   TO VIAL0032-NSEQUEN-1
+                    ADD VIAL0032-VALOR-ACUM TO ARCD0801-CSEQUENCE
+                    MOVE ARCD0801-CSEQUENCE TO VIAL0032-NSEQUEN-2
+                 ELSE
+                    IF VIAL0032-FORCA-VALOR
+                       MOVE 1               TO VIAL0032-NSEQUEN-1
+                       MOVE VIAL0032-VALOR-ACUM
+                                            TO ARCD0801-CSEQUENCE
+                                               VIAL0032-NSEQUEN-2
+                    ELSE
+                       MOVE VIAK0002-ERROS-ARQ
+                                            TO ETCL0002-IND-ERROS
+                                               ETCL0002-CAPLIC-ERRO
+                       MOVE VIAK0001-ERR-IACCAO
+                                            TO ETCL0002-NR-ERRO
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+           EXEC SQL
+                UPDATE ARVT0801_SEQUENCE
+                   SET CSEQUENCE   = :ARCD0801-CSEQUENCE,
+                       DPROC       = :ARCD0801-DPROC
+                 WHERE CURRENT OF CURSOR_SEQ
+           END-EXEC.
+
+           MOVE CON-VIAT0801               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF NOT DB2-OK
+              MOVE VIAK0002-ABEND-DB2   TO ETCL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2    TO ETCL0002-NR-ERRO
+           END-IF.
+
+       2010-UPDATE-TABELA-EXIT.
+           EXIT.
+      *****************************************************************
+      *
+      *                       2010-SEQ-POR-DATA                       *
+      *
+      *****************************************************************
+       2010-SEQ-POR-DATA.
+
+           IF ARCD0801-DPROC = ETCL0002-DATA-PROCESSO
+               ADD 1                        TO ARCD0801-CSEQUENCE
+               MOVE ARCD0801-CSEQUENCE      TO VIAL0032-NSEQUEN-1
+
+      *        MOVE ZEROES                  TO VIAL0032-NSEQ-DATA
+      *        MOVE ARCD0801-DPROC          TO AQCW0005-DTX10
+      *        PERFORM AQCP0005-CONV-DT10INDT8
+      *           THRU AQCP0005-CONV-DT10INDT8-EXIT
+      *        MOVE AQCW0005-DT98           TO VIAL0032-NSEQ-DATA
+      *        COMPUTE VIAL0032-NSEQ-DATA = VIAL0032-NSEQ-DATA
+      *                                     * 10000000
+      *        ADD ARCD0801-CSEQUENCE TO    VIAL0032-NSEQ-DATA
+      *
+           ELSE
+             MOVE 1                     TO ARCD0801-CSEQUENCE
+                                           VIAL0032-NSEQUEN-1
+             MOVE ETCL0002-DATA-PROCESSO  TO ARCD0801-DPROC
+           END-IF.
+
+           EXEC SQL
+                UPDATE ARVT0801_SEQUENCE
+                   SET CSEQUENCE   = :ARCD0801-CSEQUENCE,
+                       DPROC       = :ARCD0801-DPROC
+                 WHERE CURRENT OF CURSOR_SEQ
+           END-EXEC.
+
+           MOVE CON-VIAT0801               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF DB2-OK
+               MOVE ZEROES                  TO VIAL0032-NSEQ-DATA
+               MOVE ARCD0801-DPROC          TO AQCW0005-DTX10
+               PERFORM AQCP0005-CONV-DT10INDT8
+                  THRU AQCP0005-CONV-DT10INDT8-EXIT
+               MOVE AQCW0005-DT98           TO VIAL0032-NSEQ-DATA
+               COMPUTE VIAL0032-NSEQ-DATA = VIAL0032-NSEQ-DATA
+                                            * 10000000
+               ADD ARCD0801-CSEQUENCE TO    VIAL0032-NSEQ-DATA
+           ELSE
+              MOVE VIAK0002-ABEND-DB2   TO ETCL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2    TO ETCL0002-NR-ERRO
+           END-IF.
+
+       2010-SEQ-POR-DATA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       3000-FIM-PROGRAMA                        *
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+
+           EXEC SQL
+                CLOSE CURSOR_SEQ
+           END-EXEC.
+      *
+       3099-FIM-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.
+           EXEC SQL INCLUDE AQCP0005 END-EXEC.
+      ******************************************************************

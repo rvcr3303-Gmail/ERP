@@ -1,0 +1,375 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. VIAR2000.
+      ****************************************************************
+      *                                                              *
+      *     PROGRAMA VIAR2000.                                       *
+      *                                                              *
+      *     CONTROLO DO SISTEMA TRANSACCIONAL TABELAS CENTRAIS       *
+      *                   (TRATAMENTO INICIAL)                       *
+      ****************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+         SPECIAL-NAMES.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+      *
+       COPY VIAL0015.
+      *
+       COPY VIAL0001.
+      *
+       COPY VIAK0001.
+      *
+       COPY VIAK0002.
+      *
+       COPY VIAK0003.
+      *
+       COPY VIAW0003.
+      *
+       COPY ARCK0002.
+       COPY TGCK0002.
+      *
+       COPY ARCV1490.
+      *
+       COPY ARCV1491.
+      *
+      ****************************************************************
+      *                   STATUS DB2                                 *
+      ****************************************************************
+       COPY VIAW0005.
+           88 VIAT0100-NOTFND              VALUE +100.
+           88 VIAT0100-OK                  VALUE +0.
+      ****************************************************************
+      *                   DECLARACOES DB2                            *
+      ****************************************************************
+      *
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *
+      ****************************************************************
+      *                COMMAREA STANDARD DA APLICACAO                *
+      ****************************************************************
+       COPY VIAL2000.
+       COPY VIAL0002.
+      ****************************************************************
+      *                             VARIABLES                        *
+      ****************************************************************
+      *
+       01  WS-PGMID.
+           05 WS-PGMID-CCT                 PIC X(06).
+           05 WS-PGMID-SUFIX               PIC X(02).
+       01  WS-AUX.
+           05 WS-SQLCODE                   PIC -9(09).
+           05 IND-NRSEQO                   PIC S9(04) BINARY.
+       01  SW-SWITCHES.
+           05 SW-PROC-INI                  PIC X(1) VALUE SPACES.
+              88 SW-PROC-INI-OK                     VALUE 'S'.
+       01  WS-IND                          PIC S9(04) COMP-3
+                                                    VALUE ZEROES.
+       01  WS-IND2                         PIC S9(04) COMP-3
+                                                    VALUE ZEROES.
+       01  WS-HTIMEST                      PIC X(26) VALUES SPACES.
+      ****************************************************************
+      *                   CONSTANTES                                 *
+      ****************************************************************
+       01  CON-CONSTANTES.
+           05 WS-PROGNAME        PIC X(10) VALUE 'VIAR2000  '.
+      ****************************************************************
+      *
+       LINKAGE SECTION.
+      *
+       COPY VIAL0003.
+      *
+           EXEC SQL INCLUDE VIAP0008 END-EXEC.
+      *
+      ****************************************************************
+      *           0000-MAINLINE                                      *
+      ****************************************************************
+      *
+       0000-MAINLINE.
+      *
+      **R  IF VIAL0001-VERSAO-V203 OR VIAL0001-VERSAO-V300
+JF1126*       CALL 'VIA00901'
+      **R  END-IF.
+
+           MOVE DFHCOMMAREA(1:LENGTH OF VIAL0001-COMMAREA)
+                                     TO VIAL0001-COMMAREA.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROCESSA
+              THRU 2000-PROCESSA-EXIT.
+
+           PERFORM 3000-FINAL
+              THRU 3000-FINAL-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      ******************************************************************
+      *                       1000-INICIO-PROGRAMA                     *
+      *            INICIA AREAS DE TRABALHO                            *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      *
+           SET VIAL0015-DEBUG-SIM TO TRUE
+           MOVE WS-PROGNAME                TO VIAL0015-PROGRAMA.
+           SET VIAL0002-SEM-ERROS          TO TRUE.
+           MOVE ZEROES                     TO VIAL0002-COD-ERRO-GRAVE.
+           MOVE ZEROES                     TO VIAL0001-NR-SEQUENCIA-I
+
+           PERFORM 1010-LER-MENSAGEM
+              THRU 1010-LER-MENSAGEM-EXIT.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       2000-PROCESSA                            *
+      ******************************************************************
+       2000-PROCESSA.
+
+      *    IF VIAL0015-DEBUG-SIM
+              MOVE '2000-PROCESSA'          TO VIAL0015-CALLER-ID
+              MOVE 'VIAL2000-CTABELA'       TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL2000-CTABELA        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL2000-CLINGUA'       TO VIAL0015-CAMPO-NM (2)
+              MOVE  VIAL2000-CLINGUA        TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL2000-C2COD  '       TO VIAL0015-CAMPO-NM (3)
+              MOVE  VIAL2000-C2COD          TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'VIAL0001-NR-SEQUENCIA-I' TO VIAL0015-CAMPO-NM (4)
+              MOVE  VIAL0001-NR-SEQUENCIA-I  TO VIAL0015-CAMPO-VLR(4)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+      *    END-IF.
+
+           EVALUATE TRUE
+             WHEN VIAL2000-IART05 EQUAL 'S'
+                  PERFORM 1011-TRATA-TAB-CENTRAL
+                     THRU 1011-TRATA-TAB-CENTRAL-EXIT
+             WHEN VIAL2000-IART05 EQUAL 'N'
+                  PERFORM 1011-TRATA-TAB-CORE
+                     THRU 1011-TRATA-TAB-CORE-EXIT
+             WHEN OTHER
+JF    * Enquanto não se resolve a questão das codestables, é preciso
+JF    * controlar pelo código de aplicação (não é a melhor solução)
+                  IF VIAL2000-CTABELA-TIPO EQUAL 'BM'
+                  OR VIAL2000-CTABELA-TIPO EQUAL 'MW'
+                     PERFORM 1011-TRATA-TAB-CORE
+                        THRU 1011-TRATA-TAB-CORE-EXIT
+                  ELSE
+                     PERFORM 1011-TRATA-TAB-CENTRAL
+                        THRU 1011-TRATA-TAB-CENTRAL-EXIT
+                  END-IF
+             END-EVALUATE.
+
+       2000-PROCESSA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1010-LER-MENSAGEM                        *
+      *            EXECUTA PROGRAMA PARA LER MENSAGEM DEPENDENDO       *
+      *            DA ORIGEM DA MESMA                                  *
+      ******************************************************************
+       1010-LER-MENSAGEM.
+
+           MOVE DFHCOMMAREA(1:LENGTH OF VIAL2000-COMMAREA)
+                                     TO VIAL2000-COMMAREA.
+
+
+       1010-LER-MENSAGEM-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1011-TRATA-TAB-CENTRAL                   *
+      *     TRATAMENTO ESPECIFICO PARA AS JANELAS DE ACESSO A TABELAS  *
+      *     GERAIS                                                     *
+      ******************************************************************
+       1011-TRATA-TAB-CENTRAL.
+
+           MOVE 1 TO WS-IND.
+
+           PERFORM 1011-INIT-TAB-CENTRAL
+              THRU 1011-INIT-TAB-CENTRAL-EXIT
+                   UNTIL WS-IND GREATER THAN 150.
+
+      **R  MOVE VIAL2000-CAPLIC          TO VIAL0001-CAPLIC
+           MOVE ARCK0002-CAPLIC-AR       TO VIAL0001-CAPLIC
+
+           IF VIAL2000-CONSULTALISTA
+             MOVE VIAK0002-TAB-LISTA     TO VIAL0001-COPCAO
+           ELSE
+             MOVE SPACES                 TO VIAL0001-COPCAO
+           END-IF
+
+           SET VIAL2000-SEM-ERROS        TO TRUE
+           MOVE ZEROES                   TO VIAL2000-NR-ERRO
+
+           MOVE VIAL2000-CACCAO          TO VIAL0001-CACCAO
+
+           MOVE 'VIAR2000'               TO VIAL0001-PGMID
+           MOVE 'S'                      TO VIAL0001-I-DEBUG
+
+      *    MOVE ZEROES                   TO VIAL0001-NR-SEQUENCIA-I
+           MOVE VIAL2000-CUTILIZA        TO VIAL0001-CUTILIZA-I
+
+           EXEC SQL
+              SET :WS-HTIMEST = CURRENT_TIMESTAMP
+           END-EXEC
+           MOVE WS-HTIMEST               TO VIAL0001-DATA-PROCESSO-I
+
+           MOVE VIAL0001-NR-SEQUENCIA-I  TO VIAL0001-NR-SEQUENCIA-O
+           MOVE VIAL0001-CUTILIZA-I      TO VIAL0001-CUTILIZA-O
+           MOVE VIAL0001-DATA-PROCESSO-I TO VIAL0001-DATA-PROCESSO-O
+
+           MOVE VIAL2000-CTABELA         TO ARCV1490-CTABELA
+           MOVE VIAL2000-CCOD            TO ARCV1490-CCOD
+
+AF    * Como o C2COD nao existe no VIAL2000 passa espacos. To do: Ver impacto de
+AF    * adicionar campo de modo a suportar o funcionamento de tabelas
+AF    * dependentes
+
+DR    * 13/07/2016- ACTUALIZACAO GERADOR - O VIAL2000 JA TEM O CAMPO C2COD
+           MOVE VIAL2000-C2COD           TO ARCV1490-C2COD
+           MOVE VIAL2000-CLINGUA         TO ARCV1490-CLINGUA
+
+           MOVE SPACES                   TO ARCV1490-CTABELA-S
+           MOVE SPACES                   TO ARCV1490-CTABELA-CAPLIC
+           MOVE ZEROES                   TO ARCV1490-CTABELA-MSG
+           MOVE SPACES                   TO ARCV1490-CCOD-S
+           MOVE SPACES                   TO ARCV1490-CCOD-CAPLIC
+           MOVE ZEROES                   TO ARCV1490-CCOD-MSG
+           MOVE SPACES                   TO ARCV1490-C2COD-S
+           MOVE SPACES                   TO ARCV1490-C2COD-CAPLIC
+           MOVE ZEROES                   TO ARCV1490-C2COD-MSG
+           MOVE SPACES                   TO ARCV1490-CLINGUA-S
+           MOVE SPACES                   TO ARCV1490-CLINGUA-CAPLIC
+           MOVE ZEROES                   TO ARCV1490-CLINGUA-MSG
+           MOVE ARCV1490-MSG             TO VIAL0001-MENSAGEM-INPUT
+           .
+
+       1011-TRATA-TAB-CENTRAL-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1011-TRATA-TAB-CORE                      *
+      *     TRATAMENTO ESPECIFICO PARA AS JANELAS DE ACESSO A TABELAS  *
+      *     GERAIS                                                     *
+      ******************************************************************
+       1011-TRATA-TAB-CORE.
+
+              MOVE '2000-PROCESSA'          TO VIAL0015-CALLER-ID
+              MOVE 'VIAL2000-CTABELA'       TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL2000-CTABELA        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL2000-CLINGUA'       TO VIAL0015-CAMPO-NM (2)
+              MOVE  VIAL2000-CLINGUA        TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL2000-C2COD  '       TO VIAL0015-CAMPO-NM (3)
+              MOVE  VIAL2000-C2COD          TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'VIAL0001-NR-SEQUENCIA-I' TO VIAL0015-CAMPO-NM (4)
+              MOVE  VIAL0001-NR-SEQUENCIA-I  TO VIAL0015-CAMPO-VLR(4)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+
+           MOVE 1 TO WS-IND.
+
+           PERFORM 1011-INIT-TAB-CENTRAL
+              THRU 1011-INIT-TAB-CENTRAL-EXIT
+                   UNTIL WS-IND GREATER THAN 150.
+
+      **R  MOVE VIAL2000-CAPLIC          TO VIAL0001-CAPLIC
+           MOVE TGCK0002-APL-TG          TO VIAL0001-CAPLIC
+      *    MOVE ARCK0002-CAPLIC-AR       TO VIAL0001-CAPLIC
+
+           IF VIAL2000-CONSULTALISTA
+             MOVE VIAK0002-TAB-CORE      TO VIAL0001-COPCAO
+           ELSE
+             MOVE SPACES                 TO VIAL0001-COPCAO
+           END-IF
+
+           SET VIAL2000-SEM-ERROS        TO TRUE
+
+           MOVE ZEROES                   TO VIAL2000-NR-ERRO
+           MOVE VIAL2000-NR-ERRO         TO VIAL0001-NR-ERRO
+
+           MOVE VIAL2000-CACCAO          TO VIAL0001-CACCAO
+
+           MOVE 'VIAR2000'               TO VIAL0001-PGMID
+           MOVE 'S'                      TO VIAL0001-I-DEBUG
+
+      **R  a versao original formata desta forma a area de comunicacao
+      **R  MOVE ZEROES                   TO VIAL0001-NR-SEQUENCIA-I
+      **R  MOVE VIAL2000-CUTILIZA        TO VIAL0001-CUTILIZA-I
+      **R  MOVE '2014-01-01'             TO VIAL0001-DATA-PROCESSO-I
+      **R  a versao original formata desta forma a area de comunicacao
+
+      *    MOVE ZEROES                   TO VIAL0001-NR-SEQUENCIA-I
+           MOVE VIAL2000-CUTILIZA        TO VIAL0001-CUTILIZA-I
+           EXEC SQL
+              SET :WS-HTIMEST = CURRENT_TIMESTAMP
+           END-EXEC
+           MOVE WS-HTIMEST               TO VIAL0001-DATA-PROCESSO-I
+      *    MOVE '2014-01-01'             TO VIAL0001-DATA-PROCESSO-I
+
+           MOVE VIAL0001-NR-SEQUENCIA-I  TO VIAL0001-NR-SEQUENCIA-O
+           MOVE VIAL0001-CUTILIZA-I      TO VIAL0001-CUTILIZA-O
+           MOVE VIAL0001-DATA-PROCESSO-I TO VIAL0001-DATA-PROCESSO-O
+
+           MOVE VIAL2000-CTABELA         TO ARCV1490-CTABELA
+           MOVE VIAL2000-CCOD            TO ARCV1490-CCOD
+AF    * Como o C2COD nao existe no VIAL2000 passa espacos. To do: Ver impacto de
+AF    * adicionar campo de modo a suportar o funcionamento de tabelas
+AF    * dependentes
+      *    MOVE VIAL2000-CCOD            TO ARCV1490-C2COD
+           MOVE VIAL2000-C2COD           TO ARCV1490-C2COD
+           MOVE VIAL2000-CLINGUA         TO ARCV1490-CLINGUA
+
+      **R 2017-05-16
+      **R  MOVE VIAL2000-CTABELA-PAG     TO ARCV1490-CTABELA-PAG
+      **R  MOVE VIAL2000-CCOD-PAG        TO ARCV1490-CCOD-PAG
+      **R  MOVE VIAL2000-C2COD-PAG       TO ARCV1490-C2COD-PAG
+      **R  MOVE VIAL2000-CLINGUA-PAG     TO ARCV1490-CLINGUA-PAG
+      **R 2017-05-16
+
+SM         MOVE VIAL2000-GPAGINGCODE     TO ARCV1490-CCOD-PAG
+
+           MOVE SPACES                   TO ARCV1490-CTABELA-S
+           MOVE SPACES                   TO ARCV1490-CTABELA-CAPLIC
+           MOVE ZEROES                   TO ARCV1490-CTABELA-MSG
+           MOVE SPACES                   TO ARCV1490-CCOD-S
+           MOVE SPACES                   TO ARCV1490-CCOD-CAPLIC
+           MOVE ZEROES                   TO ARCV1490-CCOD-MSG
+           MOVE SPACES                   TO ARCV1490-C2COD-S
+           MOVE SPACES                   TO ARCV1490-C2COD-CAPLIC
+           MOVE ZEROES                   TO ARCV1490-C2COD-MSG
+           MOVE SPACES                   TO ARCV1490-CLINGUA-S
+           MOVE SPACES                   TO ARCV1490-CLINGUA-CAPLIC
+           MOVE ZEROES                   TO ARCV1490-CLINGUA-MSG
+           MOVE ARCV1490-MSG             TO VIAL0001-MENSAGEM-INPUT
+           .
+
+       1011-TRATA-TAB-CORE-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1011-INIT-TAB-CENTRAL                    *
+      ******************************************************************
+       1011-INIT-TAB-CENTRAL.
+
+           MOVE SPACES                   TO VIAL2000-D-CTABELA(WS-IND)
+           MOVE SPACES                   TO VIAL2000-D-CCOD(WS-IND)
+           MOVE SPACES                   TO VIAL2000-D-C2COD(WS-IND)
+           MOVE SPACES                   TO VIAL2000-D-CLINGUA(WS-IND)
+           MOVE SPACES                   TO VIAL2000-D-GDESC(WS-IND).
+
+           ADD 1 TO WS-IND.
+
+       1011-INIT-TAB-CENTRAL-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       3000-FINAL                               *
+      ******************************************************************
+       3000-FINAL.
+
+           MOVE VIAL0001-COMMAREA TO DFHCOMMAREA.
+
+       3000-FINAL-EXIT.
+           EXIT.
+      ******************************************************************
+      *                         PROCEDURES                             *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      * debug
+           COPY VIAP0016.

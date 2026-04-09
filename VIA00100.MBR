@@ -1,0 +1,2094 @@
+       COPY VIAW0001.
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. VIA00100.
+      ****************************************************************
+      *                                                              *
+      *     PROGRAMA VIA00100.                                       *
+      *                                                              *
+      *     CONTROLO DO SISTEMA TRANSACCIONAL                        *
+      *                                                              *
+      ****************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+         SPECIAL-NAMES.
+       COPY VIAW0002.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+      *
+       COPY VIAL0015.
+       COPY VIAL1010.
+       COPY ARCL2205.
+       COPY AQCW0100.
+      *
+       COPY VIAK0001.
+      *
+       COPY VIAK0002.
+      *
+       COPY VIAK0003.
+      *
+       COPY VIAW0003.
+      *
+      *Escreve log de facturacao
+       COPY VICL0001.
+       COPY ETCL0002.
+      *CODESTABLES CENTRAIS
+       COPY ARCV1490.
+       COPY ARCV1491.
+       COPY VIAL2000.
+      *
+      *COPY DA ROTINA VIAR0110 FLIP/FLOP E DATAS
+       COPY VIAL0110.
+      ****************************************************************
+      *                   STATUS DB2                                 *
+      ****************************************************************
+       COPY VIAW0005.
+           88 VIAT0100-NOTFND              VALUE +100.
+           88 VIAT0100-OK                  VALUE +0.
+           88 ARVT2200-NOTFND              VALUE +100.
+           88 ARVT2200-OK                  VALUE +0.
+           88 ARVT2300-NOTFND              VALUE +100.
+           88 ARVT2300-OK                  VALUE +0.
+           88 ARVT4500-NOTFND              VALUE +100.
+           88 ARVT4500-OK                  VALUE +0.
+      ****************************************************************
+      *                   DECLARACOES DB2                            *
+      ****************************************************************
+      *
+           EXEC SQL INCLUDE VIAD0100 END-EXEC.
+           EXEC SQL INCLUDE VIAD0200 END-EXEC.
+           EXEC SQL INCLUDE VIAD0600 END-EXEC.
+           EXEC SQL INCLUDE VIAD0900 END-EXEC.
+JF    * 2019-10-31: Adicionar flip/flop
+JF         EXEC SQL INCLUDE VIAD1200 END-EXEC.
+JF         EXEC SQL INCLUDE VIAD1600 END-EXEC.
+JF         EXEC SQL INCLUDE VIAD1900 END-EXEC.
+           EXEC SQL INCLUDE ARCD2200 END-EXEC.
+           EXEC SQL INCLUDE ARCD2300 END-EXEC.
+           EXEC SQL INCLUDE VIAD0500 END-EXEC.
+pra        EXEC SQL INCLUDE ARCD0100 END-EXEC.
+      *
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *
+      ****************************************************************
+      *                COMMAREA STANDARD DA APLICACAO                *
+      ****************************************************************
+       COPY VIAL0006.
+      ****************************************************************
+      *                             VARIABLES                        *
+      ****************************************************************
+      *
+       01  WS-PGMID.
+           05 WS-PGMID-CCT                 PIC X(06).
+           05 WS-PGMID-SUFIX               PIC X(02).
+       01  WS-PGMID-ORIG                   PIC X(08).
+       01  WS-AUX.
+           05 WS-SQLCODE                   PIC -9(09).
+           05 IND-NRSEQO                   PIC S9(04) BINARY.
+           05 WS-IND                       PIC S9(04) COMP-3.
+           05 WS-IND2                      PIC S9(04) COMP-3.
+
+       01 WS-AMBIENTE                      PIC X(01).
+       01 WS-DEBUG                         PIC X(01) VALUE 'N'.
+          88 WS-DEBUG-SIM     VALUE 'S'.
+
+       01  SW-SWITCHES.
+           05 SW-PROC-INI                  PIC X(1) VALUE SPACES.
+              88 SW-PROC-INI-OK                     VALUE 'S'.
+           05 SW-ERR-EXT-VAL               PIC X(1) VALUE SPACES.
+              88 SW-ERR-EXT                         VALUE 'S'.
+              88 SW-ERR-N-EXT                       VALUE 'N'.
+       01  WS-HTIMEST                      PIC X(26) VALUES SPACES.
+       01  WS-TS-X26                       PIC X(26) VALUE SPACES.
+      * CODESTABLES CENTRAIS
+       01  WS-VIAL0002                     PIC X(200) VALUE SPACES.
+
+      ****************************************************************
+      *                   CONSTANTES                                 *
+      ****************************************************************
+       01  CON-CONSTANTES.
+           05 WS-PROGNAME        PIC X(10) VALUE 'VIA00100  '.
+           05 CON-VIAT0100       PIC X(16) VALUE 'VIAT0100        '.
+           05 CON-VIAT0200       PIC X(16) VALUE 'VIAT0200        '.
+           05 CON-VIAT0500       PIC X(16) VALUE 'VIAT0500        '.
+           05 CON-VIAT0900       PIC X(16) VALUE 'VIAT0900        '.
+           05 CON-VIAT1200       PIC X(16) VALUE 'VIAT1200        '.
+           05 CON-VIAT1900       PIC X(16) VALUE 'VIAT1900        '.
+           05 CON-ARVT2200       PIC X(16) VALUE 'ARVT2200        '.
+           05 CON-ARVT2300       PIC X(16) VALUE 'ARVT2300        '.
+           05 CON-ARVT4500       PIC X(16) VALUE 'ARVT4500        '.
+           05 CON-ARVT0100       PIC X(16) VALUE 'ARVT0100        '.
+      ****************************************************************
+      *
+       LINKAGE SECTION.
+      *
+       COPY VIAL0003.
+      *
+           EXEC SQL INCLUDE VIAP0008 END-EXEC.
+      *
+      ****************************************************************
+      *           0000-MAINLINE                                      *
+      ****************************************************************
+      *
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2099-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-TRATA-ERROS
+              THRU 3099-TRATA-ERROS-EXIT.
+
+           PERFORM 4000-RESPOSTA
+              THRU 4099-RESPOSTA-EXIT.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'ACABOU-----------'       TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS     ' TO VIAL0015-CAMPO-NM (1)
+              MOVE VIAL0002-IND-ERROS        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0002-COD-ERRO-GRAVE' TO VIAL0015-CAMPO-NM (2)
+              MOVE VIAL0002-COD-ERRO-GRAVE   TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL0002-CAPLIC-ERRO   ' TO VIAL0015-CAMPO-NM (3)
+              MOVE VIAL0002-CAPLIC-ERRO      TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'VIAL0001-I-DEBUG       ' TO VIAL0015-CAMPO-NM (4)
+              MOVE VIAL0001-I-DEBUG          TO VIAL0015-CAMPO-VLR(4)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      ******************************************************************
+      *                       1000-INICIO-PROGRAMA                     *
+      *            INICIA AREAS DE TRABALHO E DEFINE CONDICOES CICS    *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      *
+      **R 2017-07-06
+           SET VIAL0015-DEBUG-SIM TO TRUE.
+           MOVE 'S' TO WS-DEBUG.
+      **R  MOVE SPACES                     TO VIAL0015-TRACE.
+      **R  MOVE SPACES                     TO VIAL0001-TRACE.
+      *
+           PERFORM 1099-OBTEM-AMB
+              THRU 1099-OBTEM-AMB-EXIT.
+      **R 2017-07-06
+      *
+       COPY VIAP0018.
+      *
+           MOVE WS-PROGNAME                TO VIAL0015-PROGRAMA.
+           SET VIAL0002-SEM-ERROS          TO TRUE.
+           MOVE ZEROES                     TO VIAL0002-COD-ERRO-GRAVE.
+           MOVE SPACES                     TO SW-PROC-INI.
+
+      *    SET VIAL0001-DEBUG-SIM          TO TRUE.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'INICIO***********' TO VIAL0015-CALLER-ID
+              MOVE 'DFHCOMMAREA         '    TO VIAL0015-CAMPO-NM(1)
+              MOVE  DFHCOMMAREA              TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM 1010-LER-MENSAGEM
+              THRU 1019-LER-MENSAGEM-EXIT.
+
+      **R
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'IDIOMA                  ' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-IDIOMA     '     TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0001-IDIOMA           TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-CUTILIZA-I '     TO VIAL0015-CAMPO-NM(2)
+              MOVE  VIAL0001-CUTILIZA-I       TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL0001-ORIGEM     '     TO VIAL0015-CAMPO-NM(3)
+              MOVE  VIAL0001-ORIGEM           TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+pra        IF VIAL0001-IDIOMA EQUAL SPACES
+              PERFORM 1070-OBT-IDIOMA-USER
+                 THRU 1079-OBT-IDIOMA-USER-EXIT
+           END-IF.
+
+           PERFORM 1060-OBT-DEFAULT
+              THRU 1060-OBT-DEFAULT-EXIT
+      **R
+
+      * CODESTABLES CENTRAIS
+           IF VIAL0001-ORIGEM NOT EQUAL VIAK0002-VIACODTAB AND
+              VIAL0001-ORIGEM NOT EQUAL VIAK0002-WORKFLOW
+             MOVE VIAL0001-NR-SEQUENCIA-I   TO VIAL0001-NR-SEQUENCIA-O
+             MOVE VIAL0001-CUTILIZA-I       TO VIAL0001-CUTILIZA-O
+             MOVE VIAL0001-DATA-PROCESSO-I  TO VIAL0001-DATA-PROCESSO-O
+
+              MOVE 'PRIVATE DEBUG' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-AMBIENTE   '    TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0001-AMBIENTE        TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+             IF VIAL0001-AMB-DEV
+                CALL 'VIAM0100' USING VIAL0001-CUTILIZA-I
+             END-IF
+
+           ELSE
+              MOVE 'TAB GERAIS*******' TO VIAL0015-CALLER-ID
+              MOVE DFHCOMMAREA TO VIAL2000-COMMAREA
+              MOVE 'VIAL2000-CTABELA    '    TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL2000-CTABELA         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL2000-ORIGEM     '    TO VIAL0015-CAMPO-NM(2)
+              MOVE  VIAL2000-ORIGEM          TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL2000-TRANSACCAO '    TO VIAL0015-CAMPO-NM(3)
+              MOVE  VIAL2000-TRANSACCAO      TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'VIAL2000-GCONTEXT   '    TO VIAL0015-CAMPO-NM(4)
+              MOVE  VIAL2000-GCONTEXT        TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'VIAL2000-CCOD       '    TO VIAL0015-CAMPO-NM(5)
+              MOVE  VIAL2000-CCOD            TO VIAL0015-CAMPO-VLR(5)
+              MOVE 'VIAL2000-INPUT      '    TO VIAL0015-CAMPO-NM(6)
+              MOVE  VIAL2000-INPUT           TO VIAL0015-CAMPO-VLR(6)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      **R 2017-07-06
+           IF VIAL0002-SEM-ERROS
+              PERFORM 1015-TRATA-DATAS
+                 THRU 1015-TRATA-DATAS-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 1020-VALIDA-CCT
+                 THRU 1029-VALIDA-CCT-EXIT
+           END-IF.
+
+JF         IF VIAL0002-SEM-ERROS
+JF            PERFORM 1050-DEFINE-PGMID
+JF               THRU 1059-DEFINE-PGMID-EXIT
+JF         END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              MOVE VIAL0001-CAPLIC         TO VIAD0500-APLIC
+              MOVE VIAK0002-ALL-SERVICES   TO VIAD0500-SERVCODE
+              PERFORM 1030-CHECK-ACTIVE
+                 THRU 1039-CHECK-ACTIVE-EXIT
+      *
+              IF VIAL0002-SEM-ERROS
+                 MOVE VIAL0001-CAPLIC     TO VIAD0500-APLIC
+                 MOVE VIAL0001-COPCAO     TO VIAD0500-SERVCODE
+                 PERFORM 1030-CHECK-ACTIVE
+                    THRU 1039-CHECK-ACTIVE-EXIT
+              END-IF
+           END-IF.
+      **R
+           IF VIAL0015-DEBUG-SIM
+              MOVE 'AMBIENTE - VIA00100' TO VIAL0015-CALLER-ID
+              MOVE 'WS-AMBIENTE         '    TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-AMBIENTE              TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0001-VERSAO-SYS NOT EQUAL SPACES
+                MOVE 'VIA00100 TESTES WS C/VERS ' TO VIAL0015-CALLER-ID
+                MOVE 'VIAL0001-VERSAO-SYS '    TO VIAL0015-CAMPO-NM(1)
+                MOVE  VIAL0001-VERSAO-SYS      TO VIAL0015-CAMPO-VLR(1)
+                MOVE 'VIAL0001-CUSER-EXTRN   ' TO VIAL0015-CAMPO-NM(2)
+                MOVE  VIAL0001-CUSER-EXTRN     TO VIAL0015-CAMPO-VLR(2)
+                MOVE 'VIAL0001-CBANCO        ' TO VIAL0015-CAMPO-NM(3)
+                MOVE  VIAL0001-CBANCO          TO VIAL0015-CAMPO-VLR(3)
+                PERFORM VIAP0015-TRATA-DEBUG
+                   THRU VIAP0015-TRATA-DEBUG-EXIT
+           ELSE
+                MOVE 'VIA00100 TESTES WS S/VERS ' TO VIAL0015-CALLER-ID
+                MOVE 'VIAL0001-VERSAO-SYS '    TO VIAL0015-CAMPO-NM(1)
+                MOVE  VIAL0001-VERSAO-SYS      TO VIAL0015-CAMPO-VLR(1)
+                MOVE 'VIAL0001-CUSER-EXTRN   ' TO VIAL0015-CAMPO-NM(2)
+                MOVE  VIAL0001-CUSER-EXTRN     TO VIAL0015-CAMPO-VLR(2)
+                MOVE 'VIAL0001-CBANCO        ' TO VIAL0015-CAMPO-NM(3)
+                MOVE  VIAL0001-CBANCO          TO VIAL0015-CAMPO-VLR(3)
+                MOVE 'VIAD0100-APLICEXT      ' TO VIAL0015-CAMPO-NM(4)
+                MOVE  VIAD0100-APLICEXT        TO VIAL0015-CAMPO-VLR(4)
+                PERFORM VIAP0015-TRATA-DEBUG
+                   THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      **R
+      *
+           IF VIAL0002-SEM-ERROS
+             IF VIAD0100-IPROCINEXT EQUAL VIAK0002-IND-ACTIVO
+                PERFORM 1032-TRATA-VERSAO
+                   THRU 1032-TRATA-VERSAO-EXIT
+             END-IF
+           END-IF.
+
+JF    *    IF VIAL0002-SEM-ERROS
+JF    *       PERFORM 1050-DEFINE-PGMID
+JF    *          THRU 1059-DEFINE-PGMID-EXIT
+JF    *    END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              SET SW-PROC-INI-OK          TO TRUE
+              IF VIAD0100-IPROCINEXT EQUAL VIAK0002-IND-ACTIVO
+                 PERFORM 1040-PROC-INI-EXT
+                    THRU 1049-PROC-INI-EXT-EXIT
+              END-IF
+           END-IF.
+
+           MOVE 'APOS VIA00900          ' TO VIAL0015-CALLER-ID
+           MOVE 'VIAL0001-IND-ERROS  '    TO VIAL0015-CAMPO-NM(1)
+           MOVE  VIAL0001-IND-ERROS       TO VIAL0015-CAMPO-VLR(1)
+           MOVE 'VIAL0002-IND-ERROS     ' TO VIAL0015-CAMPO-NM(2)
+           MOVE  VIAL0002-IND-ERROS       TO VIAL0015-CAMPO-VLR(2)
+           MOVE 'ETCL0002-IND-ERROS     ' TO VIAL0015-CAMPO-NM(3)
+           MOVE  ETCL0002-IND-ERROS       TO VIAL0015-CAMPO-VLR(3)
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1010-LER-MENSAGEM                        *
+      *            EXECUTA PROGRAMA PARA LER MENSAGEM DEPENDENDO       *
+      *            DA ORIGEM DA MESMA                                  *
+      ******************************************************************
+       1010-LER-MENSAGEM.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1010-LER-MENSAGEM' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           COPY VIAP0001.
+
+      * CODESTABLES CENTRAIS
+           IF VIAL0002-SEM-ERROS
+             IF VIAL0001-ORIGEM = VIAK0002-VIACODTAB
+                PERFORM VIAP2000-TAB-CENTRAL
+                   THRU VIAP2000-TAB-CENTRAL-EXIT
+                MOVE DFHCOMMAREA            TO VIAL0001-COMMAREA
+             END-IF
+           END-IF.
+      *
+JF         IF VIAL0002-SEM-ERROS
+|             IF VIAL0001-AMBIENTE     EQUAL SPACES  AND
+|                VIAL0001-AMBIENTE NOT EQUAL WS-AMBIENTE
+|                MOVE WS-AMBIENTE           TO VIAL0001-AMBIENTE
+|             END-IF
+JF         END-IF.
+      *
+       1019-LER-MENSAGEM-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1020-VALIDA-CCT                          *
+      *            VALIDA SE OPCAO/ACTIVA E SE AMBIENTE CORRECTO       *
+      ******************************************************************
+       1020-VALIDA-CCT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1020-VALIDA-CCT.' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-CAPLIC'  TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0001-CAPLIC   TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-COPCAO'  TO VIAL0015-CAMPO-NM(2)
+              MOVE  VIAL0001-COPCAO   TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+
+           MOVE VIAL0001-CAPLIC            TO VIAD0100-CAPLIC.
+           MOVE VIAL0001-COPCAO            TO VIAD0100-COPCAO.
+
+           EXEC SQL
+                SELECT NPROGRAM    ,
+                       IDEBUG      ,
+                       APLICEXT    ,
+                       IPROCINEXT  ,
+                       PRGINEXT    ,
+                       IPROCFIMEXT ,
+                       PRGFIMEXT   ,
+                       IDFATURA    ,
+                       ICTCENTR
+                  INTO :VIAD0100-NPROGRAM    ,
+                       :VIAD0100-IDEBUG      ,
+                       :VIAD0100-APLICEXT    ,
+                       :VIAD0100-IPROCINEXT  ,
+                       :VIAD0100-PRGINEXT    ,
+                       :VIAD0100-IPROCFIMEXT ,
+                       :VIAD0100-PRGFIMEXT   ,
+                       :VIAD0100-IDFATURA    ,
+                       :VIAD0100-ICTCENTR
+                  FROM VIAT0100_BFCT
+                 WHERE CAPLIC = :VIAD0100-CAPLIC
+                   AND COPCAO = :VIAD0100-COPCAO
+                 WITH UR
+           END-EXEC.
+
+           MOVE CON-VIAT0100               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'BFCT'             TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE        '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE           TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-ARQ   TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-TRN-NOTFND  TO VIAL0002-COD-ERRO-GRAVE
+              END-IF
+              IF DB2-OK
+                 MOVE VIAD0100-IDEBUG      TO VIAL0001-I-DEBUG
+              END-IF
+           END-IF.
+
+       1029-VALIDA-CCT-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1030-CHECK-ACTIVE                        *
+      ******************************************************************
+       1030-CHECK-ACTIVE.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1030-CHECK-ACTIVE.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+             SELECT APLIC
+               INTO :VIAD0500-APLIC
+               FROM VIAT0500_INACTIV
+              WHERE APLIC    = :VIAD0500-APLIC
+                AND SERVCODE = :VIAD0500-SERVCODE
+             FETCH FIRST ROW ONLY
+             WITH UR
+           END-EXEC.
+      *
+           MOVE CON-VIAT0500               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                MOVE VIAK0002-ABEND-DB2
+                  TO VIAL0002-IND-ERROS
+                IF VIAD0500-SERVCODE = VIAK0002-ALL-SERVICES
+                  MOVE VIAK0001-APLICACAO-INACTIVA
+                    TO VIAL0002-COD-ERRO-GRAVE
+                ELSE
+                  MOVE VIAK0001-SERVICO-INACTIVO
+                    TO VIAL0002-COD-ERRO-GRAVE
+                END-IF
+              ELSE
+                IF NOT DB2-NOTFND
+                  MOVE VIAK0002-ABEND-DB2
+                    TO VIAL0002-IND-ERROS
+                  MOVE VIAK0001-ERRO-DB2
+                    TO VIAL0002-COD-ERRO-GRAVE
+                END-IF
+              END-IF
+           END-IF.
+      *
+       1039-CHECK-ACTIVE-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1032-TRATA-VERSAO                        *
+      *      OBTEM DADOS DA VERSÃO DO SISTEMA CORE COM QUE ESTA A      *
+      *      INTEGRAR NA INSTALAÇÃO EM QUE ESTA A EXECUTAR             *
+      ******************************************************************
+       1032-TRATA-VERSAO.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1032-TRATA-VERSAO.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAD0100-APLICEXT EQUAL SPACES
+             SET VIAL0001-VERSAO-NOCORE TO TRUE
+           ELSE
+             PERFORM 1035-OBTEM-VERS-CORE
+                THRU 1035-OBTEM-VERS-CORE-EXIT
+           END-IF.
+      *
+       1032-TRATA-VERSAO-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1040-PROC-INI-EXT                        *
+      *      EXECUTA O PROGRAMA COM OS PROCEDIMENTOS INICIAIS DE       *
+      *                       APLICACOES EXTERNAS                      *
+      ******************************************************************
+       1040-PROC-INI-EXT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1040-PROC-INI-EXT.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           CALL VIAD0100-PRGINEXT USING VIAL0001-COMMAREA
+                                        VIAL0002-COMMAREA.
+      *
+       1049-PROC-INI-EXT-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1050-DEFINE-PGMID                        *
+      *            DEFINE O PGMID EM FUNCAO DA ACCAO                   *
+      ******************************************************************
+       1050-DEFINE-PGMID.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1050-DEFINE-PGMID..' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0001-VISUALIZACAO
+              MOVE VIAK0003-VISUALIZACAO   TO WS-PGMID-SUFIX
+           END-IF.
+           IF VIAL0001-CRIACAO
+              MOVE VIAK0003-CRIACAO        TO WS-PGMID-SUFIX
+           END-IF.
+           IF VIAL0001-MODIFICACAO
+              MOVE VIAK0003-MODIFICACAO    TO WS-PGMID-SUFIX
+           END-IF.
+           IF VIAL0001-ANULACAO
+              MOVE VIAK0003-ANULACAO       TO WS-PGMID-SUFIX
+           END-IF.
+           IF VIAL0001-CONSULTALISTA
+              MOVE VIAK0003-CONSULTALISTA  TO WS-PGMID-SUFIX
+           END-IF.
+           IF VIAL0001-PEDIDO-SIM
+              MOVE VIAK0003-VISUALIZACAO   TO WS-PGMID-SUFIX
+           END-IF.
+      * SO EXECUTA O WORKFLOW
+           IF VIAL0001-WORKFLOW
+              MOVE VIAK0003-WORKFLOW       TO WS-PGMID-SUFIX
+           END-IF.
+      * SO EXECUTA O WORKFLOW
+           IF VIAL0001-OBTEM
+              MOVE VIAK0003-OBTEM          TO WS-PGMID-SUFIX
+           END-IF.
+
+           MOVE VIAD0100-NPROGRAM          TO WS-PGMID-CCT.
+
+           MOVE WS-PGMID                   TO VIAL0001-PGMID.
+
+           MOVE WS-PGMID                    TO WS-PGMID-ORIG.
+
+       1059-DEFINE-PGMID-EXIT.
+           EXIT.
+FL    ******************************************************************
+      *                      1060-OBT-DEFAULT                   *
+      ******************************************************************
+       1060-OBT-DEFAULT.
+      *
+           MOVE '1060-OBT-DEFAULT' TO  VIAL0015-CALLER-ID
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT
+      *
+SM    * GVALOR1 = IDIOMA GVALOR2 = APLICACAO GVALOR3 = IDEBUG
+SM    * NECESSITAMOS DESTE ACESSO PARA OBTER SEMPRE O GVALOR2
+SM    * QUE E UTILIZADO NO PARAGRAFO 1015-TRATA-DATAS
+           INITIALIZE ARCL2205-DATA.
+           MOVE 'DFT'                      TO ARCL2205-CPARAM
+           MOVE 'VI'                       TO ARCL2205-CAPLIC
+           PERFORM CALL-ARM2206
+              THRU CALL-ARM2206-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF VIAL0001-IDIOMA EQUAL SPACES
+                 MOVE ARCL2205-GVALOR1     TO VIAL0001-IDIOMA
+              END-IF
+              IF ARCL2205-GVALOR3 EQUAL 'N'
+                 MOVE ARCL2205-GVALOR3     TO VIAL0001-I-DEBUG
+              ELSE
+                 SET VIAL0001-DEBUG-SIM    TO TRUE
+              END-IF
+           END-IF.
+
+           MOVE 'DEFAULT'                  TO VIAL0015-CALLER-ID
+           MOVE 'ARCL2205-GVALOR1'         TO VIAL0015-CAMPO-NM(1)
+           MOVE  ARCL2205-GVALOR1          TO VIAL0015-CAMPO-VLR(1)
+           MOVE 'ARCL2205-GVALOR2 '        TO VIAL0015-CAMPO-NM(2)
+           MOVE  ARCL2205-GVALOR2          TO VIAL0015-CAMPO-VLR(2)
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT.
+      *
+       1060-OBT-DEFAULT-EXIT.
+           EXIT.
+      *
+pra   ******************************************************************
+      *                       1070-OBT-IDIOMA-USER                     *
+      ******************************************************************
+       1070-OBT-IDIOMA-USER.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1070-OBT-IDIOMA-USER   ' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-CUTILIZA-I'      TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0001-CUTILIZA-I       TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-CUTILIZA-I  TO ARCD0100-GUSERNAME.
+      *
+           EXEC SQL
+              SELECT CLINGUA
+                   , CEMPRESA
+                INTO :ARCD0100-CLINGUA
+                   , :ARCD0100-CEMPRESA
+                FROM ARVT0100_UTILIZADOR
+               WHERE UPPER( GUSERNAME )  =  UPPER( :ARCD0100-GUSERNAME )
+                WITH UR
+           END-EXEC.
+      *
+           MOVE CON-ARVT0100               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1070-OBT-IDIOMA-USER   ' TO VIAL0015-CALLER-ID
+              MOVE 'ARCD0100-CLINGUA       ' TO VIAL0015-CAMPO-NM(1)
+              MOVE ARCD0100-CLINGUA          TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0002-SQLCODE'        TO VIAL0015-CAMPO-NM(2)
+              MOVE VIAL0002-SQLCODE          TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE ARCD0100-CLINGUA     TO VIAL0001-IDIOMA
+                 MOVE ARCD0100-CEMPRESA    TO VIAL0001-CUSER-EXTRN
+              ELSE
+                 MOVE SPACES               TO VIAL0001-IDIOMA
+              END-IF
+           ELSE
+              SET  VIAL0002-SEM-ERROS      TO TRUE
+           END-IF.
+      *
+       1079-OBT-IDIOMA-USER-EXIT.
+           EXIT.
+      *
+      ******************************************************************
+      *                       2000-PROC-PROGRAMA                       *
+      *            VALIDACOES BASICAS AO MENU DE FUNCAO                *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA.' TO VIAL0015-CALLER-ID
+CG            MOVE 'WS-PGMID '           TO VIAL0015-CAMPO-NM(1)
+CG            MOVE WS-PGMID              TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+JF    * 2019-10-31: Adicionar flip/flop
+JF         IF VIAL0001-IACTIVA-0
+              PERFORM 2010-SEQ-CENTRAL-0
+                 THRU 2019-SEQ-CENTRAL-0-EXIT
+JF         ELSE
+JF            PERFORM 2010-SEQ-CENTRAL-1
+JF               THRU 2019-SEQ-CENTRAL-1-EXIT
+JF         END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF VIAL0001-PEDIDO-NAO
+              OR VIAL0001-CRIACAO
+                 IF VIAD0100-ICTCENTR EQUAL VIAK0002-IND-ACTIVO
+                    MOVE VIAK0003-VAL-EXEC  TO WS-PGMID-SUFIX
+                    PERFORM 2020-VAL-TAB-CENT
+                       THRU 2020-VAL-TAB-CENT-EXIT
+                 END-IF
+              END-IF
+           END-IF.
+
+           MOVE WS-PROGNAME                 TO VIAL0015-PROGRAMA.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-EXECUTA-FUNCAO THRU
+                      2029-EXECUTA-FUNCAO-EXIT
+           END-IF.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA.' TO VIAL0015-CALLER-ID
+              MOVE 'VIAD0100-IDFATURA  ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAD0100-IDFATURA    TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0002-IND-ERROS ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  VIAL0002-IND-ERROS   TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL0001-CACCAO    ' TO VIAL0015-CAMPO-NM(3)
+              MOVE  VIAL0001-CACCAO      TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'VIAD0100-ICTCENTR'   TO VIAL0015-CAMPO-NM (4)
+              MOVE  VIAD0100-ICTCENTR    TO VIAL0015-CAMPO-VLR(4)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE WS-PROGNAME              TO VIAL0015-PROGRAMA
+      *
+           IF VIAL0002-SEM-ERROS
+              IF VIAD0100-ICTCENTR EQUAL VIAK0002-IND-ACTIVO
+                 MOVE VIAK0003-VAL-PED      TO WS-PGMID-SUFIX
+                 PERFORM 2020-VAL-TAB-CENT
+                    THRU 2020-VAL-TAB-CENT-EXIT
+              END-IF
+           ELSE
+              IF VIAL0002-ERROS-FUNCAO
+              OR VIAL0002-FIM-CONSULTA
+              OR VIAL0002-ERROS-INF
+                 IF VIAD0100-ICTCENTR EQUAL VIAK0002-IND-ACTIVO
+                    MOVE VIAL0002-COMMAREA  TO WS-VIAL0002
+                    SET VIAL0002-SEM-ERROS  TO TRUE
+                    MOVE VIAK0003-VAL-PED   TO WS-PGMID-SUFIX
+                    PERFORM 2020-VAL-TAB-CENT
+                       THRU 2020-VAL-TAB-CENT-EXIT
+                    MOVE WS-VIAL0002        TO VIAL0002-COMMAREA
+                 END-IF
+              END-IF
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA.' TO VIAL0015-CALLER-ID
+              MOVE 'VIAD0100-IDFATURA  ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAD0100-IDFATURA    TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0002-IND-ERROS ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  VIAL0002-IND-ERROS   TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL0001-CACCAO    ' TO VIAL0015-CAMPO-NM(3)
+              MOVE  VIAL0001-CACCAO      TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'VIAD0100-ICTCENTR'   TO VIAL0015-CAMPO-NM (4)
+              MOVE  VIAD0100-ICTCENTR    TO VIAL0015-CAMPO-VLR(4)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+SM    * TRATA PROGRAMA DE WORKFLOW DEPOIS DO DE FUNCAO
+           IF VIAL0002-SEM-ERROS AND
+              VIAL0001-ORIGEM(3:) EQUAL VIAK0002-WORKFLOW
+              MOVE VIAK0003-WORKFLOW       TO WS-PGMID-SUFIX
+              PERFORM 2020-EXECUTA-FUNCAO
+                 THRU 2029-EXECUTA-FUNCAO-EXIT
+           END-IF.
+
+      * Se indicador de fecturacao a SIM na CCT, faz o registo
+           IF VIAL0002-SEM-ERROS AND
+              VIAD0100-IDFATURA EQUAL 'S' AND
+              WS-PGMID-SUFIX NOT EQUAL VIAK0003-VISUALIZACAO AND
+              WS-PGMID-SUFIX NOT EQUAL VIAK0003-CONSULTALISTA
+              PERFORM 2030-REGISTA-FACTURA
+                 THRU 2039-REGISTA-FACTURA-EXIT
+           END-IF.
+      *
+***PRA     IF VIAL0001-DEBUG-SIM
+***PRA        MOVE '2000-PROC-PROGRAMA.'  TO VIAL0015-CALLER-ID
+***PRA        MOVE 'VIAL0001-OCORRENCIAS' TO VIAL0015-CAMPO-NM (3)
+***PRA        MOVE VIAL0001-OCORRENCIAS   TO VIAL0015-CAMPO-VLR(3)
+***PRA        PERFORM VIAP0015-TRATA-DEBUG
+***PRA           THRU VIAP0015-TRATA-DEBUG-EXIT
+***PRA     END-IF.
+***PRA*
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       2010-SEQ-CENTRAL-0                       *
+      *            SEQUENCIA CENTRALMENTE POR DATA / UTILIZADOR        *
+      ******************************************************************
+       2010-SEQ-CENTRAL-0.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2010-SEQ-CENTRAL-0'     TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS '    TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0002-IND-ERROS      TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-CUTILIZA-I'    TO VIAL0015-CAMPO-NM (2)
+              MOVE  VIAL0001-CUTILIZA-I     TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL0001-DATA-PROCESSO' TO VIAL0015-CAMPO-NM (3)
+              MOVE VIAL0001-DATA-PROCESSO-I TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ZEROES                      TO VIAD0200-NRSEQO.
+           MOVE VIAL0001-CUTILIZA-I         TO VIAL0001-CUTILIZA-O
+                                               VIAD0200-CUTILIZAO.
+           MOVE VIAL0001-DATA-PROCESSO-I    TO VIAL0001-DATA-PROCESSO-O
+                                               VIAD0200-DPROCO.
+           EXEC SQL
+                SELECT MAX(NRSEQO)
+                  INTO :VIAD0200-NRSEQO    :IND-NRSEQO
+                  FROM VIAT0200_BFLOG
+                 WHERE CUTILIZAO = :VIAD0200-CUTILIZAO
+                   AND DPROCO    = :VIAD0200-DPROCO
+                  WITH UR
+           END-EXEC.
+
+           MOVE CON-VIAT0200                TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '****-PROGRAMA-EXECUCAO' TO VIAL0015-CALLER-ID
+              MOVE 'WS-PGMID              ' TO VIAL0015-CAMPO-NM (1)
+              MOVE  WS-PGMID                TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-PEDIDO-DADOS'  TO VIAL0015-CAMPO-NM (2)
+              MOVE  VIAL0001-PEDIDO-DADOS   TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL0001-NR-SEQUENCIA-O'
+                                            TO VIAL0015-CAMPO-NM (3)
+              MOVE  VIAL0001-NR-SEQUENCIA-O TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'VIAL0002-SQLCODE'       TO VIAL0015-CAMPO-NM (4)
+              MOVE  VIAL0002-SQLCODE        TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'VIAD0200-NRSEQO '       TO VIAL0015-CAMPO-NM (5)
+              MOVE  VIAD0200-NRSEQO         TO VIAL0015-CAMPO-VLR(5)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 ADD 1                      TO VIAD0200-NRSEQO
+                 MOVE VIAD0200-NRSEQO       TO VIAL0001-NR-SEQUENCIA-O
+              ELSE
+                 IF DB2-NOTFND
+                    MOVE 1                  TO VIAD0200-NRSEQO
+                    MOVE VIAD0200-NRSEQO    TO VIAL0001-NR-SEQUENCIA-O
+                 ELSE
+                    MOVE VIAK0002-ABEND-DB2 TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2  TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           END-IF.
+
+       2019-SEQ-CENTRAL-0-EXIT.
+           EXIT.
+JF    ******************************************************************
+JF    *                       2010-SEQ-CENTRAL-1                       *
+JF    *            SEQUENCIA CENTRALMENTE POR DATA / UTILIZADOR        *
+JF    ******************************************************************
+JF     2010-SEQ-CENTRAL-1.
+JF
+JF         IF VIAL0001-DEBUG-SIM
+JF            MOVE '2010-SEQ-CENTRAL-1'     TO VIAL0015-CALLER-ID
+JF            MOVE 'VIAL0002-IND-ERROS '    TO VIAL0015-CAMPO-NM (1)
+JF            MOVE  VIAL0002-IND-ERROS      TO VIAL0015-CAMPO-VLR(1)
+JF            MOVE 'VIAL0001-CUTILIZA-I'    TO VIAL0015-CAMPO-NM (2)
+JF            MOVE  VIAL0001-CUTILIZA-I     TO VIAL0015-CAMPO-VLR(2)
+JF            MOVE 'VIAL0001-DATA-PROCESSO' TO VIAL0015-CAMPO-NM (3)
+JF            MOVE  VIAL0001-DATA-PROCESSO-I
+JF                                          TO VIAL0015-CAMPO-VLR(3)
+JF            PERFORM VIAP0015-TRATA-DEBUG
+JF               THRU VIAP0015-TRATA-DEBUG-EXIT
+JF         END-IF.
+JF    *
+JF         MOVE ZEROES                      TO VIAD1200-NRSEQO.
+JF         MOVE VIAL0001-CUTILIZA-I         TO VIAL0001-CUTILIZA-O
+JF                                             VIAD1200-CUTILIZAO.
+JF         MOVE VIAL0001-DATA-PROCESSO-I    TO VIAL0001-DATA-PROCESSO-O
+JF                                             VIAD1200-DPROCO.
+JF         EXEC SQL
+JF              SELECT MAX(NRSEQO)
+JF                INTO :VIAD1200-NRSEQO    :IND-NRSEQO
+JF                FROM VIAT1200_BFLOGB
+JF               WHERE CUTILIZAO = :VIAD1200-CUTILIZAO
+JF                 AND DPROCO    = :VIAD1200-DPROCO
+JF                WITH UR
+JF         END-EXEC.
+JF
+JF         MOVE CON-VIAT1200                TO VIAL0002-TABLE-NAME.
+JF
+JF         PERFORM 9020-DB2CHECK
+JF            THRU 9029-DB2CHECK-EXIT.
+JF
+JF         IF VIAL0001-DEBUG-SIM
+JF            MOVE '****-PROGRAMA-EXECUCAO' TO VIAL0015-CALLER-ID
+JF            MOVE 'WS-PGMID              ' TO VIAL0015-CAMPO-NM (1)
+JF            MOVE  WS-PGMID                TO VIAL0015-CAMPO-VLR(1)
+JF            MOVE 'VIAL0001-PEDIDO-DADOS'  TO VIAL0015-CAMPO-NM (2)
+JF            MOVE  VIAL0001-PEDIDO-DADOS   TO VIAL0015-CAMPO-VLR(2)
+JF            MOVE 'VIAL0001-NR-SEQUENCIA-O'
+JF                                          TO VIAL0015-CAMPO-NM (3)
+JF            MOVE  VIAL0001-NR-SEQUENCIA-O TO VIAL0015-CAMPO-VLR(3)
+JF            MOVE 'VIAL0002-SQLCODE'       TO VIAL0015-CAMPO-NM (4)
+JF            MOVE  VIAL0002-SQLCODE        TO VIAL0015-CAMPO-VLR(4)
+JF            MOVE 'VIAD1200-NRSEQO '       TO VIAL0015-CAMPO-NM (5)
+JF            MOVE  VIAD1200-NRSEQO         TO VIAL0015-CAMPO-VLR(5)
+JF            PERFORM VIAP0015-TRATA-DEBUG
+JF               THRU VIAP0015-TRATA-DEBUG-EXIT
+JF         END-IF.
+JF
+JF         IF VIAL0002-SEM-ERROS
+JF            IF DB2-OK
+JF               ADD 1                      TO VIAD1200-NRSEQO
+JF               MOVE VIAD1200-NRSEQO       TO VIAL0001-NR-SEQUENCIA-O
+JF            ELSE
+JF               IF DB2-NOTFND
+JF                  MOVE 1                  TO VIAD1200-NRSEQO
+JF                  MOVE VIAD1200-NRSEQO    TO VIAL0001-NR-SEQUENCIA-O
+JF               ELSE
+JF                  MOVE VIAK0002-ABEND-DB2 TO VIAL0002-IND-ERROS
+JF                  MOVE VIAK0001-ERRO-DB2  TO VIAL0002-COD-ERRO-GRAVE
+JF               END-IF
+JF            END-IF
+JF         END-IF.
+JF
+JF     2019-SEQ-CENTRAL-1-EXIT.
+JF         EXIT.
+      ******************************************************************
+      *                       2020-EXECUTA-FUNCAO                      *
+      *            EXECUTA FUNCAO ASSOCIADA A TRANSACCAO/ACCAO         *
+      ******************************************************************
+       2020-EXECUTA-FUNCAO.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2020-EXECUTA-FUNCAO.' TO VIAL0015-CALLER-ID
+              MOVE 'WS-PGMID               ' TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-PGMID                  TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-MENSAGEM-INPUT' TO VIAL0015-CAMPO-NM(2)
+              MOVE VIAL0001-MENSAGEM-INPUT   TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           COPY VIAP0006.
+      *
+
+JF         MOVE 'AQUI IN            ' TO VIAL0015-CALLER-ID
+JF         MOVE VIAL0001-MENSAGEM-INPUT TO VIAL0015-CAMPOS-CHAVE
+JF         PERFORM VIAP0015-TRATA-DEBUG
+JF            THRU VIAP0015-TRATA-DEBUG-EXIT
+JF
+
+RM         MOVE 'AQUI OUT           ' TO VIAL0015-CALLER-ID
+RM         MOVE VIAL0001-MENSAGEM-OUTPUT TO VIAL0015-CAMPOS-CHAVE
+RM         PERFORM VIAP0015-TRATA-DEBUG
+RM            THRU VIAP0015-TRATA-DEBUG-EXIT
+
+JF         MOVE 'DEPOIS DO PROGRAMA  ' TO VIAL0015-CALLER-ID
+           MOVE 'VIAL0002-IND-ERROS '      TO VIAL0015-CAMPO-NM (1)
+           MOVE  VIAL0002-IND-ERROS        TO VIAL0015-CAMPO-VLR(1)
+           MOVE 'VIAL0002-COD-ERRO-GRAVE'  TO VIAL0015-CAMPO-NM (2)
+           MOVE  VIAL0002-COD-ERRO-GRAVE   TO VIAL0015-CAMPO-VLR(2)
+***PRA     MOVE 'VIAL0001-OCORRENCIAS'     TO VIAL0015-CAMPO-NM (3)
+***PRA     MOVE VIAL0001-OCORRENCIAS       TO VIAL0015-CAMPO-VLR(3)
+JF         PERFORM VIAP0015-TRATA-DEBUG
+JF            THRU VIAP0015-TRATA-DEBUG-EXIT.
+
+       2029-EXECUTA-FUNCAO-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       2020-VAL-TAB-CENT                        *
+      *         CHAMA OS PROGRAMAS DE VALIDACAO DAS TABELAS GERAIS     *
+      *         CENTRAIS PARA AS TRANSACCOES QUE TEM ESSA OPCAO        *
+      *         ACTIVADA NA CCT                                        *
+      ******************************************************************
+       2020-VAL-TAB-CENT.
+
+      *    IF VIAL0015-DEBUG-SIM
+              MOVE '2020-VAL-TAB-CENT  .' TO VIAL0015-CALLER-ID
+              MOVE 'WS-PGMID               ' TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-PGMID                  TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-PEDIDO-DADOS  ' TO VIAL0015-CAMPO-NM(2)
+              MOVE VIAL0001-PEDIDO-DADOS     TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+      *    END-IF.
+
+      *    IF VIAL0015-DEBUG-SIM
+              MOVE '****-PROGRAMA-VALIDACAO-***' TO VIAL0015-CALLER-ID
+              MOVE 'WS-PGMID               '   TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-PGMID                    TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-CALLERID      '   TO VIAL0015-CAMPO-NM(2)
+              MOVE VIAL0001-CALLERID           TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+      *    END-IF.
+
+           COPY VIAP0006.
+      *
+           IF VIAL0002-SEM-ERROS
+             MOVE WS-PGMID-ORIG            TO WS-PGMID
+           END-IF.
+
+       2020-VAL-TAB-CENT-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       2030-REGISTA-FACTURA                     *
+      *            REGISTA LOG DE FACTURACAO                           *
+      ******************************************************************
+       2030-REGISTA-FACTURA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2030-REGISTA-FACTURA'  TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-CAPLIC'       TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0001-CAPLIC        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-PGMID'              TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-PGMID               TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+              SET :WS-HTIMEST = CURRENT_TIMESTAMP
+           END-EXEC
+PLL   *
+           MOVE WS-HTIMEST                 TO WS-TS-X26
+           PERFORM 2100-CALCULO-TIMEZONE
+              THRU 2100-CALCULO-TIMEZONE-EXIT.
+           MOVE WS-TS-X26                  TO WS-HTIMEST
+           MOVE WS-TS-X26                  TO VIAL0001-DATA-PROCESSO-I
+      *
+           INITIALIZE VICL0001-COMMAREA.
+      *
+           MOVE VIAL0001-CAPLIC            TO VICL0001-CAPLIC
+           MOVE WS-PGMID                   TO VICL0001-PROGNAME
+           STRING VIAL0001-CUTILIZA-I     DELIMITED BY SPACES
+                  ' '                     DELIMITED BY SIZE
+                  VIAL0001-NR-SEQUENCIA-I DELIMITED BY SPACES
+                  WS-HTIMEST              DELIMITED BY SPACES
+             INTO VICL0001-CIDSESSAO
+      *
+           CALL VICL0001-NM-ROTINA USING ETCL0002-COMMAREA
+                                         VICL0001-COMMAREA.
+      *
+           IF NOT ETCL0002-SEM-ERROS
+              MOVE ETCL0002-IND-ERROS   TO VIAL0002-IND-ERROS
+              MOVE ETCL0002-NR-ERRO     TO VIAL0002-COD-ERRO-GRAVE
+              MOVE ETCL0002-CAPLIC-ERRO TO VIAL0002-CAPLIC-ERRO
+           END-IF.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'DEPOIS DA VIR0001'     TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-IND-ERROS'    TO VIAL0015-CAMPO-NM(1)
+              MOVE  ETCL0002-IND-ERROS     TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ETCL0002-NR-ERRO'      TO VIAL0015-CAMPO-NM(2)
+              MOVE  ETCL0002-NR-ERRO       TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'ETCL0002-CAPLIC-ERRO'  TO VIAL0015-CAMPO-NM(3)
+              MOVE  ETCL0002-CAPLIC-ERRO   TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       2039-REGISTA-FACTURA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                  2100-CALCULO-TIMEZONE                         *
+      ******************************************************************
+       2100-CALCULO-TIMEZONE.
+
+           MOVE '2100-CALCULO-TIMEZONE   ' TO VIAL0015-CALLER-ID.
+           IF VIAL0001-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF WS-TS-X26 EQUAL SPACES
+              EXEC SQL
+                   SET :WS-TS-X26 = CURRENT_TIMESTAMP
+              END-EXEC
+           END-IF.
+
+      * TIMEZONE DA APLICACAO (SE NAO EXISTIR CONSIDERA *SYS)
+           INITIALIZE ARCL2205-DATA.
+           MOVE VIAK0002-PARAM-TIMEZONE TO ARCL2205-CPARAM
+KYZ        MOVE VIAL0001-ORIGEM(1:2)    TO ARCL2205-CAPLIC
+           PERFORM CALL-ARM2206
+              THRU CALL-ARM2206-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              CONTINUE
+           ELSE
+              MOVE VIAK0002-SYS-TIMEZONE
+                TO ARCL2205-GVALOR1
+           END-IF.
+
+      ******
+      * Converte do Timezone da aplicacao para o do sistema
+      ******
+           IF ARCL2205-GVALOR1 NOT EQUAL VIAK0002-SYS-TIMEZONE
+              INITIALIZE VIAL1010-COMMAREA
+              MOVE WS-TS-X26             TO VIAL1010-TSINPUT
+              MOVE ARCL2205-GVALOR1      TO VIAL1010-TIMEZONEIN
+              MOVE VIAK0002-SYS-TIMEZONE TO VIAL1010-TIMEZONEOUT
+
+              CALL VIAL1010-NM-ROTINA  USING VIAL1010-COMMAREA ,
+                                             ETCL0002-COMMAREA
+                ON EXCEPTION
+                   SET  ETCL0002-ERROS-ARQ   TO TRUE
+                   MOVE VIAK0001-PROG-NOTFND TO ETCL0002-NR-ERRO
+                   MOVE ETCL0002-IND-ERROS   TO ETCL0002-CAPLIC-ERRO
+              END-CALL
+
+              IF ETCL0002-SEM-ERROS
+                 MOVE VIAL1010-TSOUTPUT     TO WS-TS-X26
+              END-IF
+           END-IF.
+KYY
+           MOVE 'POS-TIMEZONE        '  TO  VIAL0015-CALLER-ID
+           MOVE 'WS-TS-X26       '      TO VIAL0015-CAMPO-NM(1)
+           MOVE WS-TS-X26               TO VIAL0015-CAMPO-VLR(1)
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT.
+
+       2100-CALCULO-TIMEZONE-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       3000-TRATA-ERROS                         *
+      ******************************************************************
+       3000-TRATA-ERROS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-TRATA-ERROS.' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS     ' TO VIAL0015-CAMPO-NM (1)
+              MOVE VIAL0002-IND-ERROS        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0002-COD-ERRO-GRAVE' TO VIAL0015-CAMPO-NM (2)
+              MOVE VIAL0002-COD-ERRO-GRAVE   TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL0002-CAPLIC-ERRO   ' TO VIAL0015-CAMPO-NM (3)
+              MOVE VIAL0002-CAPLIC-ERRO      TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'VIAL0001-I-DEBUG       ' TO VIAL0015-CAMPO-NM (4)
+              MOVE VIAL0001-I-DEBUG          TO VIAL0015-CAMPO-VLR(4)
+***PRA        MOVE 'VIAL0001-OCORRENCIAS'    TO VIAL0015-CAMPO-NM (5)
+***PRA        MOVE VIAL0001-OCORRENCIAS      TO VIAL0015-CAMPO-VLR(5)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+      *
+           IF SW-PROC-INI-OK
+             IF VIAD0100-IPROCFIMEXT EQUAL VIAK0002-IND-ACTIVO
+                IF (VIAL0002-CAPLIC-ERRO EQUAL VIAK0002-APLIC-AR AND
+                    VIAL0002-COD-ERRO-GRAVE EQUAL
+                                         VIAK0001-ERRO-LOGIN-EXTRN) OR
+                   (VIAL0002-CAPLIC-ERRO EQUAL VIAK0002-APLIC-AT AND
+                    VIAL0002-COD-ERRO-GRAVE EQUAL
+                                         VIAK0001-ERRO-LICENCA-BANKA)
+                   CONTINUE
+                ELSE
+                   PERFORM 4010-PROC-FIM-EXT
+                      THRU 4019-PROC-FIM-EXT-EXIT
+                END-IF
+             END-IF
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+           OR VIAL0002-FIM-CONSULTA
+           OR VIAL0002-ERROS-INF
+JF    * 2019-10-31: Adicionar flip/flop
+JF            IF VIAL0001-IACTIVA-0
+                 PERFORM 3100-ESCREVE-LOG-0
+                    THRU 3199-ESCREVE-LOG-0-EXIT
+
+                 IF VIAL0001-LENGTH-MSG > 1700
+                    PERFORM 3110-ESCREVE-LOGEXT-0
+                       THRU 3119-ESCREVE-LOGEXT-0-EXIT
+                 END-IF
+JF            ELSE
+JF               PERFORM 3100-ESCREVE-LOG-1
+JF                  THRU 3199-ESCREVE-LOG-1-EXIT
+JF
+JF               IF VIAL0001-LENGTH-MSG > 1700
+JF                  PERFORM 3110-ESCREVE-LOGEXT-1
+JF                     THRU 3119-ESCREVE-LOGEXT-1-EXIT
+JF               END-IF
+JF            END-IF
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+           OR VIAL0002-FIM-CONSULTA
+           OR VIAL0002-ERROS-INF
+              PERFORM 3010-COMMIT
+                 THRU 3019-COMMIT-EXIT
+           ELSE
+              PERFORM 3020-ROLLBACK
+                 THRU 3029-ROLLBACK-EXIT
+
+JF    * 2019-10-31: Adicionar flip/flop
+JF            IF VIAL0001-IACTIVA-0
+                 PERFORM 3200-LOG-ERROS-0
+                    THRU 3299-LOG-ERROS-0-EXIT
+JF            ELSE
+JF               PERFORM 3200-LOG-ERROS-1
+JF                  THRU 3299-LOG-ERROS-1-EXIT
+JF            END-IF
+
+              PERFORM 3010-COMMIT
+                 THRU 3019-COMMIT-EXIT
+           END-IF
+           .
+
+       3099-TRATA-ERROS-EXIT.
+           EXIT.
+      ******************************************************************
+      *               3010-COMMIT                                      *
+      ******************************************************************
+       3010-COMMIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3010-COMMIT.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL INCLUDE VIAP0005 END-EXEC.
+           .
+
+       3019-COMMIT-EXIT.
+           EXIT.
+      ******************************************************************
+      *               3020-ROLLBACK                                    *
+      ******************************************************************
+       3020-ROLLBACK.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3020-ROLLBACK.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL INCLUDE VIAP0007 END-EXEC.
+           .
+
+       3029-ROLLBACK-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       3100-ESCREVE-LOG-0                       *
+      ******************************************************************
+       3100-ESCREVE-LOG-0.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3100-ESCREVE-LOG-0'     TO VIAL0015-CALLER-ID
+              MOVE 'WS-TS-X26'              TO VIAL0015-CAMPO-NM (1)
+              MOVE  WS-TS-X26               TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAD0200-CUTILIZAO'     TO VIAL0015-CAMPO-NM (2)
+              MOVE  VIAD0200-CUTILIZAO      TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAD0200-DPROCO'        TO VIAL0015-CAMPO-NM (3)
+              MOVE  VIAD0200-DPROCO         TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'VIAD0200-NRSEQO'        TO VIAL0015-CAMPO-NM (4)
+              MOVE  VIAD0200-NRSEQO         TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'VIAL0001-CUTILIZA-I'    TO VIAL0015-CAMPO-NM (5)
+              MOVE  VIAL0001-CUTILIZA-I     TO VIAL0015-CAMPO-VLR(5)
+              MOVE 'VIAL0001-DATA-PROCESSO' TO VIAL0015-CAMPO-NM (6)
+              MOVE  VIAL0001-DATA-PROCESSO-I
+                                            TO VIAL0015-CAMPO-VLR(6)
+              MOVE 'VIAL0001-NR-SEQUENCIA-' TO VIAL0015-CAMPO-NM (7)
+              MOVE  VIAL0001-NR-SEQUENCIA-I TO VIAL0015-CAMPO-VLR(7)
+***PRA        MOVE 'VIAL0001-OCORRENCIAS'   TO VIAL0015-CAMPO-NM (8)
+***PRA        MOVE  VIAL0001-OCORRENCIAS    TO VIAL0015-CAMPO-VLR(8)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE                       DCLVIAD0200.
+           MOVE VIAL0002-IND-ERROS          TO VIAL0001-IND-ERROS.
+           MOVE VIAL0002-COD-ERRO-GRAVE     TO VIAL0001-NR-ERRO.
+           MOVE VIAL0002-TABLE-NAME         TO VIAL0001-CONTEXT-1.
+           MOVE VIAL0002-SQLCODE            TO WS-SQLCODE.
+           MOVE WS-SQLCODE                  TO VIAL0001-CONTEXT-2.
+
+           MOVE VIAL0001-CTRANSACCAO        TO VIAD0200-CTRAN.
+           MOVE VIAL0001-ORIGEM             TO VIAD0200-ORIGEM.
+           MOVE VIAL0001-CALLERID           TO VIAD0200-CALLERID.
+           MOVE VIAL0001-CAPLIC             TO VIAD0200-CAPLIC.
+           MOVE VIAL0001-COPCAO             TO VIAD0200-COPCAO.
+           MOVE VIAL0001-CACCAO             TO VIAD0200-CACCAO.
+           MOVE VIAL0001-CUTILIZA-I         TO VIAD0200-CUTILIZAI.
+           MOVE VIAL0001-DATA-PROCESSO-I    TO VIAD0200-DPROCI.
+           MOVE VIAL0001-NR-SEQUENCIA-I     TO VIAD0200-NRSEQI.
+           MOVE VIAL0001-PEDIDO-DADOS       TO VIAD0200-IPEDDADOS.
+           MOVE VIAL0001-SIMULACAO          TO VIAD0200-ISIMUL.
+           MOVE VIAL0001-XLIVRE1            TO VIAD0200-XLIVRE1.
+           MOVE VIAL0001-MENSAGEM-INPUT     TO VIAD0200-XMSGIN-TEXT.
+           MOVE LENGTH OF VIAL0001-MENSAGEM-INPUT
+                                            TO VIAD0200-XMSGIN-LEN.
+           MOVE VIAL0001-CUTILIZA-O         TO VIAD0200-CUTILIZAO.
+           MOVE VIAL0001-DATA-PROCESSO-O    TO VIAD0200-DPROCO.
+           MOVE VIAL0001-NR-SEQUENCIA-O     TO VIAD0200-NRSEQO.
+           MOVE VIAL0001-IND-ERROS          TO VIAD0200-INDERROS.
+           MOVE VIAL0001-NR-ERRO            TO VIAD0200-NRERRO.
+           MOVE VIAL0001-CONTEXT-1          TO VIAD0200-CONTEXT1.
+           MOVE VIAL0001-CONTEXT-2          TO VIAD0200-CONTEXT2.
+           MOVE VIAL0001-OCORRENCIAS        TO VIAD0200-NOCCURS.
+           MOVE VIAL0001-LENGTH-MSG         TO VIAD0200-LENGTHMSG.
+           MOVE VIAL0001-NR-CAMPOS          TO VIAD0200-NRCAMPOS.
+           MOVE VIAL0001-XLIVRE2            TO VIAD0200-XLIVRE2.
+           MOVE VIAL0001-MENSAGEM-OUTPUT    TO VIAD0200-XMSGOUT-TEXT.
+           MOVE LENGTH OF VIAL0001-MENSAGEM-OUTPUT
+                                            TO VIAD0200-XMSGOUT-LEN.
+
+           EXEC SQL
+                INCLUDE VIAP0025
+           END-EXEC.
+
+           MOVE CON-VIAT0200                TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ABEND-DB2    TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2     TO VIAL0002-COD-ERRO-GRAVE
+              END-IF
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'depois'                 TO VIAL0015-CALLER-ID
+              MOVE 'VIAW0005-SQLCODE'       TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAW0005-SQLCODE        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0002-IND-ERROS'     TO VIAL0015-CAMPO-NM (2)
+              MOVE  VIAL0002-IND-ERROS      TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       3199-ESCREVE-LOG-0-EXIT.
+           EXIT.
+JF    ******************************************************************
+JF    *                       3100-ESCREVE-LOG-1                       *
+JF    ******************************************************************
+JF     3100-ESCREVE-LOG-1.
+JF
+JF         IF VIAL0001-DEBUG-SIM
+JF            MOVE '3100-ESCREVE-LOG-1'     TO VIAL0015-CALLER-ID
+JF            MOVE 'WS-TS-X26'              TO VIAL0015-CAMPO-NM (1)
+JF            MOVE  WS-TS-X26               TO VIAL0015-CAMPO-VLR(1)
+JF            MOVE 'VIAD1200-CUTILIZAO'     TO VIAL0015-CAMPO-NM (2)
+JF            MOVE  VIAD1200-CUTILIZAO      TO VIAL0015-CAMPO-VLR(2)
+JF            MOVE 'VIAD1200-DPROCO'        TO VIAL0015-CAMPO-NM (3)
+JF            MOVE  VIAD1200-DPROCO         TO VIAL0015-CAMPO-VLR(3)
+JF            MOVE 'VIAD1200-NRSEQO'        TO VIAL0015-CAMPO-NM (4)
+JF            MOVE  VIAD1200-NRSEQO         TO VIAL0015-CAMPO-VLR(4)
+JF            MOVE 'VIAL0001-CUTILIZA-I'    TO VIAL0015-CAMPO-NM (5)
+JF            MOVE  VIAL0001-CUTILIZA-I     TO VIAL0015-CAMPO-VLR(5)
+JF            MOVE 'VIAL0001-DATA-PROCESSO' TO VIAL0015-CAMPO-NM (6)
+JF            MOVE  VIAL0001-DATA-PROCESSO-I
+JF                                          TO VIAL0015-CAMPO-VLR(6)
+JF            MOVE 'VIAL0001-NR-SEQUENCIA-' TO VIAL0015-CAMPO-NM (7)
+JF            MOVE  VIAL0001-NR-SEQUENCIA-I TO VIAL0015-CAMPO-VLR(7)
+JF*PRA        MOVE 'VIAL0001-OCORRENCIAS'   TO VIAL0015-CAMPO-NM (8)
+JF*PRA        MOVE  VIAL0001-OCORRENCIAS    TO VIAL0015-CAMPO-VLR(8)
+JF            PERFORM VIAP0015-TRATA-DEBUG
+JF               THRU VIAP0015-TRATA-DEBUG-EXIT
+JF         END-IF.
+JF
+JF         INITIALIZE                       DCLVIAD1200.
+JF         MOVE VIAL0002-IND-ERROS          TO VIAL0001-IND-ERROS.
+JF         MOVE VIAL0002-COD-ERRO-GRAVE     TO VIAL0001-NR-ERRO.
+JF         MOVE VIAL0002-TABLE-NAME         TO VIAL0001-CONTEXT-1.
+JF         MOVE VIAL0002-SQLCODE            TO WS-SQLCODE.
+JF         MOVE WS-SQLCODE                  TO VIAL0001-CONTEXT-2.
+JF
+JF         MOVE VIAL0001-CTRANSACCAO        TO VIAD1200-CTRAN.
+JF         MOVE VIAL0001-ORIGEM             TO VIAD1200-ORIGEM.
+JF         MOVE VIAL0001-CALLERID           TO VIAD1200-CALLERID.
+JF         MOVE VIAL0001-CAPLIC             TO VIAD1200-CAPLIC.
+JF         MOVE VIAL0001-COPCAO             TO VIAD1200-COPCAO.
+JF         MOVE VIAL0001-CACCAO             TO VIAD1200-CACCAO.
+JF         MOVE VIAL0001-CUTILIZA-I         TO VIAD1200-CUTILIZAI.
+JF         MOVE VIAL0001-DATA-PROCESSO-I    TO VIAD1200-DPROCI.
+JF         MOVE VIAL0001-NR-SEQUENCIA-I     TO VIAD1200-NRSEQI.
+JF         MOVE VIAL0001-PEDIDO-DADOS       TO VIAD1200-IPEDDADOS.
+JF         MOVE VIAL0001-SIMULACAO          TO VIAD1200-ISIMUL.
+JF         MOVE VIAL0001-XLIVRE1            TO VIAD1200-XLIVRE1.
+JF         MOVE VIAL0001-MENSAGEM-INPUT     TO VIAD1200-XMSGIN-TEXT.
+JF         MOVE LENGTH OF VIAL0001-MENSAGEM-INPUT
+JF                                          TO VIAD1200-XMSGIN-LEN.
+JF         MOVE VIAL0001-CUTILIZA-O         TO VIAD1200-CUTILIZAO.
+JF         MOVE VIAL0001-DATA-PROCESSO-O    TO VIAD1200-DPROCO.
+JF         MOVE VIAL0001-NR-SEQUENCIA-O     TO VIAD1200-NRSEQO.
+JF         MOVE VIAL0001-IND-ERROS          TO VIAD1200-INDERROS.
+JF         MOVE VIAL0001-NR-ERRO            TO VIAD1200-NRERRO.
+JF         MOVE VIAL0001-CONTEXT-1          TO VIAD1200-CONTEXT1.
+JF         MOVE VIAL0001-CONTEXT-2          TO VIAD1200-CONTEXT2.
+JF         MOVE VIAL0001-OCORRENCIAS        TO VIAD1200-NOCCURS.
+JF         MOVE VIAL0001-LENGTH-MSG         TO VIAD1200-LENGTHMSG.
+JF         MOVE VIAL0001-NR-CAMPOS          TO VIAD1200-NRCAMPOS.
+JF         MOVE VIAL0001-XLIVRE2            TO VIAD1200-XLIVRE2.
+JF         MOVE VIAL0001-MENSAGEM-OUTPUT    TO VIAD1200-XMSGOUT-TEXT.
+JF         MOVE LENGTH OF VIAL0001-MENSAGEM-OUTPUT
+JF                                          TO VIAD1200-XMSGOUT-LEN.
+JF
+JF         EXEC SQL
+JF              INCLUDE VIAP0026
+JF         END-EXEC.
+JF
+JF         MOVE CON-VIAT1200                TO VIAL0002-TABLE-NAME.
+JF
+JF         PERFORM 9020-DB2CHECK
+JF            THRU 9029-DB2CHECK-EXIT.
+JF
+JF         IF VIAL0002-SEM-ERROS
+JF            IF NOT DB2-OK
+JF               MOVE VIAK0002-ABEND-DB2    TO VIAL0002-IND-ERROS
+JF               MOVE VIAK0001-ERRO-DB2     TO VIAL0002-COD-ERRO-GRAVE
+JF            END-IF
+JF         END-IF.
+JF
+JF         IF VIAL0001-DEBUG-SIM
+JF            MOVE 'depois'                 TO VIAL0015-CALLER-ID
+JF            MOVE 'VIAW0005-SQLCODE'       TO VIAL0015-CAMPO-NM (1)
+JF            MOVE  VIAW0005-SQLCODE        TO VIAL0015-CAMPO-VLR(1)
+JF            MOVE 'VIAL0002-IND-ERROS'     TO VIAL0015-CAMPO-NM (2)
+JF            MOVE  VIAL0002-IND-ERROS      TO VIAL0015-CAMPO-VLR(2)
+JF            PERFORM VIAP0015-TRATA-DEBUG
+JF               THRU VIAP0015-TRATA-DEBUG-EXIT
+JF         END-IF.
+JF
+JF     3199-ESCREVE-LOG-1-EXIT.
+JF         EXIT.
+      ******************************************************************
+      *                       3110-ESCREVE-LOGEXT-0                    *
+      ******************************************************************
+       3110-ESCREVE-LOGEXT-0.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '3110-ESCREVE-LOGEXT-0'  TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-LENGTH-MSG'    TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0001-LENGTH-MSG     TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE                       DCLVIAD0900.
+           MOVE VIAL0001-CUTILIZA-O         TO VIAD0900-CUTILIZAO.
+           MOVE VIAL0001-DATA-PROCESSO-O    TO VIAD0900-DPROCO.
+           MOVE VIAL0001-NR-SEQUENCIA-O     TO VIAD0900-NRSEQO.
+           MOVE VIAL0001-MENSAGEM-INPUT (1701:)
+                                            TO VIAD0900-XMSGIN-TEXT.
+           MOVE VIAL0001-MENSAGEM-OUTPUT(1701:)
+                                            TO VIAD0900-XMSGOUT-TEXT.
+
+           EXEC SQL
+                INSERT INTO VIAT0900_BFLOGEXT
+                       ( CUTILIZAO
+                       , DPROCO
+                       , NRSEQO
+                       , XMSGIN
+                       , XMSGOUT
+                       , HTIMEST )
+                VALUES ( :VIAD0900-CUTILIZAO
+                       , :VIAD0900-DPROCO
+                       , :VIAD0900-NRSEQO
+                       , :VIAD0900-XMSGIN-TEXT
+                       , :VIAD0900-XMSGOUT-TEXT
+                       , CURRENT TIMESTAMP )
+           END-EXEC.
+
+           MOVE CON-VIAT0900                TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+           OR VIAL0002-FIM-CONSULTA
+           OR VIAL0002-ERROS-INF
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ABEND-DB2    TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2     TO VIAL0002-COD-ERRO-GRAVE
+              END-IF
+           END-IF.
+
+       3119-ESCREVE-LOGEXT-0-EXIT.
+           EXIT.
+JF    ******************************************************************
+JF    *                       3110-ESCREVE-LOGEXT-1                    *
+JF    ******************************************************************
+JF     3110-ESCREVE-LOGEXT-1.
+JF
+JF         IF VIAL0015-DEBUG-SIM
+JF            MOVE '3110-ESCREVE-LOGEXT-1'  TO VIAL0015-CALLER-ID
+JF            MOVE 'VIAL0001-LENGTH-MSG'    TO VIAL0015-CAMPO-NM (1)
+JF            MOVE  VIAL0001-LENGTH-MSG     TO VIAL0015-CAMPO-VLR(1)
+JF            PERFORM VIAP0015-TRATA-DEBUG
+JF               THRU VIAP0015-TRATA-DEBUG-EXIT
+JF         END-IF.
+JF
+JF         INITIALIZE                       DCLVIAD1900.
+JF         MOVE VIAL0001-CUTILIZA-O         TO VIAD1900-CUTILIZAO.
+JF         MOVE VIAL0001-DATA-PROCESSO-O    TO VIAD1900-DPROCO.
+JF         MOVE VIAL0001-NR-SEQUENCIA-O     TO VIAD1900-NRSEQO.
+JF         MOVE VIAL0001-MENSAGEM-INPUT (1701:)
+JF                                          TO VIAD1900-XMSGIN-TEXT.
+JF         MOVE VIAL0001-MENSAGEM-OUTPUT(1701:)
+JF                                          TO VIAD1900-XMSGOUT-TEXT.
+JF
+JF         EXEC SQL
+JF              INSERT INTO VIAT0900_BFLOGEXT
+JF                     ( CUTILIZAO
+JF                     , DPROCO
+JF                     , NRSEQO
+JF                     , XMSGIN
+JF                     , XMSGOUT
+JF                     , HTIMEST )
+JF              VALUES ( :VIAD1900-CUTILIZAO
+JF                     , :VIAD1900-DPROCO
+JF                     , :VIAD1900-NRSEQO
+JF                     , :VIAD1900-XMSGIN-TEXT
+JF                     , :VIAD1900-XMSGOUT-TEXT
+JF                     , CURRENT TIMESTAMP )
+JF         END-EXEC.
+JF
+JF         MOVE CON-VIAT1900                TO VIAL0002-TABLE-NAME.
+JF
+JF         PERFORM 9020-DB2CHECK
+JF            THRU 9029-DB2CHECK-EXIT.
+JF
+JF         IF VIAL0002-SEM-ERROS
+JF         OR VIAL0002-FIM-CONSULTA
+JF         OR VIAL0002-ERROS-INF
+JF            IF NOT DB2-OK
+JF               MOVE VIAK0002-ABEND-DB2    TO VIAL0002-IND-ERROS
+JF               MOVE VIAK0001-ERRO-DB2     TO VIAL0002-COD-ERRO-GRAVE
+JF            END-IF
+JF         END-IF.
+JF
+JF     3119-ESCREVE-LOGEXT-1-EXIT.
+JF         EXIT.
+      ******************************************************************
+      *                       3200-LOG-ERROS-0                         *
+      ******************************************************************
+       3200-LOG-ERROS-0.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3200-LOG-ERROS-0'       TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0002-IND-ERROS          TO VIAL0001-IND-ERROS.
+           MOVE VIAL0002-COD-ERRO-GRAVE     TO VIAL0001-NR-ERRO.
+           MOVE VIAL0002-TABLE-NAME         TO VIAL0001-CONTEXT-1.
+           MOVE VIAL0002-SQLCODE            TO WS-SQLCODE.
+           MOVE WS-SQLCODE                  TO VIAL0001-CONTEXT-2.
+
+           MOVE VIAL0001-CTRANSACCAO        TO VIAD0600-CTRAN.
+           MOVE VIAL0001-CALLERID           TO VIAD0600-CALLERID.
+           MOVE VIAL0001-ORIGEM             TO VIAD0600-ORIGEM.
+           MOVE VIAL0001-CAPLIC             TO VIAD0600-CAPLIC.
+           MOVE VIAL0001-COPCAO             TO VIAD0600-COPCAO.
+           MOVE VIAL0001-CACCAO             TO VIAD0600-CACCAO.
+
+           MOVE VIAL0001-CUTILIZA-I         TO VIAD0600-CUTILIZAI.
+           MOVE VIAL0001-DATA-PROCESSO-I    TO VIAD0600-DPROCI.
+
+           IF VIAL0001-NR-SEQUENCIA-I EQUAL ZEROES OR
+              VIAL0001-NR-SEQUENCIA-I EQUAL 10
+              MOVE VIAL0001-NR-SEQUENCIA-O  TO VIAD0600-NRSEQI
+           ELSE
+              MOVE VIAL0001-NR-SEQUENCIA-I  TO VIAD0600-NRSEQI
+           END-IF.
+
+           MOVE VIAL0001-PEDIDO-DADOS       TO VIAD0600-IPEDDADOS.
+           MOVE VIAL0001-SIMULACAO          TO VIAD0600-ISIMUL.
+           MOVE VIAL0001-XLIVRE1            TO VIAD0600-XLIVRE1.
+           MOVE VIAL0001-IND-ERROS          TO VIAD0600-INDERROS.
+           MOVE VIAL0001-NR-ERRO            TO VIAD0600-NRERRO.
+           MOVE VIAL0001-CONTEXT-1          TO VIAD0600-CONTEXT1.
+           MOVE VIAL0001-CONTEXT-2          TO VIAD0600-CONTEXT2.
+
+           IF VIAL0002-ERROS-FUNCAO
+              MOVE VIAL0001-MENSAGEM-OUTPUT TO VIAD0600-XREF
+           ELSE
+              MOVE VIAL0002-SQLCA           TO VIAD0600-XREF
+           END-IF.
+
+           IF VIAL0001-OCORRENCIAS IS NUMERIC
+              MOVE VIAL0001-OCORRENCIAS     TO VIAD0600-NOCCURS
+           ELSE
+              MOVE ZEROES                   TO VIAD0600-NOCCURS
+           END-IF.
+
+           IF VIAL0001-LENGTH-MSG IS NUMERIC
+              MOVE VIAL0001-LENGTH-MSG      TO VIAD0600-LENGTHMSG
+           ELSE
+              MOVE ZEROES                   TO VIAD0600-LENGTHMSG
+           END-IF.
+
+           IF VIAL0001-NR-CAMPOS IS NUMERIC
+              MOVE VIAL0001-NR-CAMPOS       TO VIAD0600-NRCAMPOS
+           ELSE
+              MOVE ZEROES                   TO VIAD0600-NRCAMPOS
+           END-IF.
+
+           MOVE 1                           TO WS-IND.
+           SET  SW-ERR-N-EXT                TO TRUE.
+
+           PERFORM 3210-VALIDA-ERRO-EXT
+              THRU 3210-VALIDA-ERRO-EXT-EXIT
+                   UNTIL WS-IND > 10.
+
+           IF SW-ERR-N-EXT
+              MOVE VIAL0001-MENSAGEM-INPUT  TO VIAD0600-XLIVRE2
+           ELSE
+              MOVE VIAL0001-XLIVRE2         TO VIAD0600-XLIVRE2
+           END-IF.
+
+           EXEC SQL
+                INSERT INTO VIAT0600_BFLOGERR
+                       ( CTRAN
+                       , ORIGEM
+                       , CALLERID
+                       , CAPLIC
+                       , COPCAO
+                       , CACCAO
+                       , CUTILIZAI
+                       , DPROCI
+                       , NRSEQI
+                       , IPEDDADOS
+                       , ISIMUL
+                       , XLIVRE1
+                       , INDERROS
+                       , NRERRO
+                       , CONTEXT1
+                       , CONTEXT2
+                       , XREF
+                       , NOCCURS
+                       , LENGTHMSG
+                       , NRCAMPOS
+                       , XLIVRE2
+                       , HTIMEST )
+                VALUES ( :VIAD0600-CTRAN
+                       , :VIAD0600-ORIGEM
+                       , :VIAD0600-CALLERID
+                       , :VIAD0600-CAPLIC
+                       , :VIAD0600-COPCAO
+                       , :VIAD0600-CACCAO
+                       , :VIAD0600-CUTILIZAI
+                       , :VIAD0600-DPROCI
+                       , :VIAD0600-NRSEQI
+                       , :VIAD0600-IPEDDADOS
+                       , :VIAD0600-ISIMUL
+                       , :VIAD0600-XLIVRE1
+                       , :VIAD0600-INDERROS
+                       , :VIAD0600-NRERRO
+                       , :VIAD0600-CONTEXT1
+                       , :VIAD0600-CONTEXT2
+                       , :VIAD0600-XREF
+                       , :VIAD0600-NOCCURS
+                       , :VIAD0600-LENGTHMSG
+                       , :VIAD0600-NRCAMPOS
+                       , :VIAD0600-XLIVRE2
+                       ,  CURRENT TIMESTAMP )
+           END-EXEC.
+      *
+       3299-LOG-ERROS-0-EXIT.
+           EXIT.
+JF    ******************************************************************
+JF    *                       3200-LOG-ERROS-1                         *
+JF    ******************************************************************
+JF     3200-LOG-ERROS-1.
+JF
+JF         IF VIAL0001-DEBUG-SIM
+JF            MOVE '3200-LOG-ERROS-1'       TO VIAL0015-CALLER-ID
+JF            PERFORM VIAP0015-TRATA-DEBUG
+JF               THRU VIAP0015-TRATA-DEBUG-EXIT
+JF         END-IF.
+JF
+JF         MOVE VIAL0002-IND-ERROS          TO VIAL0001-IND-ERROS.
+JF         MOVE VIAL0002-COD-ERRO-GRAVE     TO VIAL0001-NR-ERRO.
+JF         MOVE VIAL0002-TABLE-NAME         TO VIAL0001-CONTEXT-1.
+JF         MOVE VIAL0002-SQLCODE            TO WS-SQLCODE.
+JF         MOVE WS-SQLCODE                  TO VIAL0001-CONTEXT-2.
+JF
+JF         MOVE VIAL0001-CTRANSACCAO        TO VIAD1600-CTRAN.
+JF         MOVE VIAL0001-CALLERID           TO VIAD1600-CALLERID.
+JF         MOVE VIAL0001-ORIGEM             TO VIAD1600-ORIGEM.
+JF         MOVE VIAL0001-CAPLIC             TO VIAD1600-CAPLIC.
+JF         MOVE VIAL0001-COPCAO             TO VIAD1600-COPCAO.
+JF         MOVE VIAL0001-CACCAO             TO VIAD1600-CACCAO.
+JF
+JF         MOVE VIAL0001-CUTILIZA-I         TO VIAD1600-CUTILIZAI.
+JF         MOVE VIAL0001-DATA-PROCESSO-I    TO VIAD1600-DPROCI.
+JF
+JF         IF VIAL0001-NR-SEQUENCIA-I EQUAL ZEROES OR
+JF            VIAL0001-NR-SEQUENCIA-I EQUAL 10
+JF            MOVE VIAL0001-NR-SEQUENCIA-O  TO VIAD1600-NRSEQI
+JF         ELSE
+JF           MOVE VIAL0001-NR-SEQUENCIA-I   TO VIAD1600-NRSEQI
+JF         END-IF.
+JF
+JF         MOVE VIAL0001-PEDIDO-DADOS       TO VIAD1600-IPEDDADOS.
+JF         MOVE VIAL0001-SIMULACAO          TO VIAD1600-ISIMUL.
+JF         MOVE VIAL0001-XLIVRE1            TO VIAD1600-XLIVRE1.
+JF         MOVE VIAL0001-IND-ERROS          TO VIAD1600-INDERROS.
+JF         MOVE VIAL0001-NR-ERRO            TO VIAD1600-NRERRO.
+JF         MOVE VIAL0001-CONTEXT-1          TO VIAD1600-CONTEXT1.
+JF         MOVE VIAL0001-CONTEXT-2          TO VIAD1600-CONTEXT2.
+JF
+JF         IF VIAL0002-ERROS-FUNCAO
+JF            MOVE VIAL0001-MENSAGEM-OUTPUT TO VIAD1600-XREF
+JF         ELSE
+JF            MOVE VIAL0002-SQLCA           TO VIAD1600-XREF
+JF         END-IF.
+JF
+JF         IF VIAL0001-OCORRENCIAS IS NUMERIC
+JF            MOVE VIAL0001-OCORRENCIAS     TO VIAD1600-NOCCURS
+JF         ELSE
+JF            MOVE ZEROES                   TO VIAD1600-NOCCURS
+JF         END-IF.
+JF
+JF         IF VIAL0001-LENGTH-MSG IS NUMERIC
+JF            MOVE VIAL0001-LENGTH-MSG      TO VIAD1600-LENGTHMSG
+JF         ELSE
+JF            MOVE ZEROES                   TO VIAD1600-LENGTHMSG
+JF         END-IF.
+JF
+JF         IF VIAL0001-NR-CAMPOS IS NUMERIC
+JF            MOVE VIAL0001-NR-CAMPOS       TO VIAD1600-NRCAMPOS
+JF         ELSE
+JF            MOVE ZEROES                   TO VIAD1600-NRCAMPOS
+JF         END-IF.
+JF
+JF         MOVE 1                           TO WS-IND.
+JF         SET  SW-ERR-N-EXT                TO TRUE.
+JF
+JF         PERFORM 3210-VALIDA-ERRO-EXT
+JF            THRU 3210-VALIDA-ERRO-EXT-EXIT
+JF                 UNTIL WS-IND > 10.
+JF
+JF         IF SW-ERR-N-EXT
+JF            MOVE VIAL0001-MENSAGEM-INPUT  TO VIAD1600-XLIVRE2
+JF         ELSE
+JF            MOVE VIAL0001-XLIVRE2         TO VIAD1600-XLIVRE2
+JF         END-IF.
+JF
+JF         EXEC SQL
+JF              INSERT INTO VIAT1600_BFLOGERRB
+JF                     ( CTRAN
+JF                     , ORIGEM
+JF                     , CALLERID
+JF                     , CAPLIC
+JF                     , COPCAO
+JF                     , CACCAO
+JF                     , CUTILIZAI
+JF                     , DPROCI
+JF                     , NRSEQI
+JF                     , IPEDDADOS
+JF                     , ISIMUL
+JF                     , XLIVRE1
+JF                     , INDERROS
+JF                     , NRERRO
+JF                     , CONTEXT1
+JF                     , CONTEXT2
+JF                     , XREF
+JF                     , NOCCURS
+JF                     , LENGTHMSG
+JF                     , NRCAMPOS
+JF                     , XLIVRE2
+JF                     , HTIMEST )
+JF              VALUES ( :VIAD1600-CTRAN
+JF                     , :VIAD1600-ORIGEM
+JF                     , :VIAD1600-CALLERID
+JF                     , :VIAD1600-CAPLIC
+JF                     , :VIAD1600-COPCAO
+JF                     , :VIAD1600-CACCAO
+JF                     , :VIAD1600-CUTILIZAI
+JF                     , :VIAD1600-DPROCI
+JF                     , :VIAD1600-NRSEQI
+JF                     , :VIAD1600-IPEDDADOS
+JF                     , :VIAD1600-ISIMUL
+JF                     , :VIAD1600-XLIVRE1
+JF                     , :VIAD1600-INDERROS
+JF                     , :VIAD1600-NRERRO
+JF                     , :VIAD1600-CONTEXT1
+JF                     , :VIAD1600-CONTEXT2
+JF                     , :VIAD1600-XREF
+JF                     , :VIAD1600-NOCCURS
+JF                     , :VIAD1600-LENGTHMSG
+JF                     , :VIAD1600-NRCAMPOS
+JF                     , :VIAD1600-XLIVRE2
+JF                     ,  CURRENT TIMESTAMP )
+JF         END-EXEC.
+JF
+JF     3299-LOG-ERROS-1-EXIT.
+JF         EXIT.
+      ******************************************************************
+      *                       4000-RESPOSTA                            *
+      *         DEVOLUCAO DE RESPOSTA DE ACORDO COM A ORIGEM           *
+      ******************************************************************
+       3210-VALIDA-ERRO-EXT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3210-VALIDA-ERRO-EXT' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0001-CAPLIC-EXT(WS-IND) NOT EQUAL SPACES
+             SET SW-ERR-EXT TO TRUE
+           END-IF.
+
+           ADD 1 TO WS-IND.
+      *
+       3210-VALIDA-ERRO-EXT-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       4000-RESPOSTA                            *
+      *         DEVOLUCAO DE RESPOSTA DE ACORDO COM A ORIGEM           *
+      ******************************************************************
+       4000-RESPOSTA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '4000-RESPOSTA.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-ERROS-INF
+              SET VIAL0002-ERROS-FUNCAO    TO TRUE
+      *
+              MOVE VIAL0002-IND-ERROS
+                TO VIAL0001-IND-ERROS
+           ELSE
+              MOVE VIAL0002-IND-ERROS
+                TO VIAL0001-IND-ERROS
+           END-IF.
+
+           MOVE VIAL0002-COD-ERRO-GRAVE
+             TO VIAL0001-NR-ERRO
+
+           IF NOT VIAL0002-SEM-ERROS
+              MOVE VIAL0002-TABLE-NAME
+                TO VIAL0001-CONTEXT-1
+              MOVE VIAL0002-SQLCODE
+                TO WS-SQLCODE
+              MOVE WS-SQLCODE
+                TO VIAL0001-CONTEXT-2
+           END-IF
+
+           IF VIAL0001-ORIGEM NOT EQUAL VIAK0002-VIACODTAB
+             COPY VIAP0002.
+
+           IF VIAL0001-ORIGEM EQUAL VIAK0002-VIACODTAB
+              MOVE VIAL0001-COMMAREA        TO DFHCOMMAREA
+              PERFORM VIAP2001-TAB-CENTRAL
+                 THRU VIAP2001-TAB-CENTRAL-EXIT
+              IF VIAL0001-CAPLIC = 'TG' AND VIAL0001-COPCAO = '449'
+              OR VIAL0001-CAPLIC = 'AR' AND VIAL0001-COPCAO = '149'
+                 MOVE DFHCOMMAREA              TO VIAL2000-COMMAREA
+                 MOVE VIAL2000-COMMAREA        TO DFHCOMMAREA
+              ELSE
+                 MOVE VIAL0001-COMMAREA        TO DFHCOMMAREA
+              END-IF
+           END-IF.
+
+       4099-RESPOSTA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       4100-RESP-TAB-CENTRAL                    *
+      ******************************************************************
+       4100-RESP-TAB-CENTRAL.
+
+
+           IF  ARCV1491-D-CCOD(WS-IND) NOT EQUAL SPACES
+             MOVE ARCV1491-D-CCOD(WS-IND2)  TO VIAL2000-D-CCOD(WS-IND)
+             MOVE ARCV1491-D-GDESC(WS-IND2) TO VIAL2000-D-GDESC(WS-IND)
+           END-IF.
+
+            ADD 1 TO WS-IND.
+            ADD 1 TO WS-IND2.
+
+       4100-RESP-TAB-CENTRAL-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       4010-PROC-FIM-EXT                        *
+      *      EXECUTA O PROGRAMA COM OS PROCEDIMENTOS FINAIS DE         *
+      *                       APLICACOES EXTERNAS                      *
+      ******************************************************************
+       4010-PROC-FIM-EXT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '4010-PROC-FIM-EXT.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           CALL VIAD0100-PRGFIMEXT USING VIAL0001-COMMAREA
+                                         VIAL0002-COMMAREA.
+
+       4019-PROC-FIM-EXT-EXIT.
+           EXIT.
+      *****************************************************************
+      *                  1035-OBTEM-VERS-CORE
+      *****************************************************************
+       1035-OBTEM-VERS-CORE.
+
+           IF VIAL0001-DEBUG-SIM
+              INITIALIZE VIAL0015-DATA
+              MOVE '1035-OBTEM-VERS-CORE       ' TO VIAL0015-CALLER-ID
+              MOVE 'VIAD0100-APLICEXT'       TO VIAL0015-CAMPO-NM(1)
+              MOVE VIAD0100-APLICEXT         TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ARCL2205-DATA  REPLACING  NUMERIC BY ZEROES
+                                           ALPHANUMERIC BY SPACES.
+
+           MOVE VIAK0002-PARAM-CORE         TO ARCL2205-CPARAM.
+           MOVE VIAK0002-APLIC-AT           TO ARCL2205-CAPLIC.
+
+           PERFORM CALL-ARM2206
+              THRU CALL-ARM2206-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              MOVE ARCL2205-GVALOR1         TO VIAL0001-VERSAO-SYS
+           ELSE
+              MOVE 'ETCL0002-IND-ERROS  '    TO VIAL0015-CAMPO-NM (1)
+              MOVE ETCL0002-IND-ERROS        TO VIAL0015-CAMPO-VLR (1)
+              MOVE 'ARCL2205-GVALOR1    '    TO VIAL0015-CAMPO-NM (2)
+              MOVE ARCL2205-GVALOR1          TO VIAL0015-CAMPO-VLR (2)
+              MOVE 'VETC0002-IND-ERROS  '    TO VIAL0015-CAMPO-NM (3)
+              MOVE ETCL0002-IND-ERROS        TO VIAL0015-CAMPO-VLR (3)
+      **R     MOVE 'ETCL0002-COD-ERRO-GRAVE' TO VIAL0015-CAMPO-NM (4)
+      **R     MOVE ETCL0002-COD-ERRO-GRAVE   TO VIAL0015-CAMPO-VLR (4)
+              MOVE 'ETCL0002-CAPLIC-ERRO   ' TO VIAL0015-CAMPO-NM (5)
+              MOVE ETCL0002-CAPLIC-ERRO      TO VIAL0015-CAMPO-VLR (5)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       1035-OBTEM-VERS-CORE-EXIT.
+           EXIT.
+      *****************************************************************
+      *                       1099-OBTEM-AMB
+      *            OBTEM AMBIENTE DE EXECUCAO PARA DEFINIR UTILIZACAO
+      *            DO HANDLE ABEND NOS AMBIENTES DE DESENVOLVIMENTO
+      *            E PERMITIR FAZER O DEBUG NOS SISTEMAS ISERIES
+      *****************************************************************
+       1099-OBTEM-AMB.
+
+      **R  CALL 'ARREBENTA'.
+           INITIALIZE DCLARCD2200.
+      * GVALOR1 = AMBIENTE
+      * GVALOR3 = 'S' - DEBUG
+           MOVE SPACES                     TO WS-AMBIENTE
+           MOVE VIAK0002-PARAM-AMB         TO ARCD2200-CPARAM
+           MOVE VIAK0002-APLIC-AT          TO ARCD2200-CAPLIC
+
+           EXEC SQL
+                 SELECT
+                       CPARAM
+                     , CAPLIC
+                     , GDESC
+                     , GVALOR1
+                     , GVALOR2
+                     , GVALOR3
+                     , CUSERID
+                     , HTIMEST
+                 INTO
+                       :ARCD2200-CPARAM
+                     , :ARCD2200-CAPLIC
+                     , :ARCD2200-GDESC
+                     , :ARCD2200-GVALOR1
+                     , :ARCD2200-GVALOR2
+                     , :ARCD2200-GVALOR3
+                     , :ARCD2200-CUSERID
+                     , :ARCD2200-HTIMEST
+                 FROM ARVT2200_PARAM
+                 WHERE CPARAM = :ARCD2200-CPARAM AND
+                       CAPLIC = :ARCD2200-CAPLIC
+                 WITH UR
+           END-EXEC
+
+           MOVE CON-ARVT2200                 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF ARVT2200-OK
+                MOVE ARCD2200-GVALOR1        TO VIAL0001-AMBIENTE
+                MOVE ARCD2200-GVALOR1        TO WS-AMBIENTE
+                MOVE ARCD2200-GVALOR3        TO VIAL0001-I-DEBUG
+              ELSE
+                IF ARVT2200-NOTFND
+                  SET VIAL0001-AMB-PROD TO TRUE
+                ELSE
+                  MOVE VIAK0002-ERROS-ARQ     TO VIAL0002-IND-ERROS
+                  MOVE VIAK0001-ACESSO-PARAM TO VIAL0002-COD-ERRO-GRAVE
+                END-IF
+              END-IF
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'Ambiente param   '       TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-AMBIENTE      ' TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0001-AMBIENTE        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-I-DEBUG       ' TO VIAL0015-CAMPO-NM (2)
+              MOVE  VIAL0001-I-DEBUG         TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+
+       1099-OBTEM-AMB-EXIT.
+           EXIT.
+      *****************************************************************
+      *                       1015-TRATA-DATAS
+      *                  OBTEM FLIP-FLOP E DATAS
+      *****************************************************************
+       1015-TRATA-DATAS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1015-TRATA-DATAS    '  TO VIAL0015-CALLER-ID
+              MOVE 'ARCL2205-GVALOR2    '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCL2205-GVALOR2       TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE VIAL0110-DATA.
+      *
+           MOVE ARCL2205-GVALOR2           TO VIAL0110-CAPLIC
+      *
+           PERFORM CALL-VIAR0110
+              THRU CALL-VIAR0110-EXIT
+      *
+           IF ETCL0002-SEM-ERROS
+              MOVE VIAL0110-IACTIVA        TO VIAL0001-IACTIVA
+              MOVE VIAL0110-DCONTAB        TO VIAL0001-DCONTAB
+              MOVE VIAL0110-DTIMEZONE      TO VIAL0001-DTIMEZONE
+              MOVE VIAL0110-HTIMEZONE      TO VIAL0001-HTIMEZONE
+           ELSE
+              MOVE SPACES                  TO ETCL0002-IND-ERROS
+              MOVE ZEROS                   TO ETCL0002-NR-ERRO
+              MOVE SPACES                  TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'DATAS               '  TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-DCONTAB    '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0001-DCONTAB       TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-DTIMEZONE  '  TO VIAL0015-CAMPO-NM(2)
+              MOVE  VIAL0001-DTIMEZONE     TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL0001-HTIMEZONE  '  TO VIAL0015-CAMPO-NM(3)
+              MOVE  VIAL0001-HTIMEZONE     TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       1015-TRATA-DATAS-EXIT.
+           EXIT.
+      ******************************************************************
+      *                         PROCEDURES                             *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      * debug
+           COPY VIAP0015.
+           COPY ARCR2206.
+           COPY VIAP2000.
+           COPY VIAP2001.
+      *    COPY ARCR2205.
+      *CHAMA ROTINA FLIP/FLOP E DATAS
+           COPY VIAP0110.

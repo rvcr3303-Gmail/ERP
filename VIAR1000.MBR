@@ -1,0 +1,4263 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. VIAR1000.
+      *________________________________________________________________*
+      *   ROTINA DE DATAS                                              *
+      *----------------------------------------------------------------*
+      *   VER COPY VIAL1000 PARA OPCOES                                *
+      *----------------------------------------------------------------*
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       SOURCE-COMPUTER. AS400.
+       OBJECT-COMPUTER. AS400.
+       INPUT-OUTPUT SECTION.
+      *----------------------------------------------------------------*
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+      *----------------------------------------------------------------*
+      *                   C O N S T A N T E S                          *
+      *----------------------------------------------------------------*
+       01  FILLER             PIC X(08)  VALUE 'VIAR1000'.
+       01  FILLER             PIC X(22)  VALUE 'INICIO WORKING-STORAGE'.
+      *
+       01  CONSTANTES.
+           05 WS-QUINZENAL                PIC X(02) VALUE SPACES.
+              88 WS-1-QUINZENA              VALUE '01' THRU  '14'.
+              88 WS-2-QUINZENA              VALUE '15' THRU  '31'.
+           05 WS-TRIMESTRAL               PIC X(02) VALUE SPACES.
+              88 WS-1-TRIMESTRE             VALUE '01' THRU  '03'.
+              88 WS-2-TRIMESTRE             VALUE '04' THRU  '06'.
+              88 WS-3-TRIMESTRE             VALUE '07' THRU  '09'.
+              88 WS-4-TRIMESTRE             VALUE '10' THRU  '12'.
+           05 WS-SEMESTRAL                PIC X(02) VALUE SPACES.
+              88 WS-1-SEMESTRE              VALUE '01' THRU  '06'.
+              88 WS-2-SEMESTRE              VALUE '07' THRU  '12'.
+           05 CON-AT                      PIC  X(02) VALUE 'AT'.
+           05 CON-05                      PIC  X(02) VALUE '05'.
+           05 CON-06                      PIC  X(02) VALUE '06'.
+           05 ERRMSG-OPCAO-INVALIDA       PIC  X(40)
+              VALUE 'CODIGO DE OPCAO INVALIDO'.
+           05 ERRMSG-INPUT-MAL-FORMATAD   PIC  X(40)
+              VALUE 'INPUT MAL FORMATADO PARA OPCAO INDICADA'.
+           05 ERRMSG-DATA-INCORRECTA      PIC  X(40)
+              VALUE 'DATA RECEBIDA INCORRECTA'.
+           05 ERRMSG-PRAZO-NAO-EXISTE     PIC  X(40)
+              VALUE 'CODIGO DE PRAZO NAO EXISTE'.
+           05 WS-TAB-DIA-ANO              PIC  9(03) VALUE 365.
+           05 WS-FERIADOS                 PIC  9(02) VALUE 15.
+           05 WS-FERIADOS-BR              PIC  9(02) VALUE 13.
+           05 WS-TAB1.
+              10 FILLER                   PIC  X(07) VALUE '6012345'.
+              10 FILLER                   PIC  X(07) VALUE '5601234'.
+              10 FILLER                   PIC  X(07) VALUE '4560123'.
+              10 FILLER                   PIC  X(07) VALUE '3456012'.
+              10 FILLER                   PIC  X(07) VALUE '2345601'.
+              10 FILLER                   PIC  X(07) VALUE '1234560'.
+              10 FILLER                   PIC  X(07) VALUE '0123456'.
+           05 WS-TAB1-R REDEFINES WS-TAB1.
+              10 WS-TAB-D1     OCCURS 7 TIMES.
+                 15 WS-TAB-D11 OCCURS 7 TIMES
+                                          PIC  X(01).
+           05 WS-COD-COL1                 PIC  9(02) VALUE ZEROS.
+              88 WS-COD-COL11                  VALUE 00, 06, 17, 23, 28
+                                                   , 34, 45, 51, 56, 62
+                                                   , 73, 79, 84, 90.
+              88 WS-COD-COL12                  VALUE 01, 07, 12, 18, 29
+                                                   , 35, 40, 46, 57, 63
+                                                   , 68, 74, 85, 91, 96.
+              88 WS-COD-COL13                  VALUE 02, 13, 19, 24, 30
+                                                   , 41, 47, 52, 58, 69
+                                                   , 75, 80, 86, 97.
+              88 WS-COD-COL14                  VALUE 03, 08, 14, 25, 31
+                                                   , 36, 42, 53, 59, 64
+                                                   , 70, 81, 87, 92, 98.
+              88 WS-COD-COL15                  VALUE 09, 15, 20, 26, 37
+                                                   , 43, 48, 54, 65, 71
+                                                   , 76, 82, 93, 99.
+              88 WS-COD-COL16                  VALUE 04, 10, 21, 27, 32
+                                                   , 38, 49, 55, 60, 66
+                                                   , 77, 83, 88, 94.
+              88 WS-COD-COL17                  VALUE 05, 11, 16, 22, 33
+                                                   , 39, 44, 50, 61, 67
+                                                   , 72, 78, 89, 95.
+           05 WS-COD-ROW1                 PIC  9(02) VALUE ZEROS.
+              88 WS-COD-ROW11                  VALUE 00, 07, 14, 17, 21.
+              88 WS-COD-ROW12                  VALUE 01, 08, 15.
+              88 WS-COD-ROW13                  VALUE 02, 09, 18, 22.
+              88 WS-COD-ROW14                  VALUE 03, 10.
+              88 WS-COD-ROW15                  VALUE 04, 11, 19, 23.
+              88 WS-COD-ROW16                  VALUE 05, 12, 16, 20, 24.
+              88 WS-COD-ROW17                  VALUE 06, 13.
+           05 WS-TAB2.
+              10 FILLER                   PIC  X(07) VALUE '2345601'.
+              10 FILLER                   PIC  X(07) VALUE '3456012'.
+              10 FILLER                   PIC  X(07) VALUE '4560123'.
+              10 FILLER                   PIC  X(07) VALUE '5601234'.
+              10 FILLER                   PIC  X(07) VALUE '6012345'.
+              10 FILLER                   PIC  X(07) VALUE '0123456'.
+              10 FILLER                   PIC  X(07) VALUE '1234560'.
+           05 WS-TAB2-R REDEFINES WS-TAB2.
+              10 WS-TAB-D2     OCCURS 7 TIMES.
+                 15 WS-TAB-D21 OCCURS 7 TIMES
+                                          PIC  X(01).
+           05 WS-COD-COL2                 PIC  9(02) VALUE ZEROS.
+              88 WS-COD-COL21                  VALUE 05.
+              88 WS-COD-COL22                  VALUE 08.
+              88 WS-COD-COL23                  VALUE 03, 11, 02.
+              88 WS-COD-COL24                  VALUE 06.
+              88 WS-COD-COL25                  VALUE 09, 12.
+              88 WS-COD-COL26                  VALUE 04, 07.
+              88 WS-COD-COL27                  VALUE 01, 10.
+           05 WS-TAB3.
+              10 FILLER                   PIC  X(07) VALUE 'D23456S'.
+              10 FILLER                   PIC  X(07) VALUE '23456SD'.
+              10 FILLER                   PIC  X(07) VALUE '3456SD2'.
+              10 FILLER                   PIC  X(07) VALUE '456SD23'.
+              10 FILLER                   PIC  X(07) VALUE '56SD234'.
+              10 FILLER                   PIC  X(07) VALUE '6SD2345'.
+              10 FILLER                   PIC  X(07) VALUE 'SD23456'.
+           05 WS-TAB3-R REDEFINES WS-TAB3.
+              10 WS-TAB-D3     OCCURS 7 TIMES.
+                 15 WS-TAB-D31 OCCURS 7 TIMES
+                                          PIC  X(01).
+           05 WS-COD-COL3                 PIC  9(02) VALUE ZEROS.
+              88 WS-COD-COL31                  VALUE 01, 08, 15, 22, 29.
+              88 WS-COD-COL32                  VALUE 02, 09, 16, 23, 30.
+              88 WS-COD-COL33                  VALUE 03, 10, 17, 24, 31.
+              88 WS-COD-COL34                  VALUE 04, 11, 18, 25.
+              88 WS-COD-COL35                  VALUE 05, 12, 19, 26.
+              88 WS-COD-COL36                  VALUE 06, 13, 20, 27.
+              88 WS-COD-COL37                  VALUE 07, 14, 21, 28.
+           05 WS-TAB-ROW1                 PIC  9(01) VALUE ZEROS.
+           05 WS-TAB-COL1                 PIC  9(01) VALUE ZEROS.
+           05 WS-TAB-COL2                 PIC  9(01) VALUE ZEROS.
+           05 WS-TAB-COL3                 PIC  9(01) VALUE ZEROS.
+           05 WS-TAB-I1                   PIC  9(02) VALUE ZEROS.
+           05 WS-TAB-I2                   PIC  9(02) VALUE ZEROS.
+           05 WS-TAB-I3                   PIC  9(02) VALUE ZEROS.
+           05 WS-TAB-FERIADOS-CONSTANTE.
+              10 FILLER                   PIC  X(10) VALUE '0000-01-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-04-25'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-05-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-06-10'.
+              10 FILLER                   PIC  X(10) VALUE '0000-08-15'.
+              10 FILLER                   PIC  X(10) VALUE '0000-10-05'.
+              10 FILLER                   PIC  X(10) VALUE '0000-11-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-08'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-24'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-25'.
+              10 FILLER                   PIC  X(10) VALUE '1999-12-31'.
+           05 WS-TAB-FERIADOS.
+              10 FILLER                   PIC  X(10) VALUE '0000-01-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-04-25'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-05-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-06-10'.
+              10 FILLER                   PIC  X(10) VALUE '0000-08-15'.
+              10 FILLER                   PIC  X(10) VALUE '0000-10-05'.
+              10 FILLER                   PIC  X(10) VALUE '0000-11-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-08'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-24'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-25'.
+              10 FILLER                   PIC  X(10) VALUE '1999-12-31'.
+           05 WS-TAB-FERIADOS-R REDEFINES WS-TAB-FERIADOS.
+              10 WS-TAB-DATAS OCCURS 15 TIMES
+                                          PIC  X(10).
+           05 WS-TAB-FER-R REDEFINES WS-TAB-FERIADOS.
+              10 WS-DATAF OCCURS 15 TIMES.
+                 15 WS-DATA-10F.
+                    20 WS-ANOF            PIC  9(04).
+                    20 WS-FILLER1         PIC  X(01).
+                    20 WS-MESF            PIC  9(02).
+                    20 WS-FILLER1         PIC  X(01).
+                    20 WS-DIAF            PIC  9(02).
+      *
+           05 WS-TAB-FERIADOS-CONSTANTE-BR.
+              10 FILLER                   PIC  X(10) VALUE '0000-01-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-04-21'.
+              10 FILLER                   PIC  X(10) VALUE '0000-05-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-09-07'.
+              10 FILLER                   PIC  X(10) VALUE '0000-10-12'.
+              10 FILLER                   PIC  X(10) VALUE '0000-11-02'.
+              10 FILLER                   PIC  X(10) VALUE '0000-11-15'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-25'.
+              10 FILLER                   PIC  X(10) VALUE '1999-12-31'.
+           05 WS-TAB-FERIADOS-BR.
+              10 FILLER                   PIC  X(10) VALUE '0000-01-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-04-21'.
+              10 FILLER                   PIC  X(10) VALUE '0000-05-01'.
+              10 FILLER                   PIC  X(10) VALUE '0000-00-00'.
+              10 FILLER                   PIC  X(10) VALUE '0000-09-07'.
+              10 FILLER                   PIC  X(10) VALUE '0000-10-12'.
+              10 FILLER                   PIC  X(10) VALUE '0000-11-02'.
+              10 FILLER                   PIC  X(10) VALUE '0000-11-15'.
+              10 FILLER                   PIC  X(10) VALUE '0000-12-25'.
+              10 FILLER                   PIC  X(10) VALUE '1999-12-31'.
+           05 WS-TAB-FERIADOS-R-BR REDEFINES WS-TAB-FERIADOS-BR.
+              10 WS-TAB-DATAS-BR OCCURS 13 TIMES
+                                          PIC  X(10).
+           05 WS-TAB-FER-R-BR REDEFINES WS-TAB-FERIADOS-BR.
+              10 WS-DATAF-BR OCCURS 13 TIMES.
+                 15 WS-DATA-10F-BR.
+                    20 WS-ANOF-BR         PIC  9(04).
+                    20 WS-FILLER1-BR      PIC  X(01).
+                    20 WS-MESF-BR         PIC  9(02).
+                    20 WS-FILLER1-BR      PIC  X(01).
+                    20 WS-DIAF-BR         PIC  9(02).
+      *
+           05 WS-TAB-DIAS-MES.
+              10 FILLER                   PIC  X(02) VALUE '31'.
+              10 FILLER                   PIC  X(02) VALUE '28'.
+              10 FILLER                   PIC  X(02) VALUE '31'.
+              10 FILLER                   PIC  X(02) VALUE '30'.
+              10 FILLER                   PIC  X(02) VALUE '31'.
+              10 FILLER                   PIC  X(02) VALUE '30'.
+              10 FILLER                   PIC  X(02) VALUE '31'.
+              10 FILLER                   PIC  X(02) VALUE '31'.
+              10 FILLER                   PIC  X(02) VALUE '30'.
+              10 FILLER                   PIC  X(02) VALUE '31'.
+              10 FILLER                   PIC  X(02) VALUE '30'.
+              10 FILLER                   PIC  X(02) VALUE '31'.
+           05 WS-TAB-DIAS-R REDEFINES WS-TAB-DIAS-MES.
+              10 WS-TAB-DIAS OCCURS 12 TIMES
+                                          PIC  9(02).
+      *
+          05 WS-DES-MES.
+             10 FILLER                     PIC  X(09) VALUE 'JANEIRO  '.
+             10 FILLER                     PIC  X(09) VALUE 'FEVEREIRO'.
+             10 FILLER                     PIC  X(09) VALUE 'MARCO    '.
+             10 FILLER                     PIC  X(09) VALUE 'ABRIL    '.
+             10 FILLER                     PIC  X(09) VALUE 'MAIO     '.
+             10 FILLER                     PIC  X(09) VALUE 'JUNHO    '.
+             10 FILLER                     PIC  X(09) VALUE 'JULHO    '.
+             10 FILLER                     PIC  X(09) VALUE 'AGOSTO   '.
+             10 FILLER                     PIC  X(09) VALUE 'SETEMBRO '.
+             10 FILLER                     PIC  X(09) VALUE 'OUTUBRO  '.
+             10 FILLER                     PIC  X(09) VALUE 'NOVEMBRO '.
+             10 FILLER                     PIC  X(09) VALUE 'DEZEMBRO '.
+          05 WS-DES-MES-R REDEFINES WS-DES-MES.
+             10 WS-DESC-MES OCCURS 12 TIMES.
+                15 WS-D-MES OCCURS 9 TIMES
+                                           PIC  X(01).
+      *
+          05 WS-TAB1-DIAS-MES.
+             10 FILLER                     PIC  X(03) VALUE '000'.
+             10 FILLER                     PIC  X(03) VALUE '031'.
+             10 FILLER                     PIC  X(03) VALUE '059'.
+             10 FILLER                     PIC  X(03) VALUE '090'.
+             10 FILLER                     PIC  X(03) VALUE '120'.
+             10 FILLER                     PIC  X(03) VALUE '151'.
+             10 FILLER                     PIC  X(03) VALUE '181'.
+             10 FILLER                     PIC  X(03) VALUE '212'.
+             10 FILLER                     PIC  X(03) VALUE '243'.
+             10 FILLER                     PIC  X(03) VALUE '273'.
+             10 FILLER                     PIC  X(03) VALUE '304'.
+             10 FILLER                     PIC  X(03) VALUE '334'.
+          05 WS-TAB1-DIAS-R REDEFINES WS-TAB1-DIAS-MES.
+             10 WS-TAB1-DIAS OCCURS 12 TIMES
+                                           PIC  9(03).
+      *
+          05 WS-TAB-DIASJ-MES.
+             10 FILLER                     PIC  X(03) VALUE '001'.
+             10 FILLER                     PIC  X(03) VALUE '032'.
+             10 FILLER                     PIC  X(03) VALUE '060'.
+             10 FILLER                     PIC  X(03) VALUE '091'.
+             10 FILLER                     PIC  X(03) VALUE '121'.
+             10 FILLER                     PIC  X(03) VALUE '152'.
+             10 FILLER                     PIC  X(03) VALUE '182'.
+             10 FILLER                     PIC  X(03) VALUE '213'.
+             10 FILLER                     PIC  X(03) VALUE '244'.
+             10 FILLER                     PIC  X(03) VALUE '274'.
+             10 FILLER                     PIC  X(03) VALUE '305'.
+             10 FILLER                     PIC  X(03) VALUE '335'.
+             10 FILLER                     PIC  X(03) VALUE '366'.
+          05 WS-TAB-DIASJ-R REDEFINES WS-TAB-DIASJ-MES.
+             10 WS-TAB-DIASJ OCCURS 13 TIMES
+                                           PIC  9(03).
+      *----------------------------------------------------------------*
+       01  VARIAVEIS.
+           05 WS-RCAMPOS                   PIC  X(01) VALUE SPACES.
+              88 WS-RESTO-CAMPOS                      VALUE '1'.
+           05 WS-MSG                       PIC  X(40) VALUE SPACES.
+           05 WS-COD-PROCESSO              PIC  X(02) VALUE SPACES.
+              88 OPCOES-VALIDAS                       VALUE
+              '01' '02' '03' '04' '05' '06' '07' '08' '09'
+              '21' '22' '23' '24' '25' '26' '27' '28' '29'
+              '30' '31' '32' '40' '41' '42' '43' '50' '51'
+              '52' '53' '54' '55' '56' '57' '99' '33' '34'
+              '35' '10' '11' '12' '58'.
+           05 WS-PRAZO-VALIDO              PIC  X(03) VALUE SPACES.
+              88 PRAZO-VALIDO                         VALUE
+                                                      'M01' THRU  'M99'
+                                                      'D00' THRU  'D90'
+                                                      'U00' THRU  'U31'
+                                                      'T00' THRU  'T31'
+                                                      'S00' THRU  'S31'
+                                                      'A00' THRU  'A31'
+                                                      'N01' THRU  'N99'
+                                                      'E01' THRU  'E99'
+                                                      'R01' THRU  'R99'
+
+                                                      'MU0' THRU  'MU9'
+                                                      'TU0' THRU  'TU9'
+                                                      'SU0' THRU  'SU9'
+                                                      'AU0' THRU  'AU9'
+
+                                                      'F00' THRU  'F99'
+
+                                                      'V00' THRU  'V99'
+
+                                                      'X00' THRU  'X99'
+
+                                                      'MR0' THRU  'MR9'
+                                                      'TR0' THRU  'TR9'
+                                                      'SR0' THRU  'SR9'
+                                                      'AR0' THRU  'AR9'
+
+                                                      'Q00' THRU  'Q99'
+
+                                                      'W01' THRU  'W07'
+
+                                                      'P08' 'P10'.
+
+              88 PRAZO-VALIDO-MESES                   VALUE
+                                                      'M01' THRU  'M99'.
+              88 PRAZO-VALIDO-ANOS                    VALUE
+                                                      'N01' THRU  'N99'.
+              88 PRAZO-VALIDO-SEMESTRES               VALUE
+                                                      'E01' THRU  'E99'.
+              88 PRAZO-VALIDO-TRIMESTRES              VALUE
+                                                      'R01' THRU  'R99'.
+              88 PRAZO-VALIDO-DIAS                    VALUE
+                                                      'D00' THRU  'D90'.
+              88 PRAZO-VALIDO-ESPECIAL                VALUE
+                                                      'U00' THRU  'U31'
+                                                      'T00' THRU  'T31'
+                                                      'S00' THRU  'S31'
+                                                      'A00' THRU  'A31'.
+              88 PRAZO-CALEND-ESPECIAL                VALUE
+                                                      'MU0' THRU  'MU9'
+                                                      'TU0' THRU  'TU9'
+                                                      'SU0' THRU  'SU9'
+                                                      'AU0' THRU  'AU9'.
+
+              88 PRAZO-FIXO-ESPECIAL                  VALUE
+                                                      'F00' THRU  'F99'.
+
+              88 PRAZO-FIXO-ANUAL                     VALUE
+                                                      'V00' THRU  'V99'.
+
+              88 PRAZO-FIXO-ANO-1-DIA                 VALUE       'F00'.
+
+              88 PRAZO-REGUL-ESPECIAL                 VALUE
+                                                      'MR0' THRU  'MR9'
+                                                      'TR0' THRU  'TR9'
+                                                      'SR0' THRU  'SR9'
+                                                      'AR0' THRU  'AR9'.
+              88 PRAZO-REGUL-MENSAL                   VALUE
+                                                      'MR0' THRU  'MR9'.
+              88 PRAZO-REGUL-TRIMESTRAL               VALUE
+                                                      'TR0' THRU  'TR9'.
+              88 PRAZO-REGUL-SEMESTRAL                VALUE
+                                                      'SR0' THRU  'SR9'.
+              88 PRAZO-REGUL-ANUAL                    VALUE
+                                                      'AR0' THRU  'AR9'.
+              88 PRAZO-FIXO-QUINZENAL                 VALUE
+                                                      'Q00' THRU  'Q99'.
+              88 PRAZO-FIXO-SEMANAL                   VALUE
+                                                      'W01' THRU  'W07'.
+              88 PRAZO-MENSUALIZACAO                  VALUE
+                                                      'P08'.
+              88 PRAZO-ANUAL-FIM-MES                  VALUE
+                                                      'X00' THRU  'X99'.
+              88 PRAZO-TRIMENSALIDADE                 VALUE
+                                                      'P10'.
+
+           05 WS-PRAZO-VALIDO-R REDEFINES WS-PRAZO-VALIDO.
+              10 WS-PRAZO-VALIDO-X         PIC  X(01).
+                 88 PRAZO-MENSAL                     VALUE 'U'.
+                 88 PRAZO-TRIMESTRAL                 VALUE 'T'.
+                 88 PRAZO-SEMESTRAL                  VALUE 'S'.
+                 88 PRAZO-ANUAL                      VALUE 'A'.
+                 88 PRAZO-FIXO                       VALUE 'F'.
+                 88 PRAZO-FIXO-ANOS                  VALUE 'V'.
+                 88 PRAZO-QUINZENAL                  VALUE 'Q'.
+                 88 PRAZO-SEMANAL                    VALUE 'W'.
+                 88 PRAZO-MENSUALIZ                  VALUE 'P'.
+                 88 PRAZO-ANO-FIM-MES                VALUE 'X'.
+              10 WS-PRAZO-VALIDO-N         PIC  9(02).
+              10 FILLER REDEFINES WS-PRAZO-VALIDO-N.
+                 15 WS-PRAZO-VALIDO-1      PIC  X(01).
+                 15 WS-PRAZO-VALIDO-2      PIC  9(01).
+      *
+           05 WS-DATAB                     PIC  X(10) VALUE SPACES.
+           05 WS-DATA.
+              10 WS-ANOV                   PIC  9(04) VALUE ZEROS.
+              10 WS-ANOV-R REDEFINES WS-ANOV.
+                 15 WS-ANOVO OCCURS 4 TIMES PIC 9(01).
+              10 WS-ANOV-R1 REDEFINES WS-ANOV.
+                 15 WS-ANOV1               PIC  9(02).
+                 15 WS-ANOV2               PIC  9(02).
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-MESV                   PIC  9(02) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-DIAV                   PIC  9(02) VALUE ZEROS.
+              10 WS-DIAV-R REDEFINES WS-DIAV.
+                 15 WS-DIAVO OCCURS 2 TIMES PIC  9(01).
+           05 WS-DATA-COMP.
+              10 WS-ANOC10                 PIC  9(04) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-MESC10                 PIC  9(02) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-DIAC10                 PIC  9(02) VALUE ZEROS.
+           05 WS-DATAI10.
+              10 WS-ANOI10                 PIC  9(04) VALUE ZEROS.
+              10 WS-ANOI10-R REDEFINES WS-ANOI10.
+                 15 WS-ANOI OCCURS 4 TIMES PIC  9(01).
+              10 WS-ANO-R REDEFINES WS-ANOI10.
+                 15 WS-ANO1                PIC  9(02).
+                 15 WS-ANO2                PIC  9(02).
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-MESI10                 PIC  9(02) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-DIAI10                 PIC  9(02) VALUE ZEROS.
+              10 WS-DIAI10-R REDEFINES WS-DIAI10.
+                 15 WS-DIAI OCCURS 2 TIMES PIC  9(01).
+           05 WS-DATAO10.
+              10 WS-ANOO10                 PIC  9(04) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-MESO10                 PIC  9(02) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-DIAO10                 PIC  9(02) VALUE ZEROS.
+           05 WS-DATAP.
+              10 WS-ANOP                   PIC  9(04) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-MESP                   PIC  9(02) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-DIAP                   PIC  9(02) VALUE ZEROS.
+           05 WS-DATAIN.
+              10 WS-ANOIN                  PIC  9(04) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-MESIN                  PIC  9(02) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-DIAIN                  PIC  9(02) VALUE ZEROS.
+           05 WS-DIAINS                    PIC S9(02) VALUE ZEROS.
+           05 WS-DATAFI.
+              10 WS-ANOFI                  PIC  9(04) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-MESFI                  PIC  9(02) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '-'.
+              10 WS-DIAFI                  PIC  9(02) VALUE ZEROS.
+           05 WS-DATA-JUL4.
+              10 WS-ANO-J4                 PIC  9(04) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '.'.
+              10 WS-DIA-J4                 PIC  9(03) VALUE ZEROS.
+           05 WS-DATA-OJUL4.
+              10 WS-ANO-OJ4                PIC  9(04) VALUE ZEROS.
+              10 FILLER                    PIC  X(01) VALUE '.'.
+              10 WS-DIA-OJ4                PIC  9(03) VALUE ZEROS.
+           05 WS-DIAS                      PIC S9(06) VALUE ZEROS.
+           05 WS-DIA                       PIC S9(06) VALUE ZEROS.
+           05 WS-ANO                       PIC  9(04) VALUE ZEROS.
+
+           05 WS-DIA-SEMANA-A.
+              10 WS-DIA-SEMANA             PIC  9(02) VALUE ZEROES.
+
+           05 WS-FERIADO                   PIC  X(01) VALUE SPACES.
+              88 WS-CFERIADO                          VALUE '1'.
+           05 WS-CDIA                      PIC  X(01) VALUE SPACES.
+              88 WS-UTIL                              VALUE '2' '3'
+                                                       '4' '5' '6'.
+              88 WS-NAO-UTIL                          VALUE 'S' 'D'.
+           05 WS-CDIAA                     PIC  X(01) VALUE SPACES.
+              88 WS-UTILA                             VALUE '2' '3'
+                                                       '4' '5' '6'.
+              88 WS-NAO-UTILA                         VALUE 'S' 'D'.
+           05 WS-GDIA1                     PIC  X(37) VALUE SPACES.
+           05 WS-GDIA1-R REDEFINES WS-GDIA1.
+              10 WS-GDIA1-B OCCURS 37 TIMES
+                                           PIC  X(01).
+           05 WS-GDIA                      PIC  X(20) VALUE SPACES.
+           05 WS-GDIA-R REDEFINES WS-GDIA.
+              10 WS-GDIA-B OCCURS 20 TIMES PIC  X(01).
+      *
+           05 WS-DIA-C                     PIC  9(04) VALUE ZEROS.
+           05 WS-CDIAN                     PIC  9(01) VALUE ZEROS.
+           05 WS-DIA-SO                    PIC  9(04) VALUE ZEROS.
+           05 WS-NUM-SEM                   PIC  9(04) VALUE ZEROS.
+           05 WS-RESTO                     PIC  9(03) VALUE ZEROS.
+           05 WS-RESTO-DIAS                PIC S9(03) VALUE ZEROS.
+           05 WS-COL2                      PIC  9(03) VALUE ZEROS.
+           05 WS-IND                       PIC  9(01) VALUE ZEROS.
+           05 WS-IND1                      PIC  9(03) VALUE ZEROS.
+           05 WS-IND2                      PIC  9(03) VALUE ZEROS.
+           05 WS-IND3                      PIC  9(03) VALUE ZEROS.
+           05 WS-IND10                     PIC  9(03) VALUE ZEROS.
+           05 WS-INDF                      PIC  9(02) COMP VALUE ZEROS.
+           05 WS-INDF1                     PIC  9(02) COMP VALUE ZEROS.
+           05 WS-INDF2                     PIC  9(02) COMP VALUE ZEROS.
+           05 WS-MESC                      PIC  9(03) VALUE ZEROS.
+           05 WS-DIAC                      PIC  9(02) VALUE ZEROS.
+           05 WS-ANO-C1                    PIC  9(07) VALUE ZEROS.
+           05 WS-ANO-C2                    PIC  9(07) VALUE ZEROS.
+           05 WS-MES-C1                    PIC  9(03) VALUE ZEROS.
+           05 WS-MES-C2                    PIC  9(03) VALUE ZEROS.
+           05 WS-NUM-TDIAS                 PIC  9(04) VALUE ZEROS.
+           05 WS-NUM-TDIAS1                PIC  9(07) VALUE ZEROS.
+           05 WS-NUM-TDIAS2                PIC  9(07) VALUE ZEROS.
+           05 WS-NUM-TDIAS-C               PIC  9(06) VALUE ZEROS.
+           05 WS-DIA-U                     PIC  9(01) VALUE ZEROS.
+           05 WS-NUM-FS                    PIC  9(04) VALUE ZEROS.
+           05 WS-NUM-DFS                   PIC  9(06) VALUE ZEROS.
+           05 WS-TIRAR                     PIC  9(01) VALUE ZEROS.
+           05 WS-PRAZO                     PIC S9(04) COMP-3
+                                                      VALUE ZEROS.
+           05 WS-PRZ-D                     PIC  9(03) VALUE ZEROS.
+           05 WS-PRZ-M                     PIC  9(03) VALUE ZEROS.
+           05 WS-NUM-ANOS                  PIC  9(03) VALUE ZEROS.
+           05 WS-DIA-PASCOA                PIC  9(02) VALUE ZEROS.
+           05 WS-FIM-MAR                   PIC  9(03) VALUE ZEROS.
+           05 WS-FIM-FEV                   PIC  9(03) VALUE ZEROS.
+           05 WS-PASCOA                    PIC  9(03) VALUE ZEROS.
+           05 WS-DIA-PASCAL                PIC  9(04) VALUE ZEROS.
+           05 WS-LUA-PASCAL                PIC  9(03) VALUE ZEROS.
+           05 WS-21-MARCO                  PIC  9(03) VALUE ZEROS.
+           05 WS-LUA-ABRIL                 PIC  9(03) VALUE ZEROS.
+           05 WS-LUA-MARCO                 PIC  9(03) VALUE ZEROS.
+           05 WS-LUA-JAN                   PIC  9(03) VALUE ZEROS.
+           05 WS-CORR-CLAV                 PIC  9(04) VALUE ZEROS.
+           05 WS-EPACTA                    PIC S9(04) VALUE ZEROS.
+           05 WS-CORR-LIL                  PIC  9(04) VALUE ZEROS.
+           05 WS-BIS1                      PIC  9(01) VALUE ZEROS.
+           05 WS-VAR1                      PIC  9(03) VALUE ZEROS.
+           05 WS-VAR2                      PIC  9(03) VALUE ZEROS.
+           05 WS-VAR3                      PIC  9(04) VALUE ZEROS.
+           05 WS-VAR4                      PIC  9(04) VALUE ZEROS.
+           05 WS-VAR5                      PIC  9(04) VALUE ZEROS.
+           05 WS-VAR6                      PIC  9(04) VALUE ZEROS.
+           05 WS-VAR7                      PIC S9(04) VALUE ZEROS.
+           05 WS-SECULOS                   PIC  9(04) VALUE ZEROS.
+           05 WS-NUM-OURO                  PIC  9(04) VALUE ZEROS.
+           05 WS-NUM-DOM                   PIC  9(04) VALUE ZEROS.
+
+           05 WS-IND-ORD                   PIC  9(02) COMP VALUE ZEROS.
+           05 WS-DATA-TROCA                PIC  X(10) VALUE SPACES.
+           05 WS-STATUS-TROCA              PIC  X(01) VALUE SPACES.
+              88 WS-TROCOU                            VALUE 'S'.
+              88 WS-NAO-TROCOU                        VALUE SPACES.
+
+           05 WS-PROGNAME                  PIC X(08) VALUE 'VIAR1000'.
+           05 SW-DEBUG                     PIC  X(01) VALUE SPACES.
+              88 SW-DEBUG-SIM                         VALUE 'S'.
+              88 SW-DEBUG-NAO                         VALUE 'N'.
+      *----------------------------------------------------------------*
+      * COPYS DE WORKING                                               *
+      *----------------------------------------------------------------*
+           COPY VIAW0021.
+           COPY VIAK0001.
+           COPY VIAL0015.
+      *----------------------------------------------------------------*
+       LINKAGE SECTION.
+           COPY VIAL1000.
+      *----------------------------------------------------------------*
+      *          PROCEDURE DIVISION                                    *
+      *----------------------------------------------------------------*
+       PROCEDURE DIVISION USING VIAL1000-AREA-COMUNICACAO.
+      *----------------------------------------------------------------*
+      *          MAINLINE                                              *
+      *----------------------------------------------------------------*
+       0000-MAINLINE.
+           PERFORM A100-INICIALIZACAO
+              THRU A100-INICIALIZACAO-EXIT.
+      *
+           PERFORM D100-PROCESSAMENTO
+              THRU D100-PROCESSAMENTO-EXIT.
+      *
+           GOBACK.
+      *----------------------------------------------------------------*
+      *          INICIALIZACAO DE AREAS                                *
+      *----------------------------------------------------------------*
+       A100-INICIALIZACAO.
+           INITIALIZE VARIAVEIS.
+           MOVE WS-TAB-FERIADOS-CONSTANTE   TO WS-TAB-FERIADOS.
+           MOVE WS-TAB-FERIADOS-CONSTANTE-BR
+                                            TO WS-TAB-FERIADOS-BR.
+           SET VIAL1000-SEM-ERROS           TO TRUE.
+           SET SW-DEBUG-NAO                 TO TRUE.
+       A100-INICIALIZACAO-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          ROTINA PRINCIPAL DO PROCESSAMENTO.                    *
+      *----------------------------------------------------------------*
+       D100-PROCESSAMENTO.
+           PERFORM V100-VALIDAR-ENTRADAS
+              THRU V100-EXIT.
+
+           IF VIAL1000-SEM-ERROS
+              PERFORM D200-EFECTUAR-CALCULOS
+                 THRU D200-EXIT
+           END-IF.
+
+           PERFORM M100-FORMATAR-AREA-SAIDA
+              THRU M100-EXIT.
+      *
+       D100-PROCESSAMENTO-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          VALIDACAO INICIAL DAS ENTRADAS                        *
+      *----------------------------------------------------------------*
+       V100-VALIDAR-ENTRADAS.
+           IF VIAL1000-COD-PROCESSO = SPACES OR
+              VIAL1000-DAT-INPUT1   = SPACES
+              SET VIAL1000-ERROS-ARQ TO TRUE
+              MOVE ERRMSG-INPUT-MAL-FORMATAD
+                                           TO WS-MSG
+              MOVE VIAK0001-INPUT-INVALIDO
+                                           TO VIAL1000-COD-ERRO-GRAVE
+           ELSE
+
+              MOVE VIAL1000-COD-PROCESSO   TO WS-COD-PROCESSO
+              IF OPCOES-VALIDAS
+                 PERFORM V110-VALIDAR-OPCOES THRU V110-EXIT
+              ELSE
+                 SET VIAL1000-ERROS-ARQ TO TRUE
+                 MOVE ERRMSG-OPCAO-INVALIDA
+                                           TO WS-MSG
+                 MOVE VIAK0001-OPCAO-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+              END-IF.
+       V100-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          VALIDACAO DE OPCOES                                   *
+      *----------------------------------------------------------------*
+       V110-VALIDAR-OPCOES.
+           EVALUATE VIAL1000-COD-PROCESSO
+               WHEN '51'
+                    IF VIAL1000-DAT-JULIANA  < 366
+                       SET VIAL1000-ERROS-ARQ TO TRUE
+                       MOVE ERRMSG-DATA-INCORRECTA
+                                           TO WS-MSG
+                       MOVE VIAK0001-DATA-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                    END-IF
+               WHEN '53'
+                    IF ( VIAL1000-I1-A EQUAL ZEROS OR LOW-VALUES ) OR
+                       VIAL1000-DAT-JULIANA  EQUAL ZEROS
+                       SET VIAL1000-ERROS-ARQ TO TRUE
+                       MOVE ERRMSG-INPUT-MAL-FORMATAD
+                                           TO WS-MSG
+                       MOVE VIAK0001-INPUT-INVALIDO
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                    END-IF
+               WHEN '54'
+                    IF ( VIAL1000-I1-A EQUAL ZEROS OR LOW-VALUES ) OR
+                       VIAL1000-PRZ-D  EQUAL ZEROS                 OR
+                       VIAL1000-DAT-JULIANA  EQUAL ZEROS
+                       SET VIAL1000-ERROS-ARQ TO TRUE
+                       MOVE ERRMSG-INPUT-MAL-FORMATAD
+                                           TO WS-MSG
+                       MOVE VIAK0001-INPUT-INVALIDO
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                    END-IF
+               WHEN '55'
+                    IF ( VIAL1000-I1-A EQUAL ZEROS OR LOW-VALUES ) OR
+                       VIAL1000-PRZ-D  EQUAL ZEROS                 OR
+                       VIAL1000-DAT-JULIANA  EQUAL ZEROS
+                       SET VIAL1000-ERROS-ARQ TO TRUE
+                       MOVE ERRMSG-INPUT-MAL-FORMATAD
+                                           TO WS-MSG
+                       MOVE VIAK0001-INPUT-INVALIDO
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                    END-IF
+               WHEN '56'
+                    IF ( VIAL1000-I1-A EQUAL ZEROS OR LOW-VALUES ) OR
+                       VIAL1000-PRZ-D  EQUAL ZEROS                 OR
+                       VIAL1000-DAT-JULIANA  EQUAL ZEROS
+                       SET VIAL1000-ERROS-ARQ TO TRUE
+                       MOVE ERRMSG-INPUT-MAL-FORMATAD
+                                           TO WS-MSG
+                       MOVE VIAK0001-INPUT-INVALIDO
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                    END-IF
+               WHEN '57'
+                    IF ( VIAL1000-I1-A EQUAL ZEROS OR LOW-VALUES ) OR
+                       VIAL1000-PRZ-D  EQUAL ZEROS                 OR
+                       VIAL1000-DAT-JULIANA  EQUAL ZEROS
+                       SET VIAL1000-ERROS-ARQ TO TRUE
+                       MOVE ERRMSG-INPUT-MAL-FORMATAD
+                                           TO WS-MSG
+                       MOVE VIAK0001-INPUT-INVALIDO
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                    END-IF
+               WHEN OTHER
+                    IF VIAL1000-SEM-ERROS
+                       PERFORM V120-VALIDAR-DATAS THRU V120-EXIT
+                    ELSE
+                       SET VIAL1000-ERROS-ARQ TO TRUE
+                       MOVE ERRMSG-INPUT-MAL-FORMATAD
+                                              TO WS-MSG
+                       MOVE VIAK0001-INPUT-INVALIDO
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                    END-IF
+           END-EVALUATE.
+       V110-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          VALIDACAO DE DATAS                                    *
+      *----------------------------------------------------------------*
+       V120-VALIDAR-DATAS.
+           PERFORM V200-LOGIC-DAT    THRU V200-EXIT.
+           IF VIAL1000-SEM-ERROS
+
+              EVALUATE VIAL1000-COD-PROCESSO
+                  WHEN '50'
+                       IF VIAL1000-I1-A = '1900'
+                          SET VIAL1000-ERROS-ARQ TO TRUE
+                          MOVE ERRMSG-DATA-INCORRECTA
+                                           TO WS-MSG
+                          MOVE VIAK0001-DATA-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                       END-IF
+                  WHEN OTHER
+                       CONTINUE
+              END-EVALUATE
+           ELSE
+              MOVE ERRMSG-DATA-INCORRECTA
+                                           TO WS-MSG
+           END-IF.
+       V120-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          VALIDAR LOGICA DA DATA                                *
+      *----------------------------------------------------------------*
+       V200-LOGIC-DAT.
+           IF VIAL1000-DAT-INPUT1 = SPACES OR ZEROS OR LOW-VALUES
+              NEXT SENTENCE
+           ELSE
+              MOVE VIAL1000-I1-A           TO VIAW0021-ANO
+              PERFORM VIAP0021-VAL-BIS THRU
+                      VIAP0021-VAL-BIS-EXIT
+              IF VIAW0021-BISSEXTO
+                 MOVE 29                   TO WS-TAB-DIAS(2)
+              ELSE
+                 MOVE 28                   TO WS-TAB-DIAS(2)
+              END-IF
+              IF VIAL1000-DAT-INPUT1 NOT LESS '15821005' AND
+                 VIAL1000-DAT-INPUT1     LESS '15821014'
+                 SET VIAL1000-ERROS-ARQ TO TRUE
+                 MOVE VIAK0001-DATA-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+              END-IF
+              IF VIAL1000-SEM-ERROS
+                 IF VIAL1000-I1-M    LESS  1 OR
+                    VIAL1000-I1-M GREATER 12
+                    SET VIAL1000-ERROS-ARQ TO TRUE
+                    MOVE VIAK0001-DATA-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+
+                 END-IF
+                 IF VIAL1000-SEM-ERROS
+                    IF VIAL1000-I1-D LESS  1 OR
+                       VIAL1000-I1-D GREATER
+                                    WS-TAB-DIAS (VIAL1000-I1-M)
+                       SET VIAL1000-ERROS-ARQ TO TRUE
+                       MOVE VIAK0001-DATA-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+
+                    END-IF.
+
+           IF VIAL1000-COD-PROCESSO = CON-05 OR CON-06
+              IF VIAL1000-DAT-INPUT2 = SPACES OR ZEROS OR LOW-VALUES
+                 SET VIAL1000-ERROS-ARQ TO TRUE
+                 MOVE ERRMSG-INPUT-MAL-FORMATAD
+                                           TO WS-MSG
+                 MOVE VIAK0001-DATA-2-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+
+              ELSE
+                 MOVE VIAL1000-I2-A        TO VIAW0021-ANO
+                 PERFORM VIAP0021-VAL-BIS THRU
+                         VIAP0021-VAL-BIS-EXIT
+                 IF VIAW0021-BISSEXTO
+                    MOVE 29                TO WS-TAB-DIAS(2)
+                 ELSE
+                    MOVE 28                TO WS-TAB-DIAS(2)
+                 END-IF
+                 IF VIAL1000-DAT-INPUT2 NOT LESS '15821005' AND
+                    VIAL1000-DAT-INPUT2     LESS '15821014'
+                    SET VIAL1000-ERROS-ARQ TO TRUE
+                    MOVE VIAK0001-DATA-2-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                 END-IF
+                 IF VIAL1000-SEM-ERROS
+                    IF VIAL1000-I2-M LESS  1 OR
+                       VIAL1000-I2-M GREATER 12
+                       SET VIAL1000-ERROS-ARQ TO TRUE
+                       MOVE VIAK0001-DATA-2-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                    END-IF
+                    IF VIAL1000-SEM-ERROS
+                       IF VIAL1000-I2-D LESS 1 OR
+                          VIAL1000-I2-D GREATER
+                                       WS-TAB-DIAS (VIAL1000-I2-M)
+                          SET VIAL1000-ERROS-ARQ TO TRUE
+                          MOVE VIAK0001-DATA-2-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                       END-IF
+                       IF VIAL1000-SEM-ERROS
+                          IF VIAL1000-DAT-INPUT1 > VIAL1000-DAT-INPUT2
+                             SET VIAL1000-ERROS-ARQ TO TRUE
+                             MOVE VIAK0001-DATA-2-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+                             MOVE ERRMSG-DATA-INCORRECTA
+                                           TO WS-MSG.
+       V200-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          EFECTUAR CALCULO                                      *
+      *----------------------------------------------------------------*
+       D200-EFECTUAR-CALCULOS.
+           MOVE '0'                       TO WS-RCAMPOS.
+           MOVE VIAL1000-I1-A             TO WS-ANOI10.
+           MOVE VIAL1000-I1-M             TO WS-MESI10.
+           MOVE VIAL1000-I1-D             TO WS-DIAI10.
+           MOVE VIAL1000-PRZ-M            TO WS-PRZ-M.
+           MOVE VIAL1000-PRZ-D            TO WS-PRZ-D.
+      *
+           MOVE 'D200-EFECTUAR-CALCULOS'   TO VIAL0015-CALLER-ID
+           MOVE 'VIAL1000-COD-PROCESSO'    TO VIAL0015-CAMPO-NM(1)
+           MOVE  VIAL1000-COD-PROCESSO     TO VIAL0015-CAMPO-VLR(1)
+           MOVE 'VIAL1000-COD-PRZ     '    TO VIAL0015-CAMPO-NM(2)
+           MOVE  VIAL1000-COD-PRZ          TO VIAL0015-CAMPO-VLR(2)
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT
+      *
+           EVALUATE VIAL1000-COD-PROCESSO
+               WHEN '01'
+                    PERFORM D201-PROCESSO-01 THRU D201-EXIT
+               WHEN '02'
+                    PERFORM D201-PROCESSO-01 THRU D201-EXIT
+               WHEN '03'
+                    PERFORM D203-PROCESSO-03 THRU D203-EXIT
+               WHEN '04'
+                    PERFORM D203-PROCESSO-03 THRU D203-EXIT
+               WHEN '05'
+                    PERFORM D205-PROCESSO-05 THRU D205-EXIT
+               WHEN '06'
+                    PERFORM D206-PROCESSO-06 THRU D206-EXIT
+               WHEN '07'
+                    PERFORM D207-PROCESSO-07 THRU D207-EXIT
+               WHEN '08'
+                    PERFORM D208-PROCESSO-08 THRU D208-EXIT
+               WHEN '09'
+                    PERFORM D209-PROCESSO-09 THRU D209-EXIT
+               WHEN '10'
+                    PERFORM D210-PROCESSO-10 THRU D210-EXIT
+               WHEN '11'
+                    PERFORM D211-PROCESSO-11 THRU D211-EXIT
+               WHEN '12'
+                    PERFORM D212-PROCESSO-12 THRU D212-EXIT
+               WHEN '21'
+                    PERFORM D221-PROCESSO-21 THRU D221-EXIT
+               WHEN '22'
+                    PERFORM D221-PROCESSO-21 THRU D221-EXIT
+               WHEN '23'
+                    PERFORM D223-PROCESSO-23 THRU D223-EXIT
+               WHEN '24'
+                    PERFORM D223-PROCESSO-23 THRU D223-EXIT
+               WHEN '25'
+                    PERFORM D225-PROCESSO-25 THRU D225-EXIT
+               WHEN '26'
+                    PERFORM D225-PROCESSO-25 THRU D225-EXIT
+               WHEN '27'
+                    PERFORM D227-PROCESSO-27 THRU D227-EXIT
+               WHEN '28'
+                    PERFORM D227-PROCESSO-27 THRU D227-EXIT
+               WHEN '29'
+                    PERFORM D229-PROCESSO-29 THRU D229-EXIT
+               WHEN '30'
+                    PERFORM D229-PROCESSO-29 THRU D229-EXIT
+               WHEN '31'
+                    PERFORM D231-PROCESSO-31 THRU D231-EXIT
+               WHEN '32'
+                    PERFORM D231-PROCESSO-31 THRU D231-EXIT
+               WHEN '33'
+                    PERFORM D233-PROCESSO-33 THRU D233-EXIT
+               WHEN '34'
+                    PERFORM D234-PROCESSO-34 THRU D234-EXIT
+               WHEN '35'
+                    PERFORM D235-PROCESSO-35 THRU D235-EXIT
+               WHEN '40'
+                    PERFORM D240-PROCESSO-40 THRU D240-EXIT
+               WHEN '41'
+                    PERFORM D241-PROCESSO-41 THRU D241-EXIT
+               WHEN '42'
+                    PERFORM D242-PROCESSO-42 THRU D242-EXIT
+               WHEN '43'
+                    PERFORM D243-PROCESSO-43 THRU D243-EXIT
+               WHEN '50'
+                    PERFORM D250-PROCESSO-50 THRU D250-EXIT
+               WHEN '51'
+                    PERFORM D251-PROCESSO-51 THRU D251-EXIT
+               WHEN '52'
+                    PERFORM D252-PROCESSO-52 THRU D252-EXIT
+               WHEN '53'
+                    PERFORM D253-PROCESSO-53 THRU D253-EXIT
+               WHEN '54'
+                    PERFORM D254-PROCESSO-54 THRU D254-EXIT
+               WHEN '55'
+                    PERFORM D255-PROCESSO-55 THRU D255-EXIT
+               WHEN '56'
+                    PERFORM D256-PROCESSO-56 THRU D256-EXIT
+               WHEN '57'
+                    PERFORM D257-PROCESSO-57 THRU D257-EXIT
+               WHEN '58'
+                    PERFORM D258-PROCESSO-58 THRU D258-EXIT
+               WHEN '99'
+                    PERFORM D299-PROCESSO-99 THRU D299-EXIT
+               WHEN OTHER
+                    SET VIAL1000-ERROS-ARQ TO TRUE
+                    MOVE ERRMSG-OPCAO-INVALIDA
+                                           TO WS-MSG
+                    MOVE VIAK0001-OPCAO-INVALIDA
+                                           TO VIAL1000-COD-ERRO-GRAVE
+           END-EVALUATE.
+       D200-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR O PENULTIMO DIA UTIL DE UM MES                       *
+      *----------------------------------------------------------------*
+       D201-PROCESSO-01.
+           PERFORM G110-ULT-DIA-UTIL THRU
+                   G110-ULT-DIA-UTIL-EXIT.
+           MOVE WS-DATA                    TO WS-DATAI10.
+           MOVE 1                          TO WS-DIAS.
+           PERFORM G010-SUB-DIAS-U THRU
+                   G010-SUB-DIAS-U-EXIT.
+           MOVE WS-DATA                    TO WS-DATAFI.
+           PERFORM G270-VAL-FERIADOS THRU
+                   G270-VAL-FERIADOS-EXIT.
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D201-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR O ULTIMO DIAS UTIL DE UM MES                         *
+      *----------------------------------------------------------------*
+       D203-PROCESSO-03.
+           PERFORM G110-ULT-DIA-UTIL THRU
+                   G110-ULT-DIA-UTIL-EXIT.
+           MOVE WS-DATA                    TO WS-DATAFI.
+           PERFORM G270-VAL-FERIADOS THRU
+                   G270-VAL-FERIADOS-EXIT.
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D203-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DIFERENCA ENTRE DUAS DATAS EM DIAS UTEIS           *
+      *----------------------------------------------------------------*
+       D205-PROCESSO-05.
+           MOVE VIAL1000-I2-A              TO WS-ANOV.
+           MOVE VIAL1000-I2-M              TO WS-MESV.
+           MOVE VIAL1000-I2-D              TO WS-DIAV.
+           MOVE WS-DATA                    TO WS-DATAFI
+           PERFORM G090-DIF-DIAS THRU
+                   G090-DIF-DIAS-EXIT.
+           PERFORM G100-DIF-DIAS-U THRU
+                   G100-DIF-DIAS-U-EXIT.
+           IF WS-NUM-TDIAS GREATER ZEROS
+              MOVE WS-DATAI10              TO WS-DATAIN
+              PERFORM G260-VAL-FERIADOS THRU
+                      G260-VAL-FERIADOS-EXIT
+           END-IF.
+           MOVE WS-NUM-TDIAS1              TO VIAL1000-DIAS-RES.
+       D205-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DIFERENCA ENTRE DUAS DATAS EM DIAS                 *
+      *----------------------------------------------------------------*
+       D206-PROCESSO-06.
+           MOVE VIAL1000-I2-A              TO WS-ANOV.
+           MOVE VIAL1000-I2-M              TO WS-MESV.
+           MOVE VIAL1000-I2-D              TO WS-DIAV.
+           PERFORM G090-DIF-DIAS THRU
+                   G090-DIF-DIAS-EXIT.
+           MOVE WS-NUM-TDIAS               TO VIAL1000-DIAS-RES.
+       D206-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A O ULTIMO DIA UTIL DE UMA SEMANA                    *
+      *----------------------------------------------------------------*
+       D207-PROCESSO-07.
+      *    MOVE VIAL1000-I1-A              TO WS-ANOV.
+      *    MOVE VIAL1000-I1-M              TO WS-MESV.
+      *    MOVE VIAL1000-I1-D              TO WS-DIAV.
+           MOVE WS-ANOI10                  TO WS-ANOV.
+           MOVE WS-MESI10                  TO WS-MESV.
+           MOVE WS-DIAI10                  TO WS-DIAV.
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT.
+           IF WS-NAO-UTIL
+              IF WS-CDIA EQUAL 'S'
+                 MOVE 7                    TO WS-DIA-SO
+              ELSE
+                 MOVE 6                    TO WS-DIA-SO
+              END-IF
+           ELSE
+              MOVE WS-CDIA                 TO WS-CDIAN
+              COMPUTE WS-DIA-SO EQUAL 7 - WS-CDIAN
+           END-IF.
+      *
+           PERFORM G050-CONV-GREG THRU
+                   G050-CONV-GREG-EXIT
+           MOVE WS-DIA-SO                  TO WS-DIAS
+           PERFORM G080-SOMA-DIASJ THRU
+                   G080-SOMA-DIASJ-EXIT
+           MOVE WS-DIA-OJ4                 TO WS-DIA-J4.
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT
+           MOVE WS-DATA                    TO WS-DATAI10.
+           MOVE 1                          TO WS-DIAS.
+           PERFORM G010-SUB-DIAS-U THRU
+                   G010-SUB-DIAS-U-EXIT.
+           MOVE WS-DATA                    TO WS-DATAFI.
+           PERFORM G270-VAL-FERIADOS THRU
+                   G270-VAL-FERIADOS-EXIT.
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D207-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  RETORNA O PENULTIMO DIA DO MES                                *
+      *----------------------------------------------------------------*
+       D208-PROCESSO-08.
+           MOVE WS-DATAI10                 TO WS-DATA
+           MOVE WS-ANOV                    TO VIAW0021-ANO.
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 29                      TO WS-TAB-DIAS(2)
+           ELSE
+              MOVE 28                      TO WS-TAB-DIAS(2)
+           END-IF.
+           MOVE WS-TAB-DIAS (WS-MESI10)    TO WS-DIAI10.
+           SUBTRACT 1                      FROM WS-DIAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D208-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  RETORNA O ULTIMO DIA DO MES                                   *
+      *----------------------------------------------------------------*
+       D209-PROCESSO-09.
+           MOVE WS-DATAI10                 TO WS-DATA
+           MOVE WS-ANOV                    TO VIAW0021-ANO.
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 29                      TO WS-TAB-DIAS(2)
+           ELSE
+              MOVE 28                      TO WS-TAB-DIAS(2)
+           END-IF.
+           MOVE WS-TAB-DIAS (WS-MESI10)    TO WS-DIAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D209-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  VERIFICA SE UMA DATA E UTIL SE NAO SOMA 1 DIA UTIL            *
+      *----------------------------------------------------------------*
+       D210-PROCESSO-10.
+           MOVE WS-DATAI10                 TO WS-DATA
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT.
+           MOVE WS-DATAI10                 TO WS-DATA
+           IF WS-NAO-UTIL
+              IF WS-CDIA EQUAL 'S'
+                 ADD 2                     TO WS-DIAV
+              ELSE
+                 ADD 1                     TO WS-DIAV
+              END-IF.
+           MOVE WS-ANOV                    TO VIAW0021-ANO.
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 29                      TO WS-TAB-DIAS(2)
+           ELSE
+              MOVE 28                      TO WS-TAB-DIAS(2)
+           END-IF.
+           IF WS-DIAV GREATER WS-TAB-DIAS (WS-MESV)
+              COMPUTE WS-DIAV EQUAL WS-DIAV - WS-TAB-DIAS (WS-MESV)
+              ADD 1                        TO WS-MESV
+              IF WS-MESV GREATER 12
+                 MOVE 1                    TO WS-MESV
+                 ADD 1                     TO WS-ANOV
+              END-IF
+           END-IF.
+           MOVE WS-DATA                    TO WS-DATAFI.
+           PERFORM G280-VAL-FERIADOS THRU
+                   G280-VAL-FERIADOS-EXIT
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D210-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  VERIFICA SE UMA DATA E UTIL SE NAO SOMA 1 DIA UTIL            *
+      *----------------------------------------------------------------*
+       D211-PROCESSO-11.
+           MOVE 1                          TO WS-DIAI10.
+           PERFORM D210-PROCESSO-10 THRU D210-EXIT.
+       D211-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DATA DE CALCULO DAS PERIODIFICACOES                *
+      *----------------------------------------------------------------*
+       D212-PROCESSO-12.
+           PERFORM D207-PROCESSO-07 THRU D207-EXIT.
+           MOVE WS-ANOI10                  TO VIAW0021-ANO.
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT
+           IF VIAW0021-BISSEXTO
+              MOVE 29                      TO WS-TAB-DIAS(2)
+           ELSE
+              MOVE 28                      TO WS-TAB-DIAS(2)
+           END-IF
+      *
+           IF WS-MESI10 EQUAL VIAL1000-I1-M
+              MOVE WS-DATAI10              TO VIAL1000-DAT-RES-ED
+              MOVE WS-ANOI10               TO VIAL1000-DAT-RES-A
+              MOVE WS-MESI10               TO VIAL1000-DAT-RES-M
+              MOVE WS-DIAI10               TO VIAL1000-DAT-RES-D
+              MOVE 1                       TO WS-DIAS
+              PERFORM G020-SOM-DIAS-U THRU
+                      G020-SOM-DIAS-U-EXIT
+              MOVE WS-DATA                 TO WS-DATAFI
+              MOVE WS-DATAI10              TO WS-DATAIN
+              PERFORM G180-VAL-FERIADOS THRU
+                      G180-VAL-FERIADOS-EXIT
+              MOVE WS-DATAFI               TO WS-DATA
+              SUBTRACT 1                 FROM WS-DIAV
+              IF WS-MESV NOT EQUAL VIAL1000-I1-M
+                 SUBTRACT 1              FROM WS-MESV
+                 IF WS-MESV LESS 1
+                    MOVE 12                TO WS-MESV
+                    SUBTRACT 1           FROM WS-ANOV
+                 END-IF
+                 MOVE WS-TAB-DIAS (WS-MESV)
+                                           TO WS-DIAV
+              END-IF
+              MOVE WS-DATA                 TO VIAL1000-DAT-UT-ANT-ED
+              MOVE WS-ANOV                 TO VIAL1000-DAT-UT-ANT-A
+              MOVE WS-MESV                 TO VIAL1000-DAT-UT-ANT-M
+              MOVE WS-DIAV                 TO VIAL1000-DAT-UT-ANT-D
+           ELSE
+              MOVE WS-TAB-DIAS(VIAL1000-I1-M)
+                                           TO WS-DIAI10
+              MOVE VIAL1000-I1-M           TO WS-MESI10
+              MOVE VIAL1000-I1-A           TO WS-ANOI10
+              MOVE WS-DATAI10              TO VIAL1000-DAT-RES-ED
+                                              VIAL1000-DAT-UT-ANT-ED
+              MOVE WS-ANOI10               TO VIAL1000-DAT-RES-A
+                                              VIAL1000-DAT-UT-ANT-A
+              MOVE WS-MESI10               TO VIAL1000-DAT-RES-M
+                                              VIAL1000-DAT-UT-ANT-M
+              MOVE WS-DIAI10               TO VIAL1000-DAT-RES-D
+                                              VIAL1000-DAT-UT-ANT-D
+           END-IF.
+      *
+           MOVE VIAL1000-DAT-UT-ANT-A      TO WS-ANOI10
+           MOVE VIAL1000-DAT-UT-ANT-M      TO WS-MESI10
+           MOVE VIAL1000-DAT-UT-ANT-D      TO WS-DIAI10
+           MOVE 1                          TO VIAL1000-PRZ-D
+           PERFORM D225-PROCESSO-25 THRU D225-EXIT.
+           MOVE 0                          TO VIAL1000-PRZ-D
+           PERFORM D207-PROCESSO-07 THRU D207-EXIT.
+           MOVE WS-DATAI10                 TO VIAL1000-DAT-UT-POS-ED
+           MOVE WS-ANOI10                  TO VIAL1000-DAT-UT-POS-A
+           MOVE WS-MESI10                  TO VIAL1000-DAT-UT-POS-M
+           MOVE WS-DIAI10                  TO VIAL1000-DAT-UT-POS-D
+      *
+           IF VIAL1000-DAT-UT-ANT-D LESS WS-TAB-DIAS(VIAL1000-I1-M)
+           AND ( VIAL1000-DAT-UT-POS-M GREATER VIAL1000-I1-M
+           OR    VIAL1000-DAT-UT-POS-A GREATER VIAL1000-I1-A )
+           AND ( VIAL1000-DAT-RES-ED NOT EQUAL VIAL1000-DAT-UT-ANT-ED )
+              MOVE VIAL1000-I1-A           TO WS-ANOV
+              MOVE VIAL1000-I1-M           TO WS-MESV
+              MOVE WS-TAB-DIAS(VIAL1000-I1-M)
+                                           TO WS-DIAV
+              PERFORM G210-DIA-SEMANA THRU
+                      G210-DIA-SEMANA-EXIT
+              IF NOT WS-NAO-UTIL
+                 MOVE VIAL1000-I1-A        TO VIAL1000-DAT-UT-POS-A
+                                              WS-ANOI10
+                 MOVE VIAL1000-I1-M        TO VIAL1000-DAT-UT-POS-M
+                                              WS-MESI10
+                 MOVE WS-TAB-DIAS(VIAL1000-I1-M)
+                                           TO VIAL1000-DAT-UT-POS-D
+                                              WS-DIAI10
+                 MOVE WS-DATAI10           TO VIAL1000-DAT-UT-POS-ED
+              END-IF.
+      *
+           MOVE VIAL1000-DAT-RES-ED        TO WS-DATAI10.
+           MOVE ' '                        TO WS-RCAMPOS.
+       D212-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DATA RESULTANTE DA ADICAO DE UM PRAZO              *
+      *----------------------------------------------------------------*
+       D221-PROCESSO-21.
+
+           IF VIAL1000-COD-PRZ NOT = SPACES
+
+              PERFORM G120-OBTER-COD-PRAZO THRU
+                      G120-OBTER-COD-PRAZO-EXIT
+           END-IF.
+
+           IF VIAL1000-SEM-ERROS
+              IF PRAZO-CALEND-ESPECIAL OR
+                 PRAZO-FIXO-ESPECIAL   OR
+                 PRAZO-REGUL-ESPECIAL  OR
+                 PRAZO-FIXO-ANUAL      OR
+                 PRAZO-ANUAL-FIM-MES   OR
+                 PRAZO-FIXO-QUINZENAL  OR
+                 PRAZO-FIXO-SEMANAL    OR
+                 PRAZO-MENSUALIZACAO   OR
+                 PRAZO-TRIMENSALIDADE
+
+                 IF PRAZO-FIXO-SEMANAL
+                   PERFORM G115-PRAZO-SEMANAL THRU
+                           G115-PRAZO-SEMANAL-EXIT
+                 END-IF
+
+                 IF PRAZO-FIXO-QUINZENAL
+                   PERFORM G116-PRAZO-QUINZENAL THRU
+                           G116-PRAZO-QUINZENAL-EXIT
+                 END-IF
+
+                 IF PRAZO-REGUL-ESPECIAL
+                   MOVE WS-DATAI10          TO WS-DATA-COMP
+
+                   PERFORM G117-PRAZO-REGULAR THRU
+                           G117-PRAZO-REGULAR-EXIT
+
+                   MOVE WS-PRAZO-VALIDO-2    TO WS-PRAZO
+                   PERFORM G160-SUB-DIAS THRU
+                           G160-SUB-DIAS-EXIT
+
+                   IF WS-DATAI10 NOT GREATER WS-DATA-COMP
+                      PERFORM G119-PRAZO-CALEND THRU
+                              G119-PRAZO-CALEND-EXIT
+                   END-IF
+                 END-IF
+
+                 IF PRAZO-FIXO-ESPECIAL
+                   PERFORM G118-PRAZO-FIXO THRU
+                           G118-PRAZO-FIXO-EXIT
+                 END-IF
+
+                 IF PRAZO-FIXO-ANUAL
+                   PERFORM V118-PRAZO-FIXO-ANUAL THRU
+                           V118-PRAZO-FIXO-ANUAL-EXIT
+                 END-IF
+
+                 IF PRAZO-ANUAL-FIM-MES
+                   PERFORM X118-PRAZO-ANUAL-FIM-MES THRU
+                           X118-PRAZO-ANUAL-FIM-MES-EXIT
+                 END-IF
+
+                 IF PRAZO-CALEND-ESPECIAL
+                   MOVE WS-DATAI10          TO WS-DATA-COMP
+                   PERFORM G119-PRAZO-CALEND THRU
+                           G119-PRAZO-CALEND-EXIT
+
+                   MOVE WS-PRAZO-VALIDO-2    TO WS-PRAZO
+                   PERFORM G160-SUB-DIAS THRU
+                           G160-SUB-DIAS-EXIT
+
+                   IF WS-DATAI10 NOT GREATER WS-DATA-COMP
+                      PERFORM G119-PRAZO-CALEND THRU
+                              G119-PRAZO-CALEND-EXIT
+                   END-IF
+
+                 END-IF
+
+                 IF PRAZO-MENSUALIZACAO
+                   PERFORM G120-PRAZO-MENSUALIZACAO THRU
+                           G120-PRAZO-MENSUALIZACAO-EXIT
+                 END-IF
+
+                 IF PRAZO-TRIMENSALIDADE
+                   PERFORM G125-PRAZO-TRIMENSAL THRU
+                           G125-PRAZO-TRIMENSAL-EXIT
+                 END-IF
+
+              ELSE
+                IF PRAZO-VALIDO-ESPECIAL
+                   PERFORM G110-ULT-DIA-UTIL THRU
+                           G110-ULT-DIA-UTIL-EXIT
+                   MOVE VIAL1000-I1-A       TO WS-ANOI10
+                   MOVE VIAL1000-I1-M       TO WS-MESI10
+                   MOVE VIAL1000-I1-D       TO WS-DIAI10
+                   IF WS-DATAI10 NOT LESS WS-DATA
+                      MOVE 1                 TO WS-PRAZO
+                   END-IF
+                   IF NOT PRAZO-MENSAL
+                      IF PRAZO-TRIMESTRAL
+                         ADD 2               TO WS-PRAZO
+                      ELSE
+                         IF PRAZO-SEMESTRAL
+                            ADD 5            TO WS-PRAZO
+                         ELSE
+                            ADD 11           TO WS-PRAZO
+                         END-IF
+                      END-IF
+                   END-IF
+                   IF WS-PRAZO NOT EQUAL ZEROS
+                      PERFORM G130-SOMAR-MESES THRU
+                              G130-SOMAR-MESES-EXIT
+                   END-IF
+                   PERFORM D203-PROCESSO-03 THRU D203-EXIT
+                   IF WS-PRAZO-VALIDO-N NOT = 0
+                      MOVE WS-PRAZO-VALIDO-N TO VIAL1000-PRZ-D
+                      PERFORM D227-PROCESSO-27 THRU
+                              D227-EXIT
+                      MOVE ZEROS             TO VIAL1000-PRZ-D
+                   END-IF
+                ELSE
+                   IF WS-PRZ-D = ZEROS OR LOW-VALUES
+                      MOVE WS-PRZ-M          TO WS-PRAZO
+                      PERFORM G130-SOMAR-MESES THRU
+                              G130-SOMAR-MESES-EXIT
+                   ELSE
+                      MOVE WS-PRZ-D          TO WS-PRAZO
+                      PERFORM G140-SOMAR-DIAS THRU
+                              G140-SOMAR-DIAS-EXIT
+                   END-IF
+                END-IF
+              END-IF.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D221-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DATA RESULTANTE DA SUBTRACAO DE UM PRAZO           *
+      *----------------------------------------------------------------*
+       D223-PROCESSO-23.
+           IF VIAL1000-COD-PRZ NOT = SPACES
+              PERFORM G120-OBTER-COD-PRAZO THRU
+                      G120-OBTER-COD-PRAZO-EXIT
+           END-IF.
+           IF VIAL1000-SEM-ERROS
+              IF PRAZO-FIXO-ESPECIAL   OR
+                 PRAZO-FIXO-ANUAL      OR
+                 PRAZO-ANUAL-FIM-MES
+
+                 IF PRAZO-FIXO-ANUAL
+                   PERFORM V118-PRAZO-FIXO-ANUAL THRU
+                           V118-PRAZO-FIXO-ANUAL-EXIT
+                 END-IF
+
+                 IF PRAZO-ANUAL-FIM-MES
+                   PERFORM X118-PRAZO-ANUAL-FIM-MES THRU
+                           X118-PRAZO-ANUAL-FIM-MES-EXIT
+                 END-IF
+
+                 IF PRAZO-FIXO-ESPECIAL
+                   PERFORM G123-PRAZO-FIXO THRU
+                           G123-PRAZO-FIXO-EXIT
+                 END-IF
+
+              ELSE
+                IF PRAZO-VALIDO-ESPECIAL
+                   IF PRAZO-MENSAL
+                      MOVE 1                 TO WS-PRAZO
+                   ELSE
+                      IF PRAZO-TRIMESTRAL
+                         MOVE 3              TO WS-PRAZO
+                      ELSE
+                         IF PRAZO-SEMESTRAL
+                            MOVE 6           TO WS-PRAZO
+                         ELSE
+                            MOVE 12          TO WS-PRAZO
+                         END-IF
+                      END-IF
+                   END-IF
+                   PERFORM G150-SUB-MESES THRU
+                           G150-SUB-MESES-EXIT
+                   PERFORM D203-PROCESSO-03 THRU D203-EXIT
+                   IF WS-PRAZO-VALIDO-N NOT = 0
+                      MOVE WS-PRAZO-VALIDO-N TO VIAL1000-PRZ-D
+                      PERFORM D227-PROCESSO-27 THRU
+                              D227-EXIT
+                      MOVE ZEROS             TO VIAL1000-PRZ-D
+                   END-IF
+                ELSE
+                   IF WS-PRZ-D = ZEROS OR LOW-VALUES
+                      MOVE WS-PRZ-M          TO WS-PRAZO
+                      PERFORM G150-SUB-MESES THRU
+                              G150-SUB-MESES-EXIT
+                   ELSE
+                      MOVE WS-PRZ-D          TO WS-PRAZO
+                      PERFORM G160-SUB-DIAS THRU
+                              G160-SUB-DIAS-EXIT
+                   END-IF
+                END-IF
+              END-IF.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D223-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DATA RESULTANTE DA ADICAO DE DIAS UTEIS            *
+      *----------------------------------------------------------------*
+       D225-PROCESSO-25.
+           MOVE VIAL1000-PRZ-D             TO WS-DIAS.
+           PERFORM G020-SOM-DIAS-U THRU
+                   G020-SOM-DIAS-U-EXIT.
+           MOVE WS-DATA                    TO WS-DATAFI.
+           MOVE WS-DATAI10                 TO WS-DATAIN.
+           PERFORM G180-VAL-FERIADOS THRU
+                   G180-VAL-FERIADOS-EXIT.
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D225-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DATA RESULTANTE DA SUB. DE UM PRAZO EM DIAS UTEIS  *
+      *----------------------------------------------------------------*
+       D227-PROCESSO-27.
+           MOVE VIAL1000-PRZ-D             TO WS-DIAS.
+           PERFORM G010-SUB-DIAS-U THRU
+                   G010-SUB-DIAS-U-EXIT.
+           MOVE WS-DATA                    TO WS-DATAIN.
+           MOVE WS-DATAI10                 TO WS-DATAFI.
+           PERFORM G220-VAL-FERIADOS THRU
+                   G220-VAL-FERIADOS-EXIT.
+           MOVE WS-DATAIN                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D227-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR O PENULTIMO DIA UTIL DA ADICAO DE UM PRAZO           *
+      *----------------------------------------------------------------*
+       D229-PROCESSO-29.
+           PERFORM D221-PROCESSO-21 THRU D221-EXIT.
+           IF VIAL1000-SEM-ERROS
+              PERFORM D201-PROCESSO-01 THRU D201-EXIT
+              MOVE '1'                     TO WS-RCAMPOS
+           END-IF.
+       D229-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR O ULTIMO DIA UTIL DA ADIACAO DE UM PRAZO             *
+      *----------------------------------------------------------------*
+       D231-PROCESSO-31.
+           PERFORM D221-PROCESSO-21 THRU D221-EXIT.
+           IF VIAL1000-SEM-ERROS
+              PERFORM D203-PROCESSO-03 THRU D203-EXIT
+              MOVE '1'                     TO WS-RCAMPOS
+           END-IF.
+       D231-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DATA RESULTANTE DA ADIACAO DE DIAS                 *
+      *----------------------------------------------------------------*
+       D233-PROCESSO-33.
+           MOVE VIAL1000-PRZ-D             TO WS-PRAZO.
+           PERFORM G140-SOMAR-DIAS THRU
+                   G140-SOMAR-DIAS-EXIT.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D233-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DATA RESULTANTE DA SUBTRACAO DE DIAS               *
+      *----------------------------------------------------------------*
+       D234-PROCESSO-34.
+           MOVE VIAL1000-PRZ-D             TO WS-PRAZO.
+           PERFORM G160-SUB-DIAS THRU
+                   G160-SUB-DIAS-EXIT.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D234-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DATA RESULTANTE DA SUBTRACAO DE UM PRAZO           *
+      *----------------------------------------------------------------*
+       D235-PROCESSO-35.
+           IF VIAL1000-COD-PRZ NOT = SPACES
+              PERFORM G120-OBTER-COD-PRAZO THRU
+                      G120-OBTER-COD-PRAZO-EXIT
+           END-IF.
+           IF VIAL1000-SEM-ERROS
+              IF WS-PRZ-D = ZEROS OR LOW-VALUES
+                 MOVE WS-PRZ-M             TO WS-PRAZO
+                 PERFORM G150-SUB-MESES THRU
+                         G150-SUB-MESES-EXIT
+              ELSE
+                 MOVE WS-PRZ-D             TO WS-PRAZO
+                 PERFORM G160-SUB-DIAS THRU
+                         G160-SUB-DIAS-EXIT
+              END-IF.
+           MOVE 1                          TO WS-DIAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D235-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR O ULTIMO DIA UTIL DO MES (CAL. LIQUID. MENSAL)       *
+      *----------------------------------------------------------------*
+       D240-PROCESSO-40.
+           PERFORM G110-ULT-DIA-UTIL THRU
+                   G110-ULT-DIA-UTIL-EXIT.
+      *
+           MOVE VIAL1000-I1-A              TO WS-ANOI10.
+           MOVE VIAL1000-I1-M              TO WS-MESI10.
+           MOVE VIAL1000-I1-D              TO WS-DIAI10.
+           IF WS-DATAI10 > WS-DATA
+              ADD 1                        TO WS-MESV
+              IF WS-MESV > 12
+                 ADD 1                     TO WS-ANOV
+                 COMPUTE WS-MESV = WS-MESV - 12
+              END-IF
+              MOVE WS-DATA                 TO WS-DATAI10
+              PERFORM G110-ULT-DIA-UTIL THRU
+                      G110-ULT-DIA-UTIL-EXIT
+           END-IF.
+      *
+           MOVE WS-DATA                    TO WS-DATAFI
+           PERFORM G270-VAL-FERIADOS THRU
+                   G270-VAL-FERIADOS-EXIT
+           MOVE WS-DATAFI                  TO WS-DATA
+           MOVE VIAL1000-I1-A              TO WS-ANOI10.
+           MOVE VIAL1000-I1-M              TO WS-MESI10.
+           MOVE VIAL1000-I1-D              TO WS-DIAI10.
+           MOVE WS-DATA                    TO WS-DATAB.
+           MOVE WS-ANOV                    TO VIAL1000-I2-A
+           MOVE WS-MESV                    TO VIAL1000-I2-M
+           MOVE WS-DIAV                    TO VIAL1000-I2-D
+           PERFORM D205-PROCESSO-05 THRU D205-EXIT.
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D240-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CAL. O ULTIMO DIA UTIL DO TRIMESTRE CIVIL                     *
+      *----------------------------------------------------------------*
+       D241-PROCESSO-41.
+           IF VIAL1000-I1-M > 9
+              MOVE 12                TO WS-MESI10
+           ELSE
+              IF VIAL1000-I1-M > 6
+                 MOVE 09             TO WS-MESI10
+              ELSE
+                 IF VIAL1000-I1-M > 3
+                    MOVE 06          TO WS-MESI10
+                 ELSE
+                    MOVE 03          TO WS-MESI10
+                 END-IF.
+           PERFORM G110-ULT-DIA-UTIL THRU
+                   G110-ULT-DIA-UTIL-EXIT.
+      *
+           MOVE VIAL1000-I1-A              TO WS-ANOI10.
+           MOVE VIAL1000-I1-M              TO WS-MESI10.
+           MOVE VIAL1000-I1-D              TO WS-DIAI10.
+           IF WS-DATAI10 > WS-DATA
+              ADD 3                        TO WS-MESV
+              IF WS-MESV > 12
+                 ADD 1                     TO WS-ANOV
+                 COMPUTE WS-MESV = WS-MESV - 12
+              END-IF
+              MOVE WS-DATA                 TO WS-DATAI10
+              PERFORM G110-ULT-DIA-UTIL THRU
+                      G110-ULT-DIA-UTIL-EXIT
+           END-IF.
+           MOVE WS-DATA                    TO WS-DATAFI
+           PERFORM G270-VAL-FERIADOS THRU
+                   G270-VAL-FERIADOS-EXIT
+           MOVE WS-DATAFI                  TO WS-DATA
+           MOVE VIAL1000-I1-A              TO WS-ANOI10.
+           MOVE VIAL1000-I1-M              TO WS-MESI10.
+           MOVE VIAL1000-I1-D              TO WS-DIAI10.
+           MOVE WS-DATA                    TO WS-DATAB.
+           MOVE WS-ANOV                    TO VIAL1000-I2-A
+           MOVE WS-MESV                    TO VIAL1000-I2-M
+           MOVE WS-DIAV                    TO VIAL1000-I2-D
+           PERFORM D205-PROCESSO-05 THRU D205-EXIT.
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D241-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR O ULT. DIA UTIL DO SEMESTRE CIVIL                    *
+      *----------------------------------------------------------------*
+       D242-PROCESSO-42.
+           IF VIAL1000-I1-M > 6
+              MOVE 12                TO WS-MESI10
+           ELSE
+              MOVE 06                TO WS-MESI10
+           END-IF.
+           PERFORM G110-ULT-DIA-UTIL THRU
+                   G110-ULT-DIA-UTIL-EXIT.
+           MOVE VIAL1000-I1-A              TO WS-ANOI10.
+           MOVE VIAL1000-I1-M              TO WS-MESI10.
+           MOVE VIAL1000-I1-D              TO WS-DIAI10.
+           IF WS-DATAI10 > WS-DATA
+              ADD 6                        TO WS-MESV
+              IF WS-MESV > 12
+                 ADD 1                     TO WS-ANOV
+                 COMPUTE WS-MESV = WS-MESV - 12
+              END-IF
+              MOVE WS-DATA                 TO WS-DATAI10
+              PERFORM G110-ULT-DIA-UTIL THRU
+                      G110-ULT-DIA-UTIL-EXIT
+           END-IF.
+           MOVE WS-DATA                    TO WS-DATAFI
+           PERFORM G270-VAL-FERIADOS THRU
+                   G270-VAL-FERIADOS-EXIT
+           MOVE WS-DATAFI                  TO WS-DATA
+           MOVE VIAL1000-I1-A              TO WS-ANOI10.
+           MOVE VIAL1000-I1-M              TO WS-MESI10.
+           MOVE VIAL1000-I1-D              TO WS-DIAI10.
+           MOVE WS-DATA                    TO WS-DATAB.
+           MOVE WS-ANOV                    TO VIAL1000-I2-A
+           MOVE WS-MESV                    TO VIAL1000-I2-M
+           MOVE WS-DIAV                    TO VIAL1000-I2-D
+           PERFORM D205-PROCESSO-05 THRU D205-EXIT.
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D242-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR O ULTIMO DIA UTIL ANUAL CIVIL                        *
+      *----------------------------------------------------------------*
+       D243-PROCESSO-43.
+           MOVE 12                   TO WS-MESI10
+           PERFORM G110-ULT-DIA-UTIL THRU
+                   G110-ULT-DIA-UTIL-EXIT.
+           MOVE VIAL1000-I1-A              TO WS-ANOI10.
+           MOVE VIAL1000-I1-M              TO WS-MESI10.
+           MOVE VIAL1000-I1-D              TO WS-DIAI10.
+           IF WS-DATAI10 > WS-DATA
+              ADD 1                        TO WS-ANOV
+              MOVE WS-DATA                 TO WS-DATAI10
+              PERFORM G110-ULT-DIA-UTIL THRU
+                      G110-ULT-DIA-UTIL-EXIT
+           END-IF.
+           MOVE WS-DATA                    TO WS-DATAFI
+           PERFORM G270-VAL-FERIADOS THRU
+                   G270-VAL-FERIADOS-EXIT
+           MOVE WS-DATAFI                  TO WS-DATA
+           MOVE VIAL1000-I1-A              TO WS-ANOI10.
+           MOVE VIAL1000-I1-M              TO WS-MESI10.
+           MOVE VIAL1000-I1-D              TO WS-DIAI10.
+           MOVE WS-DATA                    TO WS-DATAB.
+           MOVE WS-ANOV                    TO VIAL1000-I2-A
+           MOVE WS-MESV                    TO VIAL1000-I2-M
+           MOVE WS-DIAV                    TO VIAL1000-I2-D
+           PERFORM D205-PROCESSO-05 THRU D205-EXIT.
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D243-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CONVERTE UMA DATA GREGORIANA EM JULIANA SECULAR               *
+      *----------------------------------------------------------------*
+       D250-PROCESSO-50.
+           DIVIDE WS-ANOI10 BY 5 GIVING    WS-NUM-TDIAS1
+                                 REMAINDER WS-RESTO-DIAS.
+
+           IF WS-ANOI10 = '1900'
+              MOVE ZEROS                   TO WS-ANO-C1
+           ELSE
+              IF WS-RESTO-DIAS = ZEROS
+                 COMPUTE WS-ANO-C1 EQUAL (WS-ANOI10 - 1900) * 365.25
+                 MOVE 60                   TO WS-TAB1-DIAS(3)
+                 MOVE 91                   TO WS-TAB1-DIAS(4)
+                 MOVE 121                  TO WS-TAB1-DIAS(5)
+                 MOVE 152                  TO WS-TAB1-DIAS(6)
+                 MOVE 182                  TO WS-TAB1-DIAS(7)
+                 MOVE 213                  TO WS-TAB1-DIAS(8)
+                 MOVE 244                  TO WS-TAB1-DIAS(9)
+                 MOVE 274                  TO WS-TAB1-DIAS(10)
+                 MOVE 305                  TO WS-TAB1-DIAS(11)
+                 MOVE 335                  TO WS-TAB1-DIAS(12)
+              ELSE
+                 COMPUTE WS-ANO-C1 EQUAL (WS-ANOI10 - 1900) * 365.25 + 1
+                 MOVE 59                   TO WS-TAB1-DIAS(3)
+                 MOVE 90                   TO WS-TAB1-DIAS(4)
+                 MOVE 120                  TO WS-TAB1-DIAS(5)
+                 MOVE 151                  TO WS-TAB1-DIAS(6)
+                 MOVE 181                  TO WS-TAB1-DIAS(7)
+                 MOVE 212                  TO WS-TAB1-DIAS(8)
+                 MOVE 243                  TO WS-TAB1-DIAS(9)
+                 MOVE 273                  TO WS-TAB1-DIAS(10)
+                 MOVE 304                  TO WS-TAB1-DIAS(11)
+                 MOVE 334                  TO WS-TAB1-DIAS(12)
+              END-IF.
+
+           COMPUTE WS-MESV EQUAL WS-MESI10 - 1.
+           IF WS-MESV = ZEROS
+              MOVE ZEROS                   TO WS-ANO-C2
+           ELSE
+              IF WS-RESTO-DIAS = ZEROS
+                 COMPUTE WS-ANO-C2 = WS-ANO-C2 +
+                                     WS-TAB1-DIAS (WS-MESV + 1)
+              ELSE
+                 COMPUTE WS-ANO-C2 = WS-ANO-C2 +
+                                     WS-TAB1-DIAS (WS-MESV + 1).
+
+           COMPUTE WS-NUM-TDIAS1 = WS-ANO-C1 + WS-ANO-C2
+                                        + WS-DIAI10 - 1.
+           MOVE WS-NUM-TDIAS1              TO VIAL1000-DAT-JUL-RES.
+       D250-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CONVERTE UMA DATA JULIANA SECULAR EM GREGORIANA               *
+      *----------------------------------------------------------------*
+       D251-PROCESSO-51.
+           MOVE VIAL1000-DAT-JULIANA       TO WS-DIAS.
+           ADD 1                           TO WS-DIAS
+           DIVIDE WS-DIAS BY 365.25 GIVING WS-ANOI10.
+           ADD 1900                        TO WS-ANOI10.
+           MOVE WS-ANOI10                  TO VIAW0021-ANO.
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+
+           IF WS-ANOI10 = 1900
+              MOVE ZEROS                   TO WS-ANO-C1
+           ELSE
+              IF VIAW0021-BISSEXTO
+                 COMPUTE WS-ANO-C1 EQUAL
+                        ( WS-ANOI10 - 1900 ) * 365.25
+                 MOVE 29                   TO WS-TAB-DIAS(2)
+                 MOVE 60                   TO WS-TAB1-DIAS(3)
+                 MOVE 91                   TO WS-TAB1-DIAS(4)
+                 MOVE 121                  TO WS-TAB1-DIAS(5)
+                 MOVE 152                  TO WS-TAB1-DIAS(6)
+                 MOVE 182                  TO WS-TAB1-DIAS(7)
+                 MOVE 213                  TO WS-TAB1-DIAS(8)
+                 MOVE 244                  TO WS-TAB1-DIAS(9)
+                 MOVE 274                  TO WS-TAB1-DIAS(10)
+                 MOVE 305                  TO WS-TAB1-DIAS(11)
+                 MOVE 335                  TO WS-TAB1-DIAS(12)
+              ELSE
+                 COMPUTE WS-ANO-C1 EQUAL
+                        ( WS-ANOI10 - 1900 ) * 365.25 + 1
+                 MOVE 28                   TO WS-TAB-DIAS(2)
+                 MOVE 59                   TO WS-TAB1-DIAS(3)
+                 MOVE 90                   TO WS-TAB1-DIAS(4)
+                 MOVE 120                  TO WS-TAB1-DIAS(5)
+                 MOVE 151                  TO WS-TAB1-DIAS(6)
+                 MOVE 181                  TO WS-TAB1-DIAS(7)
+                 MOVE 212                  TO WS-TAB1-DIAS(8)
+                 MOVE 243                  TO WS-TAB1-DIAS(9)
+                 MOVE 273                  TO WS-TAB1-DIAS(10)
+                 MOVE 304                  TO WS-TAB1-DIAS(11)
+                 MOVE 334                  TO WS-TAB1-DIAS(12)
+              END-IF.
+           COMPUTE WS-NUM-TDIAS1 = WS-DIAS - WS-ANO-C1.
+           PERFORM VARYING WS-IND1 FROM 1 BY 1
+                     UNTIL WS-IND1 > 13
+
+                   COMPUTE WS-IND2 = WS-IND1 - 1
+                   IF WS-TAB1-DIAS (WS-IND1) = WS-NUM-TDIAS1
+                      MOVE WS-IND2         TO WS-MESI10
+                      MOVE WS-TAB-DIAS (WS-IND2)
+                                           TO WS-DIAI10
+                      MOVE 20              TO WS-IND1
+                   ELSE
+                      IF WS-TAB1-DIAS (WS-IND1) > WS-NUM-TDIAS1
+                         MOVE WS-IND2      TO WS-MESI10
+                         COMPUTE WS-IND2 = WS-IND1 - 1
+                         COMPUTE WS-DIAI10 = WS-NUM-TDIAS1 -
+                                             WS-TAB1-DIAS (WS-IND2)
+                         MOVE 20           TO WS-IND1
+                      END-IF
+                   END-IF
+           END-PERFORM.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D251-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CONVERTE UMA DATA GREGORIANA EM JULIANA ANUAL                 *
+      *----------------------------------------------------------------*
+       D252-PROCESSO-52.
+           MOVE WS-DATAI10                 TO WS-DATA.
+
+           PERFORM G050-CONV-GREG THRU
+                   G050-CONV-GREG-EXIT.
+       D252-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CONVERTE UMA DATA JULIANA ANUAL EM GREGORIANA                 *
+      *----------------------------------------------------------------*
+       D253-PROCESSO-53.
+           MOVE VIAL1000-I1-A              TO WS-ANO-J4.
+           MOVE VIAL1000-DAT-JULIANA       TO WS-DIA-J4.
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT.
+           MOVE WS-DATA                    TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D253-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  SOMAR DIAS A UMA DATA JULIANA ANUAL                           *
+      *----------------------------------------------------------------*
+       D254-PROCESSO-54.
+           MOVE VIAL1000-I1-A              TO WS-ANO-J4.
+           MOVE VIAL1000-DAT-JULIANA       TO WS-DIA-J4.
+           MOVE VIAL1000-PRZ-D             TO WS-DIAS.
+
+           PERFORM G080-SOMA-DIASJ THRU
+                   G080-SOMA-DIASJ-EXIT.
+
+           MOVE WS-ANOV                    TO WS-ANO-J4.
+           MOVE WS-DIA-OJ4                 TO WS-DIA-J4.
+
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT.
+
+           MOVE WS-DATA                    TO WS-DATAI10.
+       D254-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  SUBTRAIR DIAS A UMA DATA JULIANA ANUAL                        *
+      *----------------------------------------------------------------*
+       D255-PROCESSO-55.
+           MOVE VIAL1000-I1-A              TO WS-ANO-J4.
+           MOVE VIAL1000-DAT-JULIANA       TO WS-DIA-J4.
+           MOVE VIAL1000-PRZ-D             TO WS-DIAS.
+
+           PERFORM G060-SUB-DIASJ THRU
+                   G060-SUB-DIASJ-EXIT.
+
+           MOVE WS-DATA-OJUL4              TO WS-DATA-JUL4.
+
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT.
+
+           MOVE WS-DATA                    TO WS-DATAI10.
+       D255-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  SOMAR DIAS UTEIS A UMA DATA JULIANA                           *
+      *----------------------------------------------------------------*
+       D256-PROCESSO-56.
+           MOVE VIAL1000-I1-A              TO WS-ANO-J4.
+           MOVE VIAL1000-DAT-JULIANA       TO WS-DIA-J4.
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT.
+           MOVE WS-DATA                    TO WS-DATAI10.
+           MOVE VIAL1000-PRZ-D             TO WS-DIAS.
+           PERFORM G020-SOM-DIAS-U THRU
+                   G020-SOM-DIAS-U-EXIT.
+           MOVE WS-DATA                    TO WS-DATAFI.
+           MOVE WS-DATAI10                 TO WS-DATAIN.
+           PERFORM G180-VAL-FERIADOS THRU
+                   G180-VAL-FERIADOS-EXIT.
+           MOVE WS-DATAFI                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D256-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  SUBTRAIR DIAS UTEIS A UMA DATA JULIANA                        *
+      *----------------------------------------------------------------*
+       D257-PROCESSO-57.
+           MOVE VIAL1000-I1-A              TO WS-ANO-J4.
+           MOVE VIAL1000-DAT-JULIANA       TO WS-DIA-J4.
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT.
+           MOVE WS-DATA                    TO WS-DATAI10.
+           MOVE VIAL1000-PRZ-D             TO WS-DIAS.
+           PERFORM G010-SUB-DIAS-U THRU
+                   G010-SUB-DIAS-U-EXIT.
+           MOVE WS-DATA                    TO WS-DATAIN.
+           MOVE WS-DATAI10                 TO WS-DATAFI.
+           PERFORM G220-VAL-FERIADOS THRU
+                   G220-VAL-FERIADOS-EXIT.
+           MOVE WS-DATAIN                  TO WS-DATAI10.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D257-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  CALCULAR A DATA RESULTANTE DA ADICAO DE UM PRAZO UTIL         *
+      *----------------------------------------------------------------*
+       D258-PROCESSO-58.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'D258-PROCESSO-58'      TO VIAL0015-CALLER-ID
+              MOVE 'VIAL1000-DAT-INPUT1'   TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL1000-DAT-INPUT1    TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           IF VIAL1000-COD-PRZ NOT = SPACES
+
+              PERFORM G120-OBTER-COD-PRAZO THRU
+                      G120-OBTER-COD-PRAZO-EXIT
+           END-IF.
+      *
+           IF VIAL1000-SEM-ERROS
+              IF PRAZO-CALEND-ESPECIAL OR
+                 PRAZO-FIXO-ESPECIAL   OR
+                 PRAZO-REGUL-ESPECIAL  OR
+                 PRAZO-FIXO-ANUAL      OR
+                 PRAZO-ANUAL-FIM-MES   OR
+                 PRAZO-FIXO-QUINZENAL  OR
+                 PRAZO-FIXO-SEMANAL    OR
+                 PRAZO-MENSUALIZACAO   OR
+                 PRAZO-TRIMENSALIDADE
+
+                 IF PRAZO-FIXO-SEMANAL
+                   PERFORM G115-PRAZO-SEMANAL THRU
+                           G115-PRAZO-SEMANAL-EXIT
+                 END-IF
+
+                 IF PRAZO-FIXO-QUINZENAL
+                   PERFORM G116-PRAZO-QUINZENAL THRU
+                           G116-PRAZO-QUINZENAL-EXIT
+                 END-IF
+
+                 IF PRAZO-REGUL-ESPECIAL
+                   MOVE WS-DATAI10          TO WS-DATA-COMP
+
+                   PERFORM G117-PRAZO-REGULAR THRU
+                           G117-PRAZO-REGULAR-EXIT
+
+                   MOVE WS-PRAZO-VALIDO-2    TO WS-PRAZO
+                   PERFORM G160-SUB-DIAS THRU
+                           G160-SUB-DIAS-EXIT
+
+                   IF WS-DATAI10 NOT GREATER WS-DATA-COMP
+                      PERFORM G119-PRAZO-CALEND THRU
+                              G119-PRAZO-CALEND-EXIT
+                   END-IF
+                 END-IF
+
+                 IF PRAZO-FIXO-ESPECIAL
+                   PERFORM G118-PRAZO-FIXO THRU
+                           G118-PRAZO-FIXO-EXIT
+                 END-IF
+
+                 IF PRAZO-FIXO-ANUAL
+                   PERFORM V118-PRAZO-FIXO-ANUAL THRU
+                           V118-PRAZO-FIXO-ANUAL-EXIT
+                 END-IF
+
+                 IF PRAZO-ANUAL-FIM-MES
+                   PERFORM X118-PRAZO-ANUAL-FIM-MES THRU
+                           X118-PRAZO-ANUAL-FIM-MES-EXIT
+                 END-IF
+
+                 IF PRAZO-CALEND-ESPECIAL
+                   MOVE WS-DATAI10          TO WS-DATA-COMP
+                   PERFORM G119-PRAZO-CALEND THRU
+                           G119-PRAZO-CALEND-EXIT
+
+                   MOVE WS-PRAZO-VALIDO-2    TO WS-PRAZO
+                   PERFORM G160-SUB-DIAS THRU
+                           G160-SUB-DIAS-EXIT
+
+                   IF WS-DATAI10 NOT GREATER WS-DATA-COMP
+                      PERFORM G119-PRAZO-CALEND THRU
+                              G119-PRAZO-CALEND-EXIT
+                   END-IF
+
+                 END-IF
+
+                 IF PRAZO-MENSUALIZACAO
+                   PERFORM G120-PRAZO-MENSUALIZACAO THRU
+                           G120-PRAZO-MENSUALIZACAO-EXIT
+                 END-IF
+
+                 IF PRAZO-TRIMENSALIDADE
+                   PERFORM G125-PRAZO-TRIMENSAL THRU
+                           G125-PRAZO-TRIMENSAL-EXIT
+                 END-IF
+
+              ELSE
+                IF PRAZO-VALIDO-ESPECIAL
+                   PERFORM G110-ULT-DIA-UTIL THRU
+                           G110-ULT-DIA-UTIL-EXIT
+                   MOVE VIAL1000-I1-A       TO WS-ANOI10
+                   MOVE VIAL1000-I1-M       TO WS-MESI10
+                   MOVE VIAL1000-I1-D       TO WS-DIAI10
+                   IF WS-DATAI10 NOT LESS WS-DATA
+                      MOVE 1                 TO WS-PRAZO
+                   END-IF
+                   IF NOT PRAZO-MENSAL
+                      IF PRAZO-TRIMESTRAL
+                         ADD 2               TO WS-PRAZO
+                      ELSE
+                         IF PRAZO-SEMESTRAL
+                            ADD 5            TO WS-PRAZO
+                         ELSE
+                            ADD 11           TO WS-PRAZO
+                         END-IF
+                      END-IF
+                   END-IF
+                   IF WS-PRAZO NOT EQUAL ZEROS
+                      PERFORM G130-SOMAR-MESES THRU
+                              G130-SOMAR-MESES-EXIT
+                   END-IF
+                   PERFORM D203-PROCESSO-03 THRU D203-EXIT
+                   IF WS-PRAZO-VALIDO-N NOT = 0
+                      MOVE WS-PRAZO-VALIDO-N TO VIAL1000-PRZ-D
+                      PERFORM D227-PROCESSO-27 THRU
+                              D227-EXIT
+                      MOVE ZEROS             TO VIAL1000-PRZ-D
+                   END-IF
+                ELSE
+      *
+                   IF WS-PRZ-D = ZEROS OR LOW-VALUES
+                      MOVE WS-PRZ-M          TO WS-PRAZO
+                      PERFORM G130-SOMAR-MESES THRU
+                              G130-SOMAR-MESES-EXIT
+                   ELSE
+                      MOVE WS-PRZ-D          TO WS-PRAZO
+                      PERFORM G140-SOMAR-DIAS THRU
+                              G140-SOMAR-DIAS-EXIT
+                   END-IF
+                END-IF
+              END-IF
+           END-IF.
+      *
+      *    chama D206 para calcular nº de dias
+      *
+           IF VIAL1000-SEM-ERROS
+              MOVE WS-ANOI10               TO WS-ANOV
+              MOVE WS-MESI10               TO WS-MESV
+              MOVE WS-DIAI10               TO WS-DIAV
+              MOVE VIAL1000-I1-A           TO WS-ANOI10
+              MOVE VIAL1000-I1-M           TO WS-MESI10
+              MOVE VIAL1000-I1-D           TO WS-DIAI10
+      *
+              IF SW-DEBUG-SIM
+                 MOVE 'D258 DATAS      '   TO VIAL0015-CALLER-ID
+                 MOVE 'WS-DATAI10      '   TO VIAL0015-CAMPO-NM(1)
+                 MOVE  WS-DATAI10          TO VIAL0015-CAMPO-VLR(1)
+                 MOVE 'WS-DATA         '   TO VIAL0015-CAMPO-NM(2)
+                 MOVE  WS-DATA             TO VIAL0015-CAMPO-VLR(2)
+                 PERFORM VIAP0015-TRATA-DEBUG
+                    THRU VIAP0015-TRATA-DEBUG-EXIT
+              END-IF
+      *
+              PERFORM G090-DIF-DIAS THRU
+                      G090-DIF-DIAS-EXIT
+           END-IF.
+      *
+      *    chama D226 para calcular nº de dias
+      *
+           IF VIAL1000-SEM-ERROS
+              MOVE WS-NUM-TDIAS            TO WS-DIAS
+      *
+              IF SW-DEBUG-SIM
+                 MOVE 'D258 DIAS UTEIS '   TO VIAL0015-CALLER-ID
+                 MOVE 'WS-NUM-TDIAS    '   TO VIAL0015-CAMPO-NM(1)
+                 MOVE  WS-NUM-TDIAS        TO VIAL0015-CAMPO-VLR(1)
+                 PERFORM VIAP0015-TRATA-DEBUG
+                    THRU VIAP0015-TRATA-DEBUG-EXIT
+              END-IF
+      *
+              PERFORM G020-SOM-DIAS-U THRU
+                      G020-SOM-DIAS-U-EXIT
+      *
+              IF SW-DEBUG-SIM
+                 MOVE 'D258 PRE VALIDA '   TO VIAL0015-CALLER-ID
+                 MOVE 'WS-DATAI10      '   TO VIAL0015-CAMPO-NM(1)
+                 MOVE  WS-DATAI10          TO VIAL0015-CAMPO-VLR(1)
+                 MOVE 'WS-DATA         '   TO VIAL0015-CAMPO-NM(2)
+                 MOVE  WS-DATA             TO VIAL0015-CAMPO-VLR(2)
+                 PERFORM VIAP0015-TRATA-DEBUG
+                    THRU VIAP0015-TRATA-DEBUG-EXIT
+              END-IF
+      *
+              MOVE WS-DATA                 TO WS-DATAFI
+              MOVE WS-DATAI10              TO WS-DATAIN
+              PERFORM G180-VAL-FERIADOS THRU
+                      G180-VAL-FERIADOS-EXIT
+              MOVE WS-DATAFI               TO WS-DATAI10
+      *       MOVE '1'                     TO WS-RCAMPOS
+      *
+      *       MOVE WS-DATA                 TO WS-DATAI10
+      *       PERFORM D210-PROCESSO-10
+      *          THRU D210-EXIT
+      *
+           END-IF.
+      *
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'D258 DATA UTIL  '      TO VIAL0015-CALLER-ID
+              MOVE 'WS-DATAI10      '      TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-DATAI10             TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-DATA         '      TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-DATA                TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       D258-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  OBTER O DESCRITIVO DE UMA DATA                                *
+      *----------------------------------------------------------------*
+       D299-PROCESSO-99.
+AG    *    MOVE WS-DATAI10                 TO WS-DATA.
+AG         MOVE VIAL1000-DAT-INPUT1(1:4)   TO WS-DATA(1:4).
+AG         MOVE VIAL1000-DAT-INPUT1(5:2)   TO WS-DATA(6:2).
+AG         MOVE VIAL1000-DAT-INPUT1(7:2)   TO WS-DATA(9:2).
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT.
+           MOVE '1'                        TO WS-RCAMPOS.
+       D299-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          FORMATAR AREA DE SAIDA                                *
+      *----------------------------------------------------------------*
+       M100-FORMATAR-AREA-SAIDA.
+           IF VIAL1000-SEM-ERROS
+              MOVE WS-DATAI10              TO VIAL1000-DAT-RES-ED
+                                              WS-DATA
+              MOVE WS-ANOI10               TO VIAL1000-DAT-RES-A
+              MOVE WS-MESI10               TO VIAL1000-DAT-RES-M
+              MOVE WS-DIAI10               TO VIAL1000-DAT-RES-D
+              PERFORM G050-CONV-GREG THRU
+                      G050-CONV-GREG-EXIT
+              IF VIAL1000-COD-PROCESSO NOT EQUAL '50'
+                 MOVE WS-DIA-J4            TO VIAL1000-DAT-JUL-RES
+              END-IF
+              IF WS-RESTO-CAMPOS
+                 MOVE WS-DATAI10           TO WS-DATA
+                 PERFORM G210-DIA-SEMANA THRU
+                         G210-DIA-SEMANA-EXIT
+                 MOVE WS-CDIA              TO VIAL1000-DAT-RES-SEM
+                 MOVE WS-DATAI10           TO WS-DATA
+                 PERFORM G290-VAL-FERIADOS THRU
+                         G290-VAL-FERIADOS-EXIT
+                 MOVE WS-DATAI10           TO WS-DATA
+                 PERFORM G030-DESCRITIVO THRU
+                         G030-DESCRITIVO-EXIT
+                 MOVE WS-GDIA              TO VIAL1000-DAT-RES-DESC
+                 IF WS-UTIL
+                    IF WS-CFERIADO
+                       IF VIAL1000-COD-PROCESSO = '99'
+                          MOVE 'F'         TO VIAL1000-DAT-RES-TIPO
+                       ELSE
+                          MOVE 'N'         TO VIAL1000-DAT-RES-TIPO
+                       END-IF
+                    ELSE
+                       MOVE 'U'            TO VIAL1000-DAT-RES-TIPO
+                    END-IF
+                 ELSE
+                    IF WS-CFERIADO
+                       IF VIAL1000-COD-PROCESSO = '99'
+                          MOVE 'F'         TO VIAL1000-DAT-RES-TIPO
+                       ELSE
+                          MOVE 'N'         TO VIAL1000-DAT-RES-TIPO
+                       END-IF
+                    ELSE
+                       MOVE 'N'            TO VIAL1000-DAT-RES-TIPO
+                    END-IF
+                 END-IF
+                 MOVE WS-CDIA              TO WS-CDIAA
+                 MOVE 1                    TO WS-DIAS
+                 PERFORM G020-SOM-DIAS-U THRU
+                         G020-SOM-DIAS-U-EXIT
+                 MOVE WS-DATA              TO WS-DATAFI
+                 MOVE WS-DATAI10           TO WS-DATAIN
+                 PERFORM G180-VAL-FERIADOS THRU
+                         G180-VAL-FERIADOS-EXIT
+                 MOVE WS-DATAFI            TO WS-DATA
+                 MOVE WS-ANOV              TO VIAL1000-DAT-UT-POS-A
+                 MOVE WS-MESV              TO VIAL1000-DAT-UT-POS-M
+                 MOVE WS-DIAV              TO VIAL1000-DAT-UT-POS-D
+                 MOVE WS-DATA              TO VIAL1000-DAT-UT-POS-ED
+                 MOVE WS-DATAI10           TO WS-DATAFI
+      *
+                 MOVE 1                    TO WS-DIAS
+                 PERFORM G010-SUB-DIAS-U THRU
+                         G010-SUB-DIAS-U-EXIT
+                 MOVE WS-DATA              TO WS-DATAIN
+                 MOVE WS-DATAI10           TO WS-DATAFI
+                 PERFORM G220-VAL-FERIADOS THRU
+                         G220-VAL-FERIADOS-EXIT
+                 MOVE WS-DATAIN            TO WS-DATAI10
+      *
+                 MOVE WS-DATAI10           TO WS-DATA
+                 MOVE WS-ANOV              TO VIAL1000-DAT-UT-ANT-A
+                 MOVE WS-MESV              TO VIAL1000-DAT-UT-ANT-M
+                 MOVE WS-DIAV              TO VIAL1000-DAT-UT-ANT-D
+                 MOVE WS-DATA              TO VIAL1000-DAT-UT-ANT-ED
+              END-IF
+           END-IF.
+
+           MOVE WS-MSG                     TO VIAL1000-MSG.
+
+       M100-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          SUBTRAI DIAS UTEIS A UMA DATA                         *
+      *----------------------------------------------------------------*
+       G010-SUB-DIAS-U.
+           MOVE WS-DATAI10                 TO WS-DATA.
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT.
+
+           IF WS-NAO-UTIL
+              IF WS-CDIA EQUAL 'S'
+                 MOVE 1                    TO WS-DIA-SO
+                 MOVE ZEROS                TO WS-DIA-C
+                 IF WS-DIAS EQUAL ZEROES
+                    MOVE 1                    TO WS-DIA-SO
+                    MOVE 1                    TO WS-DIA-C
+                 END-IF
+              ELSE
+                 MOVE 1                    TO WS-DIA-SO
+                                              WS-DIA-C
+                 IF WS-DIAS EQUAL ZEROES
+                    MOVE 1                    TO WS-DIA-SO
+                    MOVE 2                    TO WS-DIA-C
+                 END-IF
+              END-IF
+           ELSE
+              MOVE WS-CDIA                 TO WS-CDIAN
+              COMPUTE WS-DIA-SO EQUAL WS-CDIAN - 1
+              IF WS-DIAS NOT LESS WS-DIA-SO
+                 MOVE 2                    TO WS-DIA-C
+              ELSE
+                 MOVE ZEROS                TO WS-DIA-C
+              END-IF.
+
+           IF WS-DIA-SO LESS WS-DIAS
+              COMPUTE WS-RESTO-DIAS EQUAL WS-DIAS - WS-DIA-SO
+              DIVIDE WS-RESTO-DIAS BY 5 GIVING WS-NUM-SEM
+                                        REMAINDER WS-RESTO
+           ELSE
+              MOVE ZEROS                   TO WS-RESTO-DIAS
+                                              WS-NUM-SEM
+           END-IF.
+
+           COMPUTE WS-NUM-FS EQUAL WS-NUM-SEM * 2.
+           COMPUTE WS-NUM-TDIAS EQUAL WS-NUM-FS + WS-DIAS + WS-DIA-C.
+
+           MOVE WS-DATAI10                 TO WS-DATA
+           PERFORM G050-CONV-GREG THRU
+                   G050-CONV-GREG-EXIT.
+
+           MOVE WS-NUM-TDIAS               TO WS-DIAS.
+           PERFORM G060-SUB-DIASJ THRU
+                   G060-SUB-DIASJ-EXIT.
+
+           MOVE WS-DATA-OJUL4              TO WS-DATA-JUL4.
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT.
+       G010-SUB-DIAS-U-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          SOMA DIAS UTEIS A UMA DATA                            *
+      *----------------------------------------------------------------*
+       G020-SOM-DIAS-U.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G020-SOM-DIAS-U '      TO VIAL0015-CALLER-ID
+              MOVE 'WS-DATAI10      '      TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-DATAI10             TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           MOVE WS-DATAI10                 TO WS-DATA.
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT.
+
+           IF WS-NAO-UTIL
+              IF WS-CDIA EQUAL 'S'
+                 MOVE 1                    TO WS-DIA-SO
+                                              WS-DIA-C
+                 IF WS-DIAS EQUAL ZEROES
+                    MOVE 1                    TO WS-DIA-SO
+                    MOVE 2                    TO WS-DIA-C
+                 END-IF
+              ELSE
+                 MOVE 1                    TO WS-DIA-SO
+                 MOVE ZEROS                TO WS-DIA-C
+                 IF WS-DIAS EQUAL ZEROES
+                    MOVE 1                    TO WS-DIA-SO
+                    MOVE 1                    TO WS-DIA-C
+                 END-IF
+              END-IF
+           ELSE
+              MOVE WS-CDIA                 TO WS-CDIAN
+              COMPUTE WS-DIA-SO EQUAL 7 - WS-CDIAN
+              IF WS-DIAS NOT LESS WS-DIA-SO
+                 MOVE 2                    TO WS-DIA-C
+              ELSE
+                 MOVE ZEROS                TO WS-DIA-C
+              END-IF.
+      *
+           IF WS-DIA-SO LESS WS-DIAS
+              COMPUTE WS-RESTO-DIAS EQUAL WS-DIAS - WS-DIA-SO
+              DIVIDE WS-RESTO-DIAS BY 5 GIVING WS-NUM-SEM
+                                        REMAINDER WS-RESTO
+           ELSE
+              MOVE ZEROS                   TO WS-RESTO-DIAS
+                                              WS-NUM-SEM
+           END-IF.
+
+           COMPUTE WS-NUM-FS EQUAL WS-NUM-SEM * 2.
+           COMPUTE WS-NUM-TDIAS EQUAL WS-NUM-FS + WS-DIAS + WS-DIA-C.
+           MOVE WS-DATAI10                 TO WS-DATA.
+           PERFORM G050-CONV-GREG THRU
+                   G050-CONV-GREG-EXIT.
+
+           MOVE WS-NUM-TDIAS               TO WS-DIAS.
+           PERFORM G080-SOMA-DIASJ THRU
+                   G080-SOMA-DIASJ-EXIT.
+           MOVE WS-DIA-OJ4                 TO WS-DIA-J4.
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT.
+       G020-SOM-DIAS-U-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          CONSTROI O DESCRITIVO DA DATA                         *
+      *----------------------------------------------------------------*
+       G030-DESCRITIVO.
+           EVALUATE TRUE
+               WHEN WS-CDIA EQUAL '2'
+                    MOVE 'SEGUNDA-FEIRA'   TO WS-GDIA1
+                    MOVE 14                TO WS-IND1
+               WHEN WS-CDIA EQUAL '3'
+                    MOVE 'TERCA-FEIRA  '   TO WS-GDIA1
+                    MOVE 12                TO WS-IND1
+               WHEN WS-CDIA EQUAL '4'
+                    MOVE 'QUARTA-FEIRA '   TO WS-GDIA1
+                    MOVE 13                TO WS-IND1
+               WHEN WS-CDIA EQUAL '5'
+                    MOVE 'QUINTA-FEIRA '   TO WS-GDIA1
+                    MOVE 13                TO WS-IND1
+               WHEN WS-CDIA EQUAL '6'
+                    MOVE 'SEXTA-FEIRA  '   TO WS-GDIA1
+                    MOVE 12                TO WS-IND1
+               WHEN WS-CDIA EQUAL 'S'
+                    MOVE 'SABADO       '   TO WS-GDIA1
+                    MOVE 6                 TO WS-IND1
+               WHEN WS-CDIA EQUAL 'D'
+                    MOVE 'DOMINGO      '   TO WS-GDIA1
+                    MOVE 8                 TO WS-IND1
+           END-EVALUATE.
+      *
+           MOVE ','                        TO WS-GDIA1-B
+                                              (WS-IND1).
+           ADD 1                           TO WS-IND1.
+           MOVE ' '                        TO WS-GDIA1-B
+                                              (WS-IND1).
+           MOVE 1                          TO WS-IND2.
+           IF WS-DIAI(1) NOT EQUAL 0
+              ADD 1                        TO WS-IND1
+              MOVE WS-DIAVO(1)             TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2)
+           END-IF.
+           ADD 1                           TO WS-IND1
+                                              WS-IND2
+
+           MOVE WS-DIAVO(2)                TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+           ADD 1                           TO WS-IND1
+                                              WS-IND2.
+           MOVE ' '                        TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+           ADD 1                           TO WS-IND1
+                                              WS-IND2.
+           MOVE 'D'                        TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+           ADD 1                           TO WS-IND1
+                                              WS-IND2.
+           MOVE 'E'                        TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+           ADD 1                           TO WS-IND1
+                                              WS-IND2.
+           MOVE ' '                        TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+
+           PERFORM VARYING WS-IND3 FROM 1 BY 1
+                   UNTIL WS-D-MES(WS-MESI10, WS-IND3)
+                         EQUAL SPACES
+AF                    OR WS-IND3 GREATER OR EQUAL 9
+                   ADD 1                   TO WS-IND1
+                                              WS-IND2
+                   MOVE WS-D-MES(WS-MESI10, WS-IND3)
+                                           TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2)
+           END-PERFORM.
+           ADD 1                           TO WS-IND1
+                                              WS-IND2.
+           MOVE ' '                        TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+           ADD 1                           TO WS-IND1
+                                              WS-IND2.
+           MOVE WS-ANOI(1)                 TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+           ADD 1                           TO WS-IND1
+                                              WS-IND2.
+           MOVE WS-ANOI(2)                 TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+           ADD 1                           TO WS-IND1
+                                              WS-IND2.
+           MOVE WS-ANOI(3)                 TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+           ADD 1                           TO WS-IND1
+                                              WS-IND2.
+           MOVE WS-ANOI(4)                 TO WS-GDIA1-B
+                                              (WS-IND1)
+                                              WS-GDIA-B
+                                              (WS-IND2).
+       G030-DESCRITIVO-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          CONVERTE UMA DATA EM FORMATO JULIANA                  *
+      *----------------------------------------------------------------*
+       G050-CONV-GREG.
+           MOVE WS-ANOV                    TO VIAW0021-ANO
+                                              WS-ANO-J4
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT
+           IF VIAW0021-BISSEXTO
+              MOVE 60                      TO WS-TAB1-DIAS(3)
+              MOVE 91                      TO WS-TAB1-DIAS(4)
+              MOVE 121                     TO WS-TAB1-DIAS(5)
+              MOVE 152                     TO WS-TAB1-DIAS(6)
+              MOVE 182                     TO WS-TAB1-DIAS(7)
+              MOVE 213                     TO WS-TAB1-DIAS(8)
+              MOVE 244                     TO WS-TAB1-DIAS(9)
+              MOVE 274                     TO WS-TAB1-DIAS(10)
+              MOVE 305                     TO WS-TAB1-DIAS(11)
+              MOVE 335                     TO WS-TAB1-DIAS(12)
+           ELSE
+              MOVE 59                      TO WS-TAB1-DIAS(3)
+              MOVE 90                      TO WS-TAB1-DIAS(4)
+              MOVE 120                     TO WS-TAB1-DIAS(5)
+              MOVE 151                     TO WS-TAB1-DIAS(6)
+              MOVE 181                     TO WS-TAB1-DIAS(7)
+              MOVE 212                     TO WS-TAB1-DIAS(8)
+              MOVE 243                     TO WS-TAB1-DIAS(9)
+              MOVE 273                     TO WS-TAB1-DIAS(10)
+              MOVE 304                     TO WS-TAB1-DIAS(11)
+              MOVE 334                     TO WS-TAB1-DIAS(12)
+           END-IF
+           MOVE WS-TAB1-DIAS (WS-MESV)     TO WS-DIA-J4
+           ADD WS-DIAV                     TO WS-DIA-J4.
+       G050-CONV-GREG-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          SUBTRAI DIAS A UMA DATA JULIANA                       *
+      *----------------------------------------------------------------*
+       G060-SUB-DIASJ.
+           MOVE WS-DIA-J4                  TO WS-DIA
+           MOVE WS-ANO-J4                  TO WS-ANOV
+                                              VIAW0021-ANO.
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 366                     TO WS-TAB-DIA-ANO
+           ELSE
+              MOVE 365                     TO WS-TAB-DIA-ANO
+           END-IF.
+
+           COMPUTE WS-DIA EQUAL WS-DIA - WS-DIAS.
+
+           PERFORM VARYING WS-IND1 FROM 1 BY 1
+                     UNTIL WS-DIA > 0
+
+                   COMPUTE WS-ANOV EQUAL WS-ANOV - 1
+                   MOVE WS-ANOV            TO VIAW0021-ANO
+                   PERFORM VIAP0021-VAL-BIS THRU
+                           VIAP0021-VAL-BIS-EXIT
+                   IF VIAW0021-BISSEXTO
+                      MOVE 366             TO WS-TAB-DIA-ANO
+                   ELSE
+                      MOVE 365             TO WS-TAB-DIA-ANO
+                   END-IF
+                   COMPUTE WS-DIA EQUAL WS-DIA + WS-TAB-DIA-ANO
+           END-PERFORM.
+      *
+           MOVE WS-DIA                     TO WS-DIA-OJ4.
+           MOVE WS-ANOV                    TO WS-ANO-OJ4.
+       G060-SUB-DIASJ-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          CONVERTE UMA DATA JULIANA EM GREGORIANA               *
+      *----------------------------------------------------------------*
+       G070-CONV-JUL.
+           MOVE WS-DIA-J4                  TO WS-DIA-C
+           MOVE WS-ANO-J4                  TO WS-ANOV
+      *
+           MOVE WS-ANOV                    TO VIAW0021-ANO
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 61                      TO WS-TAB-DIASJ(3)
+              MOVE 92                      TO WS-TAB-DIASJ(4)
+              MOVE 122                     TO WS-TAB-DIASJ(5)
+              MOVE 153                     TO WS-TAB-DIASJ(6)
+              MOVE 183                     TO WS-TAB-DIASJ(7)
+              MOVE 214                     TO WS-TAB-DIASJ(8)
+              MOVE 245                     TO WS-TAB-DIASJ(9)
+              MOVE 275                     TO WS-TAB-DIASJ(10)
+              MOVE 306                     TO WS-TAB-DIASJ(11)
+              MOVE 336                     TO WS-TAB-DIASJ(12)
+              MOVE 367                     TO WS-TAB-DIASJ(13)
+           ELSE
+              MOVE 60                      TO WS-TAB-DIASJ(3)
+              MOVE 91                      TO WS-TAB-DIASJ(4)
+              MOVE 121                     TO WS-TAB-DIASJ(5)
+              MOVE 152                     TO WS-TAB-DIASJ(6)
+              MOVE 182                     TO WS-TAB-DIASJ(7)
+              MOVE 213                     TO WS-TAB-DIASJ(8)
+              MOVE 244                     TO WS-TAB-DIASJ(9)
+              MOVE 274                     TO WS-TAB-DIASJ(10)
+              MOVE 305                     TO WS-TAB-DIASJ(11)
+              MOVE 335                     TO WS-TAB-DIASJ(12)
+              MOVE 366                     TO WS-TAB-DIASJ(13)
+           END-IF.
+      *
+           MOVE ZEROS                      TO WS-VAR1
+                                              WS-VAR2.
+           MOVE 0                          TO WS-IND1.
+           PERFORM VARYING WS-IND1 FROM 1 BY 1
+                     UNTIL WS-DIA-C NOT LESS
+                           WS-TAB-DIASJ (WS-IND1) AND
+                           WS-DIA-C           LESS
+                           WS-TAB-DIASJ (WS-IND1 + 1)
+              CONTINUE
+           END-PERFORM.
+           MOVE WS-TAB-DIASJ (WS-IND1)     TO WS-VAR1
+           COMPUTE WS-DIAC EQUAL WS-DIA-C - WS-VAR1 + 1.
+           MOVE WS-IND1                    TO WS-MESC.
+           MOVE WS-DIAC                    TO WS-DIAV.
+           MOVE WS-MESC                    TO WS-MESV.
+       G070-CONV-JUL-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          SOMA DIAS A UMA DATA JULIANA                          *
+      *----------------------------------------------------------------*
+       G080-SOMA-DIASJ.
+           MOVE WS-DIA-J4                  TO WS-DIA-C
+           MOVE WS-ANO-J4                  TO WS-ANOV
+                                              VIAW0021-ANO.
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 366                     TO WS-TAB-DIA-ANO
+           ELSE
+              MOVE 365                     TO WS-TAB-DIA-ANO
+           END-IF.
+      *
+           ADD WS-DIAS                     TO WS-DIA-C
+      *
+           PERFORM VARYING WS-IND1 FROM 1 BY 1
+                     UNTIL WS-DIA-C NOT GREATER WS-TAB-DIA-ANO
+
+                   COMPUTE WS-DIA-C EQUAL WS-DIA-C - WS-TAB-DIA-ANO
+                   ADD 1                   TO WS-ANO-J4
+                                              WS-ANOV
+                   MOVE WS-ANOV            TO VIAW0021-ANO
+                   PERFORM VIAP0021-VAL-BIS THRU
+                           VIAP0021-VAL-BIS-EXIT
+                   IF VIAW0021-BISSEXTO
+                      MOVE 366             TO WS-TAB-DIA-ANO
+                   ELSE
+                      MOVE 365             TO WS-TAB-DIA-ANO
+                   END-IF
+           END-PERFORM.
+      *
+           MOVE WS-DIA-C                   TO WS-DIA-OJ4.
+       G080-SOMA-DIASJ-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          CALCULAR A DIFERENCA ENTRE DUAS DATAS GREGORIANAS     *
+      *----------------------------------------------------------------*
+       G090-DIF-DIAS.
+           MOVE ZEROS                      TO WS-NUM-TDIAS
+           MULTIPLY WS-ANOI10 BY 365 GIVING WS-ANO-C1.
+           MULTIPLY WS-ANOV   BY 365 GIVING WS-ANO-C2.
+
+           MOVE WS-ANOI10                  TO VIAW0021-ANO.
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 60                      TO WS-TAB1-DIAS(3)
+              MOVE 91                      TO WS-TAB1-DIAS(4)
+              MOVE 121                     TO WS-TAB1-DIAS(5)
+              MOVE 152                     TO WS-TAB1-DIAS(6)
+              MOVE 182                     TO WS-TAB1-DIAS(7)
+              MOVE 213                     TO WS-TAB1-DIAS(8)
+              MOVE 244                     TO WS-TAB1-DIAS(9)
+              MOVE 274                     TO WS-TAB1-DIAS(10)
+              MOVE 305                     TO WS-TAB1-DIAS(11)
+              MOVE 335                     TO WS-TAB1-DIAS(12)
+           ELSE
+              MOVE 59                      TO WS-TAB1-DIAS(3)
+              MOVE 90                      TO WS-TAB1-DIAS(4)
+              MOVE 120                     TO WS-TAB1-DIAS(5)
+              MOVE 151                     TO WS-TAB1-DIAS(6)
+              MOVE 181                     TO WS-TAB1-DIAS(7)
+              MOVE 212                     TO WS-TAB1-DIAS(8)
+              MOVE 243                     TO WS-TAB1-DIAS(9)
+              MOVE 273                     TO WS-TAB1-DIAS(10)
+              MOVE 304                     TO WS-TAB1-DIAS(11)
+              MOVE 334                     TO WS-TAB1-DIAS(12)
+           END-IF.
+           MOVE WS-TAB1-DIAS (WS-MESI10)   TO WS-MES-C1
+
+           IF WS-ANOI10 LESS WS-ANOV
+              MOVE WS-ANOI10               TO WS-ANO
+
+              PERFORM VARYING WS-IND1 FROM 1 BY 1
+                        UNTIL WS-ANO NOT LESS WS-ANOV
+
+                      MOVE WS-ANO          TO VIAW0021-ANO
+                      PERFORM VIAP0021-VAL-BIS THRU
+                              VIAP0021-VAL-BIS-EXIT
+                      IF VIAW0021-BISSEXTO
+                         ADD 1             TO WS-NUM-TDIAS
+                      END-IF
+                      ADD 1                TO WS-ANO
+
+              END-PERFORM
+              MOVE WS-ANOV                 TO VIAW0021-ANO
+              PERFORM VIAP0021-VAL-BIS THRU
+                      VIAP0021-VAL-BIS-EXIT
+              IF VIAW0021-BISSEXTO
+                 MOVE 60                   TO WS-TAB1-DIAS(3)
+                 MOVE 91                   TO WS-TAB1-DIAS(4)
+                 MOVE 121                  TO WS-TAB1-DIAS(5)
+                 MOVE 152                  TO WS-TAB1-DIAS(6)
+                 MOVE 182                  TO WS-TAB1-DIAS(7)
+                 MOVE 213                  TO WS-TAB1-DIAS(8)
+                 MOVE 244                  TO WS-TAB1-DIAS(9)
+                 MOVE 274                  TO WS-TAB1-DIAS(10)
+                 MOVE 305                  TO WS-TAB1-DIAS(11)
+                 MOVE 335                  TO WS-TAB1-DIAS(12)
+              ELSE
+                 MOVE 59                   TO WS-TAB1-DIAS(3)
+                 MOVE 90                   TO WS-TAB1-DIAS(4)
+                 MOVE 120                  TO WS-TAB1-DIAS(5)
+                 MOVE 151                  TO WS-TAB1-DIAS(6)
+                 MOVE 181                  TO WS-TAB1-DIAS(7)
+                 MOVE 212                  TO WS-TAB1-DIAS(8)
+                 MOVE 243                  TO WS-TAB1-DIAS(9)
+                 MOVE 273                  TO WS-TAB1-DIAS(10)
+                 MOVE 304                  TO WS-TAB1-DIAS(11)
+                 MOVE 334                  TO WS-TAB1-DIAS(12)
+              END-IF
+              MOVE WS-TAB1-DIAS (WS-MESV)  TO WS-MES-C2
+           ELSE
+              MOVE WS-TAB1-DIAS (WS-MESV)  TO WS-MES-C2
+           END-IF.
+
+           COMPUTE WS-NUM-TDIAS1 EQUAL WS-ANO-C1 +
+                   WS-MES-C1 + WS-DIAI10.
+           COMPUTE WS-NUM-TDIAS2 EQUAL WS-ANO-C2 +
+                   WS-MES-C2 + WS-DIAV.
+
+           COMPUTE WS-NUM-TDIAS-C EQUAL WS-NUM-TDIAS2 -
+                                        WS-NUM-TDIAS1.
+           ADD WS-NUM-TDIAS-C              TO WS-NUM-TDIAS.
+       G090-DIF-DIAS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          CALCULAR A DIFERENCA ENTRE DUAS DATAS GREGORIANAS     *
+      *          DEVE SER USADA EM CONJUNTO COM A G090-DIF-DIAS        *
+      *----------------------------------------------------------------*
+       G100-DIF-DIAS-U.
+           MOVE ZEROS                      TO WS-DIA-U.
+           MOVE ZEROS                      TO WS-TIRAR
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT
+           IF WS-NAO-UTIL
+              IF WS-CDIA = 'S'
+                 MOVE 1                    TO WS-TIRAR
+              ELSE
+                 MOVE 2                    TO WS-TIRAR
+              END-IF
+           END-IF
+           MOVE WS-CDIA                    TO WS-CDIAA
+           MOVE WS-DATAI10                 TO WS-DATA
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT
+           IF WS-NAO-UTIL
+              IF WS-CDIA = 'S'
+                 ADD 1                     TO WS-TIRAR
+              ELSE
+                 ADD 0                     TO WS-TIRAR
+              END-IF
+           ELSE
+              IF WS-NUM-TDIAS GREATER 6
+                 MOVE WS-CDIA              TO WS-CDIAN
+                 COMPUTE WS-DIA-U EQUAL 7 - WS-CDIAN
+                 ADD 2                     TO WS-TIRAR
+              ELSE
+                 IF WS-UTILA
+                    IF WS-CDIA GREATER WS-CDIAA
+                       ADD 2               TO WS-TIRAR
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF
+           COMPUTE WS-DIAS EQUAL WS-NUM-TDIAS - WS-DIA-U - WS-TIRAR
+           IF WS-DIAS NOT LESS ZEROS
+              DIVIDE WS-DIAS  BY 7 GIVING WS-NUM-FS
+              MULTIPLY WS-NUM-FS BY 2 GIVING WS-NUM-DFS
+              COMPUTE WS-NUM-TDIAS1 EQUAL WS-NUM-TDIAS -
+                                          WS-TIRAR - WS-NUM-DFS
+           ELSE
+              MOVE ZEROS                   TO WS-NUM-TDIAS1
+           END-IF.
+       G100-DIF-DIAS-U-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          CALCULAR O ULTIMO DIA UTIL DE UM MES                  *
+      *----------------------------------------------------------------*
+       G110-ULT-DIA-UTIL.
+           MOVE WS-ANOI10                  TO VIAW0021-ANO
+           MOVE WS-DATAI10                 TO WS-DATA
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT
+           IF VIAW0021-BISSEXTO
+              MOVE 29                      TO WS-TAB-DIAS(2)
+           ELSE
+              MOVE 28                      TO WS-TAB-DIAS(2)
+           END-IF.
+           MOVE WS-TAB-DIAS (WS-MESI10)    TO WS-DIAV.
+           MOVE WS-DATA                    TO WS-DATAB.
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT
+           MOVE WS-DATAB                   TO WS-DATA
+           IF WS-NAO-UTIL
+              MOVE WS-DATA                 TO WS-DATAI10
+              MOVE 1                       TO WS-DIAS
+              PERFORM G010-SUB-DIAS-U THRU
+                      G010-SUB-DIAS-U-EXIT
+           END-IF.
+       G110-ULT-DIA-UTIL-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS ESPECIAIS SEMANAIS                            *
+      *----------------------------------------------------------------*
+       G115-PRAZO-SEMANAL.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G115-PRAZO-SEMANAL  '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+
+           MOVE WS-DATAI10              TO WS-DATA.
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT.
+
+           IF WS-CDIA EQUAL 'S'
+              MOVE   7  TO WS-DIA-SEMANA
+           ELSE
+              IF WS-CDIA EQUAL 'D'
+                 MOVE   1  TO WS-DIA-SEMANA
+              ELSE
+                 MOVE WS-CDIA TO WS-DIA-SEMANA
+              END-IF
+           END-IF.
+
+           IF WS-DIA-SEMANA GREATER WS-PRAZO-VALIDO-N
+              COMPUTE WS-PRAZO =  WS-PRAZO-VALIDO-N - WS-DIA-SEMANA + 7
+           ELSE
+             IF WS-DIA-SEMANA LESS WS-PRAZO-VALIDO-N
+                COMPUTE WS-PRAZO = WS-PRAZO-VALIDO-N - WS-DIA-SEMANA
+             ELSE
+               IF WS-DIA-SEMANA EQUAL WS-PRAZO-VALIDO-N
+                 MOVE 7 TO WS-PRAZO
+               END-IF
+             END-IF
+           END-IF.
+
+           PERFORM G140-SOMAR-DIAS THRU
+                   G140-SOMAR-DIAS-EXIT.
+
+       G115-PRAZO-SEMANAL-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS ESPECIAIS QUINZENAIS                          *
+      *----------------------------------------------------------------*
+       G116-PRAZO-QUINZENAL.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G116-PRAZO-QUINZENAL'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+
+           MOVE VIAL1000-I1-D           TO WS-QUINZENAL.
+
+           IF WS-1-QUINZENA
+              MOVE '15' TO VIAL1000-I1-D
+                           WS-DIAI10
+           ELSE
+             IF WS-2-QUINZENA
+                MOVE WS-DATAI10 TO WS-DATA-COMP
+                PERFORM D209-PROCESSO-09
+                   THRU D209-EXIT
+                IF WS-DATAI10 EQUAL WS-DATA-COMP
+      * SE A DATA DE INPUT FOR O FIM DO MES DEVOLVE O PROXIMO PERIODO
+      * OU SEJA, O DIA 15 DO PROXIMO MES
+                  MOVE '15' TO VIAL1000-I1-D
+                               WS-DIAI10
+                  MOVE '1'              TO WS-PRAZO
+                  PERFORM G130-SOMAR-MESES
+                     THRU G130-SOMAR-MESES-EXIT
+                END-IF
+             END-IF
+           END-IF.
+
+           MOVE WS-PRAZO-VALIDO-N TO VIAL1000-PRZ-D
+           PERFORM D234-PROCESSO-34
+              THRU D234-EXIT.
+
+       G116-PRAZO-QUINZENAL-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS ESPECIAIS DE PERIODOS REGULARES MENOS N DIAS  *
+      *----------------------------------------------------------------*
+       G117-PRAZO-REGULAR.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G117-PRAZO-REGULAR  '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+
+           IF PRAZO-REGUL-MENSAL
+              PERFORM D209-PROCESSO-09
+                 THRU D209-EXIT
+           END-IF.
+
+           IF PRAZO-REGUL-TRIMESTRAL
+
+              MOVE VIAL1000-I1-M           TO WS-TRIMESTRAL
+
+              IF WS-1-TRIMESTRE
+                 MOVE '03' TO WS-MESI10
+                 PERFORM D209-PROCESSO-09
+                    THRU D209-EXIT
+              END-IF
+
+              IF WS-2-TRIMESTRE
+                 MOVE '06' TO WS-MESI10
+                 PERFORM D209-PROCESSO-09
+                    THRU D209-EXIT
+              END-IF
+
+              IF WS-3-TRIMESTRE
+                 MOVE '09' TO WS-MESI10
+                 PERFORM D209-PROCESSO-09
+                    THRU D209-EXIT
+              END-IF
+
+              IF WS-4-TRIMESTRE
+                 MOVE '12' TO WS-MESI10
+                 PERFORM D209-PROCESSO-09
+                    THRU D209-EXIT
+              END-IF
+           END-IF.
+
+           IF PRAZO-REGUL-SEMESTRAL
+              MOVE VIAL1000-I1-M           TO WS-SEMESTRAL
+
+              IF WS-1-SEMESTRE
+                 MOVE '06' TO WS-MESI10
+                 PERFORM D209-PROCESSO-09
+                    THRU D209-EXIT
+              END-IF
+
+              IF WS-2-SEMESTRE
+                 MOVE '12' TO WS-MESI10
+                 PERFORM D209-PROCESSO-09
+                    THRU D209-EXIT
+              END-IF
+
+           END-IF.
+
+           IF PRAZO-REGUL-ANUAL
+              MOVE '12' TO WS-MESI10
+              PERFORM D209-PROCESSO-09
+                 THRU D209-EXIT
+           END-IF.
+       G117-PRAZO-REGULAR-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS ESPECIAIS DE DIAS FIXOS      MENOS N DIAS     *
+      *----------------------------------------------------------------*
+       G118-PRAZO-FIXO.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G118-PRAZO-FIXO  '     TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+
+           IF NOT PRAZO-FIXO-ANO-1-DIA
+              MOVE WS-PRAZO-VALIDO-N TO WS-PRAZO
+              PERFORM G130-SOMAR-MESES
+                 THRU G130-SOMAR-MESES-EXIT
+
+              MOVE WS-DATAI10          TO WS-DATA-COMP
+
+              PERFORM D209-PROCESSO-09
+                 THRU D209-EXIT
+
+              MOVE VIAL1000-I2-D           TO WS-DIAC10
+
+              IF WS-DATA-COMP LESS THAN WS-DATAI10
+                 MOVE WS-DATA-COMP TO WS-DATAI10
+              END-IF
+           ELSE
+
+              MOVE '12'              TO WS-PRAZO
+              PERFORM G130-SOMAR-MESES
+                 THRU G130-SOMAR-MESES-EXIT
+
+              MOVE  1                         TO WS-PRAZO
+              PERFORM G140-SOMAR-DIAS THRU
+                      G140-SOMAR-DIAS-EXIT
+           END-IF.
+
+       G118-PRAZO-FIXO-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS ESPECIAIS DE DIAS FIXOS      MENOS N DIAS     *
+      *----------------------------------------------------------------*
+       G123-PRAZO-FIXO.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G123-PRAZO-FIXO  '     TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+
+           IF NOT PRAZO-FIXO-ANO-1-DIA
+              MOVE WS-PRAZO-VALIDO-N TO WS-PRAZO
+              PERFORM G150-SUB-MESES
+                 THRU G150-SUB-MESES-EXIT
+
+              MOVE WS-DATAI10          TO WS-DATA-COMP
+
+              PERFORM D209-PROCESSO-09
+                 THRU D209-EXIT
+
+              MOVE VIAL1000-I2-D           TO WS-DIAC10
+
+              IF WS-DATA-COMP LESS THAN WS-DATAI10
+                 MOVE WS-DATA-COMP TO WS-DATAI10
+              END-IF
+           ELSE
+
+              MOVE '12'              TO WS-PRAZO
+              PERFORM G150-SUB-MESES
+                 THRU G150-SUB-MESES-EXIT
+
+              MOVE  1                         TO WS-PRAZO
+              PERFORM G160-SUB-DIAS THRU
+                      G160-SUB-DIAS-EXIT
+           END-IF.
+
+       G123-PRAZO-FIXO-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS ESPECIAIS DE SOMA DE ANOS COM DATAS           *
+      *  ANIVERSARIO                                                   *
+      *----------------------------------------------------------------*
+       V118-PRAZO-FIXO-ANUAL.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'V118-PRAZO-FIXO-ANUAL' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+
+           MOVE WS-PRAZO-VALIDO-N TO WS-PRAZO.
+
+           EVALUATE VIAL1000-COD-PROCESSO
+               WHEN '21'
+                 COMPUTE WS-ANOI10 = WS-ANOI10 + WS-PRAZO
+                 MOVE VIAL1000-PRZ-M TO WS-PRAZO
+                 PERFORM G130-SOMAR-MESES
+                    THRU G130-SOMAR-MESES-EXIT
+
+               WHEN '22'
+                 COMPUTE WS-ANOI10 = WS-ANOI10 + WS-PRAZO
+                 MOVE VIAL1000-PRZ-M TO WS-PRAZO
+                 PERFORM G130-SOMAR-MESES
+                    THRU G130-SOMAR-MESES-EXIT
+
+               WHEN '23'
+                 COMPUTE WS-ANOI10 = WS-ANOI10 - WS-PRAZO
+                 MOVE VIAL1000-PRZ-M TO WS-PRAZO
+                 PERFORM G150-SUB-MESES
+                    THRU G150-SUB-MESES-EXIT
+
+               WHEN '24'
+                 COMPUTE WS-ANOI10 = WS-ANOI10 - WS-PRAZO
+                 MOVE VIAL1000-PRZ-M TO WS-PRAZO
+                 PERFORM G150-SUB-MESES
+                    THRU G150-SUB-MESES-EXIT
+
+           END-EVALUATE
+
+           MOVE WS-DATAI10          TO WS-DATA-COMP
+
+           PERFORM D209-PROCESSO-09
+              THRU D209-EXIT
+
+           MOVE VIAL1000-I2-D           TO WS-DIAC10.
+
+           IF WS-DATA-COMP LESS THAN WS-DATAI10
+              MOVE WS-DATA-COMP TO WS-DATAI10
+           END-IF.
+
+       V118-PRAZO-FIXO-ANUAL-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS ESPECIAIS DE SOMA DE ANOS COM AJUSTE AO FIM   *
+      *  DO MES                                                        *
+      *----------------------------------------------------------------*
+       X118-PRAZO-ANUAL-FIM-MES.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'X118-PRAZO-ANUAL-FIM-MES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+
+           MOVE WS-PRAZO-VALIDO-N TO WS-PRAZO.
+
+           EVALUATE VIAL1000-COD-PROCESSO
+               WHEN '21'
+                 COMPUTE WS-ANOI10 = WS-ANOI10 + WS-PRAZO
+                 MOVE VIAL1000-PRZ-M TO WS-PRAZO
+                 PERFORM G130-SOMAR-MESES
+                    THRU G130-SOMAR-MESES-EXIT
+
+               WHEN '22'
+                 COMPUTE WS-ANOI10 = WS-ANOI10 + WS-PRAZO
+                 MOVE VIAL1000-PRZ-M TO WS-PRAZO
+                 PERFORM G130-SOMAR-MESES
+                    THRU G130-SOMAR-MESES-EXIT
+
+               WHEN '23'
+                 COMPUTE WS-ANOI10 = WS-ANOI10 - WS-PRAZO
+                 MOVE VIAL1000-PRZ-M TO WS-PRAZO
+                 PERFORM G150-SUB-MESES
+                    THRU G150-SUB-MESES-EXIT
+
+               WHEN '24'
+                 COMPUTE WS-ANOI10 = WS-ANOI10 - WS-PRAZO
+                 MOVE VIAL1000-PRZ-M TO WS-PRAZO
+                 PERFORM G150-SUB-MESES
+                    THRU G150-SUB-MESES-EXIT
+
+           END-EVALUATE
+
+           PERFORM D209-PROCESSO-09
+              THRU D209-EXIT.
+
+       X118-PRAZO-ANUAL-FIM-MES-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS ESPECIAIS DE DIAS CALENDARIO MENOS N DIAS     *
+      *----------------------------------------------------------------*
+       G119-PRAZO-CALEND.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G119-PRAZO-CALEND    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+
+           EVALUATE WS-PRAZO-VALIDO-X
+              WHEN 'M'
+                    MOVE 1                 TO WS-PRAZO
+                    PERFORM G130-SOMAR-MESES
+                       THRU G130-SOMAR-MESES-EXIT
+                    PERFORM D209-PROCESSO-09
+                       THRU D209-EXIT
+                    MOVE WS-PRAZO-VALIDO-2 TO VIAL1000-PRZ-D
+                    PERFORM D234-PROCESSO-34
+                       THRU D234-EXIT
+              WHEN 'T'
+                    MOVE 3                 TO WS-PRAZO
+                    PERFORM G130-SOMAR-MESES
+                       THRU G130-SOMAR-MESES-EXIT
+                    PERFORM D209-PROCESSO-09
+                       THRU D209-EXIT
+                    MOVE WS-PRAZO-VALIDO-2 TO VIAL1000-PRZ-D
+                    PERFORM D234-PROCESSO-34
+                       THRU D234-EXIT
+
+              WHEN 'S'
+                    MOVE 6                 TO WS-PRAZO
+                    PERFORM G130-SOMAR-MESES
+                       THRU G130-SOMAR-MESES-EXIT
+                    PERFORM D209-PROCESSO-09
+                       THRU D209-EXIT
+                    MOVE WS-PRAZO-VALIDO-2 TO VIAL1000-PRZ-D
+                    PERFORM D234-PROCESSO-34
+                       THRU D234-EXIT
+
+              WHEN 'A'
+                    MOVE 12                TO WS-PRAZO
+                    PERFORM G130-SOMAR-MESES
+                       THRU G130-SOMAR-MESES-EXIT
+                    PERFORM D209-PROCESSO-09
+                       THRU D209-EXIT
+                    MOVE WS-PRAZO-VALIDO-2 TO VIAL1000-PRZ-D
+                    PERFORM D234-PROCESSO-34
+                       THRU D234-EXIT
+
+           END-EVALUATE.
+
+       G119-PRAZO-CALEND-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS DE MENSUALIZACAO (DIAS DO MES 8, 15, 22 E FIM *
+      *  DO MES)                                                       *
+      *----------------------------------------------------------------*
+       G120-PRAZO-MENSUALIZACAO.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G120-PRAZO-MENSUALIZACAO' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+
+              IF WS-DIAI10 LESS THAN 8
+                 MOVE 8 TO WS-DIAI10
+              ELSE
+                IF WS-DIAI10 LESS THAN 15
+                   MOVE 15 TO WS-DIAI10
+                ELSE
+                  IF WS-DIAI10 LESS THAN 22
+                     MOVE 22 TO WS-DIAI10
+                  ELSE
+                    PERFORM D209-PROCESSO-09
+                       THRU D209-EXIT
+                    IF WS-DIAI10 EQUAL WS-DIAV
+                      MOVE 8                 TO WS-DIAI10
+                      MOVE 1                 TO WS-PRAZO
+                      PERFORM G130-SOMAR-MESES
+                         THRU G130-SOMAR-MESES-EXIT
+                    END-IF
+                  END-IF
+                END-IF
+              END-IF.
+
+       G120-PRAZO-MENSUALIZACAO-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *  TRATA OS PRAZOS TRIMENSAIS (DIAS DO MES 10, 20 E FIM DE MES)  *
+      *----------------------------------------------------------------*
+       G125-PRAZO-TRIMENSAL.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G125-PRAZO-TRIMENSAL ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+              IF WS-DIAI10 LESS THAN 10
+                 MOVE 10                      TO WS-DIAI10
+              ELSE
+                 IF WS-DIAI10 LESS THAN 20
+                    MOVE 20                   TO WS-DIAI10
+                 ELSE
+                    PERFORM D209-PROCESSO-09
+                       THRU D209-EXIT
+                    IF WS-DIAI10 EQUAL WS-DIAV
+                       MOVE 10                TO WS-DIAI10
+                       MOVE 1                 TO WS-PRAZO
+                       PERFORM G130-SOMAR-MESES
+                          THRU G130-SOMAR-MESES-EXIT
+                    END-IF
+                 END-IF
+              END-IF.
+
+       G125-PRAZO-TRIMENSAL-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          CONVERTER CODIGO DE PRAZO EM DIAS                     *
+      *----------------------------------------------------------------*
+       G120-OBTER-COD-PRAZO.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G120-OBTER-COD-PRAZO'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           MOVE VIAL1000-COD-PRZ           TO WS-PRAZO-VALIDO.
+           IF PRAZO-VALIDO
+              IF PRAZO-VALIDO-MESES
+                 MOVE WS-PRAZO-VALIDO-N    TO WS-PRZ-M
+              ELSE
+                 IF PRAZO-VALIDO-ANOS
+                    COMPUTE WS-PRZ-M = WS-PRAZO-VALIDO-N * 12
+                 ELSE
+                    IF PRAZO-VALIDO-SEMESTRES
+                       COMPUTE WS-PRZ-M = WS-PRAZO-VALIDO-N * 6
+                    ELSE
+                       IF PRAZO-VALIDO-TRIMESTRES
+                          COMPUTE WS-PRZ-M = WS-PRAZO-VALIDO-N * 3
+                       ELSE
+                          IF PRAZO-VALIDO-DIAS
+                             MOVE WS-PRAZO-VALIDO-N
+                                           TO WS-PRZ-D
+                          ELSE
+                             IF PRAZO-VALIDO-ESPECIAL OR
+                                PRAZO-CALEND-ESPECIAL OR
+                                PRAZO-FIXO-ESPECIAL   OR
+                                PRAZO-FIXO-ANOS       OR
+                                PRAZO-ANO-FIM-MES     OR
+                                PRAZO-REGUL-ESPECIAL  OR
+                                PRAZO-FIXO-QUINZENAL  OR
+                                PRAZO-FIXO-SEMANAL    OR
+                                PRAZO-MENSUALIZACAO   OR
+                                PRAZO-TRIMENSALIDADE
+                                NEXT SENTENCE
+                             ELSE
+                               SET VIAL1000-ERROS-ARQ TO TRUE
+                               MOVE ERRMSG-PRAZO-NAO-EXISTE TO WS-MSG
+                               MOVE VIAK0001-PRAZO-INVALIDO
+                                           TO VIAL1000-COD-ERRO-GRAVE
+           ELSE
+              SET VIAL1000-ERROS-ARQ TO TRUE
+              MOVE ERRMSG-PRAZO-NAO-EXISTE
+                                           TO WS-MSG
+              MOVE VIAK0001-PRAZO-INVALIDO
+                                           TO VIAL1000-COD-ERRO-GRAVE
+           END-IF.
+       G120-OBTER-COD-PRAZO-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          SOMAR MESES A UMA DATA                                *
+      *----------------------------------------------------------------*
+       G130-SOMAR-MESES.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G130-SOMAR-MESES     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           MOVE WS-MESI10                  TO WS-MESC.
+           ADD WS-PRAZO                    TO WS-MESC.
+           IF WS-MESC GREATER 12
+              COMPUTE WS-MESC EQUAL WS-MESC - 12
+              ADD 1                        TO WS-ANOI10
+              PERFORM VARYING WS-IND1 FROM 1 BY 1
+                        UNTIL WS-MESC NOT GREATER 12
+
+                      COMPUTE WS-MESC EQUAL WS-MESC - 12
+                      ADD 1                TO WS-ANOI10
+              END-PERFORM
+           END-IF.
+           MOVE WS-ANOI10                  TO VIAW0021-ANO
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 29                      TO WS-TAB-DIAS(2)
+           ELSE
+              MOVE 28                      TO WS-TAB-DIAS(2)
+           END-IF.
+           MOVE WS-MESC                    TO WS-MESI10.
+           IF WS-DIAI10 GREATER WS-TAB-DIAS (WS-MESI10)
+              MOVE WS-TAB-DIAS (WS-MESI10)   TO WS-DIAI10
+           END-IF.
+       G130-SOMAR-MESES-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          SOMAR DIAS A UMA DATA                                 *
+      *----------------------------------------------------------------*
+       G140-SOMAR-DIAS.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G140-SOMAR-DIAS      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           MOVE WS-DATAI10                 TO WS-DATA.
+           PERFORM G050-CONV-GREG THRU
+                   G050-CONV-GREG-EXIT.
+           MOVE WS-PRAZO                   TO WS-DIAS.
+           PERFORM G080-SOMA-DIASJ THRU
+                   G080-SOMA-DIASJ-EXIT.
+           MOVE WS-DIA-OJ4                 TO WS-DIA-J4
+           MOVE WS-ANOV                    TO WS-ANO-J4
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT.
+           MOVE WS-DATA                    TO WS-DATAI10.
+       G140-SOMAR-DIAS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          SUBTRAIR MESES A UMA DATA                             *
+      *----------------------------------------------------------------*
+       G150-SUB-MESES.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G150-SUB-MESES       ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           MOVE WS-MESI10                  TO WS-RESTO-DIAS.
+           COMPUTE WS-RESTO-DIAS EQUAL WS-RESTO-DIAS - WS-PRAZO.
+           IF WS-RESTO-DIAS NOT GREATER 0
+              COMPUTE WS-RESTO-DIAS EQUAL 12 + WS-RESTO-DIAS
+              COMPUTE WS-ANOI10 EQUAL WS-ANOI10 - 1
+              PERFORM VARYING WS-IND1 FROM 1 BY 1
+                        UNTIL WS-RESTO-DIAS GREATER 0
+
+                      ADD 12               TO WS-RESTO-DIAS
+                      COMPUTE WS-ANOI10 EQUAL WS-ANOI10 - 1
+              END-PERFORM
+           END-IF.
+           MOVE WS-ANOI10                  TO VIAW0021-ANO
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 29                      TO WS-TAB-DIAS(2)
+           ELSE
+              MOVE 28                      TO WS-TAB-DIAS(2)
+           END-IF.
+           MOVE WS-RESTO-DIAS              TO WS-MESI10.
+           IF WS-DIAI10 GREATER WS-TAB-DIAS (WS-MESI10)
+              MOVE WS-TAB-DIAS (WS-MESI10) TO WS-DIAI10
+           END-IF.
+       G150-SUB-MESES-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          SUBTRAIR DIAS A UMA DATA                              *
+      *----------------------------------------------------------------*
+       G160-SUB-DIAS.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G160-SUB-DIAS        ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           MOVE WS-DATAI10                 TO WS-DATA.
+           PERFORM G050-CONV-GREG THRU
+                   G050-CONV-GREG-EXIT.
+           MOVE WS-PRAZO                   TO WS-DIAS.
+           PERFORM G060-SUB-DIASJ THRU
+                   G060-SUB-DIASJ-EXIT.
+           MOVE WS-DIA-OJ4                 TO WS-DIA-J4
+           MOVE WS-ANOV                    TO WS-ANO-J4
+           PERFORM G070-CONV-JUL THRU
+                   G070-CONV-JUL-EXIT.
+           MOVE WS-DATA                    TO WS-DATAI10.
+       G160-SUB-DIAS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          CARREGAR A TABELA DE FERIADOS                         *
+      *----------------------------------------------------------------*
+       G170-CARR-FERIADOS.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G170-CARR-FERIADOS   ' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL1000-COD-PAIS    ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL1000-COD-PAIS      TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           EVALUATE VIAL1000-COD-PAIS
+              WHEN 'BRA'
+                 IF WS-ANOP NOT EQUAL WS-ANOF-BR(1)
+                    MOVE WS-TAB-FERIADOS-CONSTANTE-BR
+                                           TO WS-TAB-FERIADOS-BR
+                    PERFORM G200-DOM-PASCOA THRU
+                            G200-DOM-PASCOA-EXIT
+                    PERFORM VARYING WS-INDF FROM 1 BY 1
+                      UNTIL WS-INDF GREATER 13
+                      MOVE WS-ANOP         TO WS-ANOF-BR (WS-INDF)
+                    END-PERFORM
+      *
+                    IF WS-ANOP NOT = WS-ANOF-BR (13)
+                       MOVE '0000'         TO WS-ANOF-BR (13)
+                       MOVE '00'           TO WS-MESF-BR (13)
+                       MOVE '00'           TO WS-DIAF-BR (13)
+                    END-IF
+      *
+                    MOVE WS-MESP           TO WS-MESF-BR(4)
+                    MOVE WS-DIAP           TO WS-DIAF-BR(4)
+      *
+                    MOVE WS-MESP           TO WS-MESF-BR (3)
+                    COMPUTE WS-DIAF-BR(3) EQUAL WS-DIAP - 2
+                    MOVE WS-DATAI10        TO WS-DATAB
+                    MOVE 47                TO WS-PRAZO
+                    MOVE WS-DATAP          TO WS-DATAI10
+                    PERFORM G160-SUB-DIAS THRU
+                            G160-SUB-DIAS-EXIT
+                    MOVE WS-MESI10         TO WS-MESF-BR(2)
+                    MOVE WS-DIAI10         TO WS-DIAF-BR(2)
+      *
+                    MOVE 60                TO WS-PRAZO
+                    MOVE WS-DATAP          TO WS-DATAI10
+                    PERFORM G140-SOMAR-DIAS THRU
+                            G140-SOMAR-DIAS-EXIT
+                    MOVE WS-MESI10         TO WS-MESF-BR(7)
+                    MOVE WS-DIAI10         TO WS-DIAF-BR(7)
+                    MOVE WS-DATAB          TO WS-DATAI10
+                 END-IF
+
+                 MOVE 1                    TO WS-IND-ORD
+                 MOVE SPACES               TO WS-STATUS-TROCA
+                 PERFORM G175-ORDENA-FERIADOS
+                    THRU G175-ORDENA-FERIADOS-EXIT
+                   UNTIL WS-IND-ORD GREATER 13
+                     AND WS-NAO-TROCOU
+              WHEN 'PRT'
+                 IF WS-ANOP NOT EQUAL WS-ANOF(1)
+                    MOVE WS-TAB-FERIADOS-CONSTANTE
+                                           TO WS-TAB-FERIADOS
+                    PERFORM G200-DOM-PASCOA THRU
+                            G200-DOM-PASCOA-EXIT
+                    PERFORM VARYING WS-INDF FROM 1 BY 1
+                      UNTIL WS-INDF GREATER 14
+                      MOVE WS-ANOP         TO WS-ANOF (WS-INDF)
+                    END-PERFORM
+
+                    IF WS-ANOP NOT = WS-ANOF (15)
+                       MOVE '0000'         TO WS-ANOF (15)
+                       MOVE '00'           TO WS-MESF (15)
+                       MOVE '00'           TO WS-DIAF (15)
+                    END-IF
+      *
+                    MOVE WS-MESP           TO WS-MESF (2)
+                    COMPUTE WS-DIAF(2) EQUAL WS-DIAP - 2
+                    MOVE WS-DATAI10        TO WS-DATAB
+                    MOVE 47                TO WS-PRAZO
+                    MOVE WS-DATAP          TO WS-DATAI10
+                    PERFORM G160-SUB-DIAS THRU
+                            G160-SUB-DIAS-EXIT
+                    MOVE WS-MESI10         TO WS-MESF(3)
+                    MOVE WS-DIAI10         TO WS-DIAF(3)
+      *
+                    MOVE 60                TO WS-PRAZO
+                    MOVE WS-DATAP          TO WS-DATAI10
+                    PERFORM G140-SOMAR-DIAS THRU
+                            G140-SOMAR-DIAS-EXIT
+                    MOVE WS-MESI10         TO WS-MESF(5)
+                    MOVE WS-DIAI10         TO WS-DIAF(5)
+                    MOVE WS-DATAB          TO WS-DATAI10
+                 END-IF
+
+                 MOVE 1                    TO WS-IND-ORD
+                 MOVE SPACES               TO WS-STATUS-TROCA
+                 PERFORM G175-ORDENA-FERIADOS
+                    THRU G175-ORDENA-FERIADOS-EXIT
+                   UNTIL WS-IND-ORD GREATER 15
+                     AND WS-NAO-TROCOU
+              WHEN OTHER
+                 IF WS-ANOP NOT EQUAL WS-ANOF(1)
+                    MOVE WS-TAB-FERIADOS-CONSTANTE
+                                           TO WS-TAB-FERIADOS
+                    PERFORM G200-DOM-PASCOA THRU
+                            G200-DOM-PASCOA-EXIT
+                    PERFORM VARYING WS-INDF FROM 1 BY 1
+                      UNTIL WS-INDF GREATER 14
+                      MOVE WS-ANOP         TO WS-ANOF (WS-INDF)
+                    END-PERFORM
+
+                    IF WS-ANOP NOT = WS-ANOF (15)
+                       MOVE '0000'         TO WS-ANOF (15)
+                       MOVE '00'           TO WS-MESF (15)
+                       MOVE '00'           TO WS-DIAF (15)
+                    END-IF
+      *
+                    MOVE WS-MESP           TO WS-MESF (2)
+                    COMPUTE WS-DIAF(2) EQUAL WS-DIAP - 2
+                    MOVE WS-DATAI10        TO WS-DATAB
+                    MOVE 47                TO WS-PRAZO
+                    MOVE WS-DATAP          TO WS-DATAI10
+                    PERFORM G160-SUB-DIAS THRU
+                            G160-SUB-DIAS-EXIT
+                    MOVE WS-MESI10         TO WS-MESF(3)
+                    MOVE WS-DIAI10         TO WS-DIAF(3)
+      *
+                    MOVE 60                TO WS-PRAZO
+                    MOVE WS-DATAP          TO WS-DATAI10
+                    PERFORM G140-SOMAR-DIAS THRU
+                            G140-SOMAR-DIAS-EXIT
+                    MOVE WS-MESI10         TO WS-MESF(5)
+                    MOVE WS-DIAI10         TO WS-DIAF(5)
+                    MOVE WS-DATAB          TO WS-DATAI10
+                 END-IF
+
+                 MOVE 1                    TO WS-IND-ORD
+                 MOVE SPACES               TO WS-STATUS-TROCA
+                 PERFORM G175-ORDENA-FERIADOS
+                    THRU G175-ORDENA-FERIADOS-EXIT
+                   UNTIL WS-IND-ORD GREATER 15
+                     AND WS-NAO-TROCOU
+           END-EVALUATE.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G170 DATA FERIADO    ' TO VIAL0015-CALLER-ID
+              MOVE 'WS-DATAI10           ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-DATAI10             TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-DATA              ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-DATA                TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       G170-CARR-FERIADOS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          ORDENA OS FERIADOS NA TABELA DE FERIADOS              *
+      *----------------------------------------------------------------*
+       G175-ORDENA-FERIADOS.
+      *
+      *    IF SW-DEBUG-SIM
+      *       MOVE 'G175-ORDENA-FERIADOS ' TO VIAL0015-CALLER-ID
+      *       MOVE 'VIAL1000-COD-PAIS    ' TO VIAL0015-CAMPO-NM(1)
+      *       MOVE  VIAL1000-COD-PAIS      TO VIAL0015-CAMPO-VLR(1)
+      *       MOVE 'WS-IND-ORD           ' TO VIAL0015-CAMPO-NM(2)
+      *       MOVE  WS-IND-ORD             TO VIAL0015-CAMPO-VLR(2)
+      *       PERFORM VIAP0015-TRATA-DEBUG
+      *          THRU VIAP0015-TRATA-DEBUG-EXIT
+      *    END-IF
+      *
+           EVALUATE VIAL1000-COD-PAIS
+              WHEN 'BRA'
+      *    IF SW-DEBUG-SIM
+      *       MOVE 'G175-ORDENA-FERIADOS ' TO VIAL0015-CALLER-ID
+      *       MOVE 'WS-DATA-10F-BR(WS-IND-ORD)'
+      *                                    TO VIAL0015-CAMPO-NM(1)
+      *       MOVE  WS-DATA-10F-BR(WS-IND-ORD)
+      *                                    TO VIAL0015-CAMPO-VLR(1)
+      *       PERFORM VIAP0015-TRATA-DEBUG
+      *          THRU VIAP0015-TRATA-DEBUG-EXIT
+      *    END-IF
+                 IF WS-IND-ORD GREATER 1
+                    IF WS-DATA-10F-BR(WS-IND-ORD) LESS
+                       WS-DATA-10F-BR(WS-IND-ORD - 1)
+
+                       MOVE WS-DATA-10F-BR(WS-IND-ORD)
+                                           TO WS-DATA-TROCA
+                       MOVE WS-DATA-10F-BR(WS-IND-ORD - 1)
+                                           TO WS-DATA-10F-BR(WS-IND-ORD)
+                       MOVE WS-DATA-TROCA
+                                      TO WS-DATA-10F-BR(WS-IND-ORD - 1)
+                       MOVE 'S'            TO WS-STATUS-TROCA
+                    END-IF
+                 END-IF
+
+                 ADD 1                     TO WS-IND-ORD
+
+                 IF WS-IND-ORD GREATER 13 AND
+                    WS-TROCOU
+                    MOVE 1                 TO WS-IND-ORD
+                    MOVE SPACES            TO WS-STATUS-TROCA
+                 END-IF
+              WHEN 'PRT'
+      *    IF SW-DEBUG-SIM
+      *       MOVE 'G175-ORDENA-FERIADOS ' TO VIAL0015-CALLER-ID
+      *       MOVE 'WS-DATA-10F(WS-IND-ORD)'
+      *                                    TO VIAL0015-CAMPO-NM(1)
+      *       MOVE  WS-DATA-10F(WS-IND-ORD)
+      *                                    TO VIAL0015-CAMPO-VLR(1)
+      *       PERFORM VIAP0015-TRATA-DEBUG
+      *          THRU VIAP0015-TRATA-DEBUG-EXIT
+      *    END-IF
+                 IF WS-IND-ORD GREATER 1
+                    IF WS-DATA-10F(WS-IND-ORD) LESS
+                       WS-DATA-10F(WS-IND-ORD - 1)
+
+                       MOVE WS-DATA-10F(WS-IND-ORD)
+                                           TO WS-DATA-TROCA
+                       MOVE WS-DATA-10F(WS-IND-ORD - 1)
+                                           TO WS-DATA-10F(WS-IND-ORD)
+                       MOVE WS-DATA-TROCA
+                                      TO WS-DATA-10F(WS-IND-ORD - 1)
+                       MOVE 'S'            TO WS-STATUS-TROCA
+                    END-IF
+                 END-IF
+
+                 ADD 1                     TO WS-IND-ORD
+
+                 IF WS-IND-ORD GREATER 15 AND
+                    WS-TROCOU
+                    MOVE 1                 TO WS-IND-ORD
+                    MOVE SPACES            TO WS-STATUS-TROCA
+                 END-IF
+              WHEN OTHER
+                 IF WS-IND-ORD GREATER 1
+                    IF WS-DATA-10F(WS-IND-ORD) LESS
+                       WS-DATA-10F(WS-IND-ORD - 1)
+
+                       MOVE WS-DATA-10F(WS-IND-ORD)
+                                           TO WS-DATA-TROCA
+                       MOVE WS-DATA-10F(WS-IND-ORD - 1)
+                                           TO WS-DATA-10F(WS-IND-ORD)
+                       MOVE WS-DATA-TROCA
+                                      TO WS-DATA-10F(WS-IND-ORD - 1)
+                       MOVE 'S'            TO WS-STATUS-TROCA
+                    END-IF
+                 END-IF
+
+                 ADD 1                     TO WS-IND-ORD
+
+                 IF WS-IND-ORD GREATER 15 AND
+                    WS-TROCOU
+                    MOVE 1                 TO WS-IND-ORD
+                    MOVE SPACES            TO WS-STATUS-TROCA
+                 END-IF
+           END-EVALUATE.
+      *
+       G175-ORDENA-FERIADOS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          VERIFICAR FERIADOS ENTRE DUAS DATAS                   *
+      *----------------------------------------------------------------*
+       G180-VAL-FERIADOS.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G180-VAL-FERIADOS    ' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL1000-COD-PAIS    ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL1000-COD-PAIS      TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           EVALUATE VIAL1000-COD-PAIS
+              WHEN 'BRA'
+                 COMPUTE WS-NUM-ANOS EQUAL WS-ANOFI - WS-ANOIN
+                 ADD 1                     TO WS-NUM-ANOS
+                 PERFORM VARYING WS-INDF1 FROM 1 BY 1
+                    UNTIL WS-INDF1 GREATER WS-NUM-ANOS
+
+                    COMPUTE WS-ANOP EQUAL WS-ANOIN + (WS-INDF1 - 1)
+                    PERFORM G170-CARR-FERIADOS THRU
+                            G170-CARR-FERIADOS-EXIT
+
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G180-VAL-FERIADOS    ' TO VIAL0015-CALLER-ID
+              MOVE 'WS-DATAIN            ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-DATAIN              TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-DATAFI            ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-DATAFI              TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+                    PERFORM VARYING WS-INDF FROM 1 BY 1
+                      UNTIL WS-INDF GREATER WS-FERIADOS-BR
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G180-VAL-FERIADOS    ' TO VIAL0015-CALLER-ID
+              MOVE 'WS-INDF              ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-INDF                TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-DATAF-BR(WS-INDF) ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-DATAF-BR(WS-INDF)   TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+                        IF ( WS-DATAF-BR (WS-INDF) GREATER WS-DATAIN
+                        AND WS-DATAFI NOT LESS WS-DATAF-BR (WS-INDF) )
+                        OR  WS-DATAFI EQUAL    WS-DATAF-BR (WS-INDF)
+                           MOVE WS-DATAF-BR (WS-INDF)
+                                           TO WS-DATA
+                           PERFORM G210-DIA-SEMANA THRU
+                                   G210-DIA-SEMANA-EXIT
+                           IF WS-UTIL
+                              PERFORM G190-SOMAR-DIAS THRU
+                                      G190-SOMAR-DIAS-EXIT
+                           END-IF
+                        END-IF
+                    END-PERFORM
+                 END-PERFORM
+              WHEN 'PRT'
+                 COMPUTE WS-NUM-ANOS EQUAL WS-ANOFI - WS-ANOIN
+                 ADD 1                     TO WS-NUM-ANOS
+                 PERFORM VARYING WS-INDF1 FROM 1 BY 1
+                    UNTIL WS-INDF1 GREATER WS-NUM-ANOS
+
+                    COMPUTE WS-ANOP EQUAL WS-ANOIN + (WS-INDF1 - 1)
+                    PERFORM G170-CARR-FERIADOS THRU
+                            G170-CARR-FERIADOS-EXIT
+
+                    PERFORM VARYING WS-INDF FROM 1 BY 1
+                      UNTIL WS-INDF GREATER WS-FERIADOS
+
+                        IF ( WS-DATAF (WS-INDF) GREATER WS-DATAIN
+                        AND WS-DATAFI NOT LESS WS-DATAF (WS-INDF) )
+                        OR  WS-DATAFI EQUAL    WS-DATAF (WS-INDF)
+
+                           MOVE WS-DATAF (WS-INDF)
+                                           TO WS-DATA
+                           PERFORM G210-DIA-SEMANA THRU
+                                   G210-DIA-SEMANA-EXIT
+                           IF WS-UTIL
+                              PERFORM G190-SOMAR-DIAS THRU
+                                      G190-SOMAR-DIAS-EXIT
+                           END-IF
+                        END-IF
+                    END-PERFORM
+                 END-PERFORM
+              WHEN OTHER
+                 COMPUTE WS-NUM-ANOS EQUAL WS-ANOFI - WS-ANOIN
+                 ADD 1                     TO WS-NUM-ANOS
+                 PERFORM VARYING WS-INDF1 FROM 1 BY 1
+                    UNTIL WS-INDF1 GREATER WS-NUM-ANOS
+
+                    COMPUTE WS-ANOP EQUAL WS-ANOIN + (WS-INDF1 - 1)
+                    PERFORM G170-CARR-FERIADOS THRU
+                            G170-CARR-FERIADOS-EXIT
+
+                    PERFORM VARYING WS-INDF FROM 1 BY 1
+                      UNTIL WS-INDF GREATER WS-FERIADOS
+
+                        IF ( WS-DATAF (WS-INDF) GREATER WS-DATAIN
+                        AND WS-DATAFI NOT LESS WS-DATAF (WS-INDF) )
+                        OR  WS-DATAFI EQUAL    WS-DATAF (WS-INDF)
+
+                           MOVE WS-DATAF (WS-INDF)
+                                           TO WS-DATA
+                           PERFORM G210-DIA-SEMANA THRU
+                                   G210-DIA-SEMANA-EXIT
+                           IF WS-UTIL
+                              PERFORM G190-SOMAR-DIAS THRU
+                                      G190-SOMAR-DIAS-EXIT
+                           END-IF
+                        END-IF
+                    END-PERFORM
+                 END-PERFORM
+           END-EVALUATE.
+      *
+       G180-VAL-FERIADOS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          SOMAR UM DIA A DATA FIM                               *
+      *----------------------------------------------------------------*
+       G190-SOMAR-DIAS.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G190-SOMAR-DIAS      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           MOVE WS-DATAFI                  TO WS-DATA
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT
+           IF WS-NAO-UTIL
+              IF WS-CDIA EQUAL 'S'
+                 ADD 2                     TO WS-DIAFI
+              ELSE
+                 ADD 1                     TO WS-DIAFI
+              END-IF
+           ELSE
+              IF WS-CDIA EQUAL '6'
+                 ADD 3                     TO WS-DIAFI
+              ELSE
+                 ADD 1                     TO WS-DIAFI
+              END-IF
+           END-IF.
+           IF WS-DIAFI GREATER WS-TAB-DIAS (WS-MESFI)
+              COMPUTE WS-DIAFI EQUAL WS-DIAFI - WS-TAB-DIAS (WS-MESFI)
+              ADD 1                        TO WS-MESFI
+              IF WS-MESFI GREATER 12
+                 MOVE 1                    TO WS-MESFI
+                 ADD 1                     TO WS-ANOFI
+                 ADD 1                     TO WS-NUM-ANOS
+              END-IF
+           END-IF.
+       G190-SOMAR-DIAS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          CALCULAR O DOMINGO DE PASCOA                          *
+      *----------------------------------------------------------------*
+       G200-DOM-PASCOA.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G200-DOM-PASCOA      ' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL1000-COD-PAIS    ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL1000-COD-PAIS      TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           MOVE WS-ANOP                    TO VIAW0021-ANO.
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT.
+           IF VIAW0021-BISSEXTO
+              MOVE 1                       TO WS-IND
+              MOVE 2                       TO WS-BIS1
+           ELSE
+              MOVE 0                       TO WS-IND
+              MOVE 1                       TO WS-BIS1
+           END-IF.
+      *
+           DIVIDE WS-ANOP BY 4   GIVING WS-VAR1.
+           DIVIDE WS-ANOP BY 100 GIVING WS-VAR2.
+           DIVIDE WS-VAR2 BY 4   GIVING WS-VAR3.
+      *
+           COMPUTE WS-VAR4 EQUAL (WS-ANOP + WS-VAR1 - WS-VAR2 +
+                   WS-VAR3 - WS-BIS1).
+           DIVIDE WS-VAR4 BY 7  GIVING WS-NUM-DOM
+                                REMAINDER WS-RESTO.
+           COMPUTE WS-NUM-DOM EQUAL 7 - (WS-VAR4 - WS-NUM-DOM * 7)
+      *
+           DIVIDE WS-ANOP BY 19 GIVING WS-NUM-OURO
+                                REMAINDER WS-RESTO.
+           COMPUTE WS-NUM-OURO EQUAL WS-ANOP - WS-NUM-OURO * 19
+           ADD 1                           TO WS-NUM-OURO.
+      *
+           DIVIDE WS-ANOP BY 100  GIVING WS-SECULOS.
+           DIVIDE WS-SECULOS BY 4 GIVING WS-VAR1.
+           COMPUTE WS-VAR2 EQUAL WS-SECULOS - 17
+           DIVIDE WS-VAR2 BY 25   GIVING WS-VAR3
+           COMPUTE WS-VAR4 EQUAL WS-SECULOS - WS-VAR3
+           DIVIDE WS-VAR4 BY 3    GIVING WS-VAR5
+           COMPUTE WS-VAR6 EQUAL WS-SECULOS - WS-VAR1 - WS-VAR5 - 8
+           DIVIDE WS-VAR6 BY 30   GIVING WS-CORR-LIL
+                                  REMAINDER WS-RESTO.
+           COMPUTE WS-CORR-LIL EQUAL WS-VAR6 - WS-CORR-LIL * 30
+      *
+           COMPUTE WS-VAR7 EQUAL (WS-NUM-OURO - 1) * 11 - WS-CORR-LIL
+           DIVIDE WS-VAR7 BY 30   GIVING WS-EPACTA
+                                  REMAINDER WS-RESTO.
+           COMPUTE WS-EPACTA EQUAL WS-VAR7 - WS-EPACTA * 30
+           IF WS-EPACTA LESS 0
+              MOVE +0                      TO WS-EPACTA
+           END-IF.
+      *
+           IF WS-NUM-OURO > 11
+              MOVE 26                      TO WS-CORR-CLAV
+           ELSE
+              MOVE 25                      TO WS-CORR-CLAV
+           END-IF.
+      *
+           COMPUTE WS-LUA-JAN EQUAL 31 - WS-EPACTA.
+           COMPUTE WS-LUA-MARCO EQUAL WS-LUA-JAN + 31 + 28 + WS-IND.
+           IF WS-EPACTA LESS WS-CORR-CLAV
+              COMPUTE WS-LUA-ABRIL EQUAL WS-LUA-MARCO + 29
+           ELSE
+              COMPUTE WS-LUA-ABRIL EQUAL WS-LUA-MARCO + 30
+           END-IF.
+           COMPUTE WS-21-MARCO EQUAL 31 + 28 + WS-IND + 21.
+      *
+           IF (WS-LUA-MARCO + 13) LESS WS-21-MARCO
+              COMPUTE WS-LUA-PASCAL EQUAL WS-LUA-ABRIL + 13
+           ELSE
+              COMPUTE WS-LUA-PASCAL EQUAL WS-LUA-MARCO + 13
+           END-IF.
+      *
+           COMPUTE WS-VAR1 EQUAL WS-LUA-PASCAL - WS-NUM-DOM
+           DIVIDE WS-VAR1 BY 7   GIVING WS-DIA-PASCAL
+                                 REMAINDER WS-RESTO.
+           COMPUTE WS-DIA-PASCAL EQUAL WS-VAR1 - WS-DIA-PASCAL * 7
+           ADD 1                           TO WS-DIA-PASCAL.
+      *
+           COMPUTE WS-PASCOA EQUAL WS-LUA-PASCAL + 8 - WS-DIA-PASCAL
+           COMPUTE WS-FIM-FEV EQUAL 31 + 28 + WS-IND.
+           COMPUTE WS-FIM-MAR EQUAL WS-FIM-FEV + 31.
+      *
+           IF WS-PASCOA GREATER WS-FIM-MAR
+              COMPUTE WS-DIA-PASCOA EQUAL WS-PASCOA - WS-FIM-MAR
+              MOVE 04                      TO WS-MESP
+           ELSE
+              COMPUTE WS-DIA-PASCOA EQUAL WS-PASCOA - WS-FIM-FEV
+              MOVE 03                      TO WS-MESP
+           END-IF.
+           MOVE WS-DIA-PASCOA              TO WS-DIAP.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G200-DOM-PASCOA      ' TO VIAL0015-CALLER-ID
+              MOVE 'WS-DATAP             ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-DATAP               TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       G200-DOM-PASCOA-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          INDICAR O DIA DA SEMANA                               *
+      *----------------------------------------------------------------*
+       G210-DIA-SEMANA.
+      *
+           IF SW-DEBUG-SIM
+              MOVE 'G210-DIA-SEMANA      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF
+      *
+           MOVE WS-ANOV1                   TO WS-COD-ROW1
+           MOVE WS-ANOV2                   TO WS-COD-COL1
+           IF      WS-COD-ROW11
+                    MOVE 1                 TO WS-TAB-ROW1
+           ELSE IF WS-COD-ROW12
+                    MOVE 2                 TO WS-TAB-ROW1
+           ELSE IF WS-COD-ROW13
+                    MOVE 3                 TO WS-TAB-ROW1
+           ELSE IF WS-COD-ROW14
+                    MOVE 4                 TO WS-TAB-ROW1
+           ELSE IF WS-COD-ROW15
+                    MOVE 5                 TO WS-TAB-ROW1
+           ELSE IF WS-COD-ROW16
+                    MOVE 6                 TO WS-TAB-ROW1
+           ELSE IF WS-COD-ROW17
+                    MOVE 7                 TO WS-TAB-ROW1
+           END-IF.
+           IF      WS-COD-COL11
+                    MOVE 1                 TO WS-TAB-COL1
+           ELSE IF WS-COD-COL12
+                    MOVE 2                 TO WS-TAB-COL1
+           ELSE IF WS-COD-COL13
+                    MOVE 3                 TO WS-TAB-COL1
+           ELSE IF WS-COD-COL14
+                    MOVE 4                 TO WS-TAB-COL1
+           ELSE IF WS-COD-COL15
+                    MOVE 5                 TO WS-TAB-COL1
+           ELSE IF WS-COD-COL16
+                    MOVE 6                 TO WS-TAB-COL1
+           ELSE IF WS-COD-COL17
+                    MOVE 7                 TO WS-TAB-COL1
+           END-IF.
+           MOVE WS-TAB-D11 (WS-TAB-ROW1, WS-TAB-COL1)
+                                           TO WS-TAB-I1
+           IF WS-TAB-I1 EQUAL ZEROS
+              MOVE 7                       TO WS-TAB-I1
+           END-IF
+           MOVE WS-MESV                    TO WS-COD-COL2
+           IF      WS-COD-COL21
+                    MOVE 1                 TO WS-TAB-COL2
+           ELSE IF WS-COD-COL22
+                    MOVE 2                 TO WS-TAB-COL2
+           ELSE IF WS-COD-COL23
+                    MOVE 3                 TO WS-TAB-COL2
+           ELSE IF WS-COD-COL24
+                    MOVE 4                 TO WS-TAB-COL2
+           ELSE IF WS-COD-COL25
+                    MOVE 5                 TO WS-TAB-COL2
+           ELSE IF WS-COD-COL26
+                    MOVE 6                 TO WS-TAB-COL2
+           ELSE IF WS-COD-COL27
+                    MOVE 7                 TO WS-TAB-COL2
+           END-IF.
+           MOVE WS-ANOV                    TO VIAW0021-ANO
+           PERFORM VIAP0021-VAL-BIS THRU
+                   VIAP0021-VAL-BIS-EXIT
+           IF VIAW0021-BISSEXTO
+              IF WS-MESV EQUAL 2
+                 MOVE 2                    TO WS-TAB-COL2
+              ELSE
+                 IF WS-MESV EQUAL 1
+                    MOVE 6                 TO WS-TAB-COL2
+                 END-IF
+              END-IF
+           END-IF
+
+           MOVE WS-TAB-D21 (WS-TAB-I1, WS-TAB-COL2)
+                                           TO WS-TAB-I2
+           IF WS-TAB-I2 EQUAL ZEROS
+              MOVE 7                       TO WS-TAB-I2
+           END-IF
+           MOVE WS-DIAV                    TO WS-COD-COL3
+           IF      WS-COD-COL31
+                    MOVE 1                 TO WS-TAB-COL3
+           ELSE IF WS-COD-COL32
+                    MOVE 2                 TO WS-TAB-COL3
+           ELSE IF WS-COD-COL33
+                    MOVE 3                 TO WS-TAB-COL3
+           ELSE IF WS-COD-COL34
+                    MOVE 4                 TO WS-TAB-COL3
+           ELSE IF WS-COD-COL35
+                    MOVE 5                 TO WS-TAB-COL3
+           ELSE IF WS-COD-COL36
+                    MOVE 6                 TO WS-TAB-COL3
+           ELSE IF WS-COD-COL37
+                    MOVE 7                 TO WS-TAB-COL3
+           END-IF.
+           MOVE WS-TAB-D31 (WS-TAB-I2, WS-TAB-COL3)
+                                           TO WS-CDIA.
+           EVALUATE WS-CDIA
+               WHEN 'S'
+                    MOVE 0                 TO WS-DIA-SO
+               WHEN 'D'
+                    MOVE 1                 TO WS-DIA-SO
+               WHEN '2'
+                    MOVE 2                 TO WS-DIA-SO
+               WHEN '3'
+                    MOVE 3                 TO WS-DIA-SO
+               WHEN '4'
+                    MOVE 4                 TO WS-DIA-SO
+               WHEN '5'
+                    MOVE 5                 TO WS-DIA-SO
+               WHEN '6'
+                    MOVE 6                 TO WS-DIA-SO
+           END-EVALUATE.
+       G210-DIA-SEMANA-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          VERIFICAR FERIADOS ENTRE DUAS DATAS SUB. DIAS AO INI. *
+      *----------------------------------------------------------------*
+       G220-VAL-FERIADOS.
+           COMPUTE WS-NUM-ANOS EQUAL WS-ANOFI - WS-ANOIN
+           ADD 1                           TO WS-NUM-ANOS
+           PERFORM VARYING WS-INDF1 FROM 1 BY 1
+                     UNTIL WS-INDF1 GREATER WS-NUM-ANOS
+
+                   COMPUTE WS-ANOP EQUAL WS-ANOFI - (WS-INDF1 - 1)
+                   PERFORM G170-CARR-FERIADOS THRU
+                           G170-CARR-FERIADOS-EXIT
+
+                   PERFORM VARYING WS-INDF FROM 15 BY 1
+                             UNTIL WS-INDF GREATER 29
+                           COMPUTE WS-INDF2 = 16 - (WS-INDF - 14)
+
+                           IF (WS-DATAF (WS-INDF2) NOT LESS WS-DATAIN)
+                             AND WS-DATAF (WS-INDF2) LESS WS-DATAFI
+                              MOVE WS-DATAF (WS-INDF2)
+                                           TO WS-DATA
+                              PERFORM G210-DIA-SEMANA THRU
+                                      G210-DIA-SEMANA-EXIT
+                              IF WS-UTIL
+                                 PERFORM G230-SUB-DIAS THRU
+                                         G230-SUB-DIAS-EXIT
+                              END-IF
+                           END-IF
+                   END-PERFORM
+           END-PERFORM.
+       G220-VAL-FERIADOS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          VERIFICAR FERIADOS ENTRE DUAS DATAS                   *
+      *----------------------------------------------------------------*
+       G230-SUB-DIAS.
+           MOVE WS-DATAIN                  TO WS-DATA
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT
+           MOVE WS-DIAIN                   TO WS-DIAINS
+           IF WS-NAO-UTIL
+              IF WS-CDIA EQUAL 'S'
+                 SUBTRACT 1                FROM WS-DIAINS
+              ELSE
+                 SUBTRACT 2                FROM WS-DIAINS
+              END-IF
+           ELSE
+              IF WS-CDIA EQUAL '2'
+                 SUBTRACT 3                FROM WS-DIAINS
+              ELSE
+                 SUBTRACT 1                FROM WS-DIAINS
+              END-IF
+           END-IF.
+           MOVE WS-DIAINS                  TO WS-DIAIN
+           IF WS-DIAINS LESS 1
+              SUBTRACT 1                   FROM WS-MESIN
+              IF WS-MESIN LESS 1
+                 MOVE 12                   TO WS-MESIN
+                 SUBTRACT 1                FROM WS-ANOIN
+              END-IF
+              COMPUTE WS-DIAIN EQUAL WS-TAB-DIAS (WS-MESIN) - WS-DIAIN
+           END-IF.
+       G230-SUB-DIAS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          VERIFICAR FERIADOS ENTRE DUAS DATAS                   *
+      *----------------------------------------------------------------*
+       G250-SUB-DIAS.
+           MOVE WS-DATAFI                  TO WS-DATA
+           PERFORM G210-DIA-SEMANA THRU
+                   G210-DIA-SEMANA-EXIT
+           IF WS-NAO-UTIL
+              IF WS-CDIA EQUAL 'S'
+                 SUBTRACT 1                FROM WS-DIAFI
+              ELSE
+                 SUBTRACT 2                FROM WS-DIAFI
+              END-IF
+           ELSE
+              IF WS-CDIA EQUAL '2'
+                 SUBTRACT 3                FROM WS-DIAFI
+              ELSE
+                 SUBTRACT 1                FROM WS-DIAFI
+              END-IF
+           END-IF.
+           IF WS-DIAFI LESS 1
+              SUBTRACT 1                   FROM WS-MESFI
+              IF WS-MESFI LESS 1
+                 MOVE 12                   TO WS-MESFI
+                 SUBTRACT 1                FROM WS-ANOFI
+              END-IF
+              COMPUTE WS-DIAFI EQUAL WS-TAB-DIAS (WS-MESFI) - WS-DIAFI
+           END-IF.
+       G250-SUB-DIAS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          VERIFICAR FERIADOS ENTRE DUAS DATAS SUB. DIAS AO TOTAL*
+      *----------------------------------------------------------------*
+       G260-VAL-FERIADOS.
+           COMPUTE WS-NUM-ANOS EQUAL WS-ANOFI - WS-ANOIN
+           ADD 1                           TO WS-NUM-ANOS
+           PERFORM VARYING WS-INDF1 FROM 1 BY 1
+                     UNTIL WS-INDF1 GREATER WS-NUM-ANOS
+
+                   COMPUTE WS-ANOP EQUAL WS-ANOIN + (WS-INDF1 - 1)
+                   PERFORM G170-CARR-FERIADOS THRU
+                           G170-CARR-FERIADOS-EXIT
+
+                   PERFORM VARYING WS-INDF FROM 1 BY 1
+                             UNTIL WS-INDF GREATER WS-FERIADOS
+
+                           IF WS-DATAF (WS-INDF) GREATER WS-DATAIN
+                              AND WS-DATAFI NOT LESS WS-DATAF (WS-INDF)
+                              MOVE WS-DATAF (WS-INDF)
+                                           TO WS-DATA
+                              PERFORM G210-DIA-SEMANA THRU
+                                      G210-DIA-SEMANA-EXIT
+                              IF WS-UTIL
+                                 SUBTRACT 1
+                                           FROM WS-NUM-TDIAS1
+                              END-IF
+                           END-IF
+                   END-PERFORM
+           END-PERFORM.
+       G260-VAL-FERIADOS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          DADA UMA DATA ENCONTRA O DIA ANTERIOR UTIL            *
+      *----------------------------------------------------------------*
+       G270-VAL-FERIADOS.
+           MOVE WS-ANOFI                   TO WS-ANOP
+           PERFORM G170-CARR-FERIADOS THRU
+                   G170-CARR-FERIADOS-EXIT
+
+           PERFORM VARYING WS-INDF FROM 1 BY 1
+                     UNTIL WS-INDF GREATER WS-FERIADOS
+
+                   IF WS-DATAF (WS-INDF) EQUAL WS-DATAFI
+                      MOVE WS-DATAF (WS-INDF)
+                                           TO WS-DATA
+                      PERFORM G210-DIA-SEMANA THRU
+                              G210-DIA-SEMANA-EXIT
+                      IF WS-UTIL
+                         PERFORM G250-SUB-DIAS THRU
+                                 G250-SUB-DIAS-EXIT
+                         IF WS-ANOFI NOT EQUAL WS-ANOP
+                            MOVE WS-ANOFI  TO WS-ANOP
+                            PERFORM G170-CARR-FERIADOS THRU
+                                    G170-CARR-FERIADOS-EXIT
+                            MOVE 1         TO WS-INDF
+                         END-IF
+                      END-IF
+                   END-IF
+           END-PERFORM.
+       G270-VAL-FERIADOS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          DADA UMA DATA VERIFICA SE E FERIADO SOMA A DATA       *
+      *----------------------------------------------------------------*
+       G280-VAL-FERIADOS.
+           MOVE WS-ANOFI                   TO WS-ANOP.
+           PERFORM G170-CARR-FERIADOS THRU
+                   G170-CARR-FERIADOS-EXIT
+
+           PERFORM VARYING WS-INDF FROM 1 BY 1
+                     UNTIL WS-INDF GREATER WS-FERIADOS
+
+                   IF WS-DATAF (WS-INDF) EQUAL WS-DATAFI
+                      MOVE WS-DATAF (WS-INDF)
+                                           TO WS-DATA
+                      PERFORM G210-DIA-SEMANA THRU
+                              G210-DIA-SEMANA-EXIT
+                      IF WS-UTIL
+                         PERFORM G190-SOMAR-DIAS THRU
+                                 G190-SOMAR-DIAS-EXIT
+                         IF WS-ANOFI NOT EQUAL WS-ANOP
+                            MOVE WS-ANOFI  TO WS-ANOP
+                            PERFORM G170-CARR-FERIADOS THRU
+                                    G170-CARR-FERIADOS-EXIT
+                            MOVE 1         TO WS-INDF
+                         END-IF
+                      END-IF
+                   END-IF
+           END-PERFORM.
+       G280-VAL-FERIADOS-EXIT.
+           EXIT.
+      *----------------------------------------------------------------*
+      *          DADA UMA DATA VERIFICA SE E FERIADO                   *
+      *----------------------------------------------------------------*
+       G290-VAL-FERIADOS.
+           MOVE WS-ANOV                    TO WS-ANOP.
+           MOVE 0                          TO WS-FERIADO
+           PERFORM G170-CARR-FERIADOS THRU
+                   G170-CARR-FERIADOS-EXIT
+           MOVE WS-DATAI10                 TO WS-DATA.
+           PERFORM VARYING WS-INDF FROM 1 BY 1
+                     UNTIL WS-INDF GREATER WS-FERIADOS
+
+                   IF WS-DATAF (WS-INDF) EQUAL WS-DATA
+                      MOVE 1               TO WS-FERIADO
+                   END-IF
+           END-PERFORM.
+       G290-VAL-FERIADOS-EXIT.
+           EXIT.
+      ******************************************************************
+       COPY VIAP0021.
+       COPY VIAP0015.
+      *
+

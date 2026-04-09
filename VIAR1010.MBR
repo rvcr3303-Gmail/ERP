@@ -1,0 +1,230 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.       VIAR1010.
+      ****************************************************************
+      *  PROGRAMA      : VIAR1010
+      *                  Conversao de timestamps entre timezones
+      *
+      ****************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+      *
+       COPY VIAK0001.
+       COPY VIAK0002.
+      ****************************************************************
+      *                   STATUS DB2                                 *
+      ****************************************************************
+       COPY VIAW0005.
+      ****************************************************************
+      *                   DECLARACOES DB2                            *
+      ****************************************************************
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      ****************************************************************
+      *                             VARIABLES                        *
+      ****************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-TIMESTAMP20.
+              10 WS-DATA8.
+                 15  WS-ANO8                       PIC  X(00004).
+                 15  WS-MES8                       PIC  X(00002).
+                 15  WS-DIA8                       PIC  X(00002).
+              10 WS-HORAS6                         PIC  X(00006).
+                 15  WS-HORA6                      PIC  X(00002).
+                 15  WS-MINUTO6                    PIC  X(00002).
+                 15  WS-SEGUNDO6                   PIC  X(00002).
+              10 WS-MILISSEGUNDO20                 PIC  X(00006).
+           05 WS-TIMESTAMP26.
+              10 WS-DATA10.
+                 15  WS-ANO10                      PIC  X(00004).
+                 15  FILLER                        PIC  X(00001).
+                 15  WS-MES10                      PIC  X(00002).
+                 15  FILLER                        PIC  X(00001).
+                 15  WS-DIA10                      PIC  X(00002).
+              10 FILLER                            PIC  X(00001).
+              10 WS-HORAS8.
+                 15  WS-HORA8                      PIC  X(00002).
+                 15  FILLER                        PIC  X(00001).
+                 15  WS-MINUTO8                    PIC  X(00002).
+                 15  FILLER                        PIC  X(00001).
+                 15  WS-SEGUNDO8                   PIC  X(00002).
+              10 FILLER                            PIC  X(00001).
+              10 WS-MILISSEGUNDO26                 PIC  X(00006).
+      *****************************************************************
+      *Linkage for Convert Date and Time Format (QWCCVTDT) API
+      *****************************************************************
+           05  QWC-INPUT-FORMAT                    PIC  X(00010).
+           05  QWC-INPUT-VARIABLE                  PIC  X(00020).
+           05  QWC-OUTPUT-FORMAT                   PIC  X(00010).
+           05  QWC-OUTPUT-VARIABLE                 PIC  X(00020).
+           05  QWC-ERROR-CODE.
+               10  ERR-BYTES-PROVIDED              PIC S9(00009) BINARY.
+               10  ERR-BYTES-AVAILABLE             PIC S9(00009) BINARY.
+               10  ERR-EXCEPTION-ID                PIC  X(00007).
+               10  ERR-RESERVED                    PIC  X(00001).
+           05  QWC-INPUT-TIMEZONE                  PIC  X(00010).
+           05  QWC-OUTPUT-TIMEZONE                 PIC  X(00010).
+           05  QWC-TIME-ZONE-INFO.
+               10  BYTES-RETURNED                  PIC S9(00009) BINARY.
+               10  BYTES-AVAILABLE                 PIC S9(00009) BINARY.
+               10  TIME-ZONE-NAME                  PIC  X(00010).
+               10  RESERVED01                      PIC  X(00001).
+               10  CURRENT-DST-INDICATOR           PIC  X(00001).
+               10  CURRENT-UTC-OFFSET              PIC S9(00009) BINARY.
+               10  CURRENT-FULL-TIME-ZONE-NAME     PIC  X(00050).
+               10  CURRENT-ABBR-TIME-ZONE-NAME     PIC  X(00010).
+               10  CURRENT-TIME-ZONE-MSG-ID        PIC  X(00007).
+               10  CURRENT-TIME-ZONE-MSG-FILE      PIC  X(00010).
+               10  CURRENT-TIME-ZONE-MSG-FILE-LIB  PIC  X(00010).
+               10  RESERVED02                      PIC  X(00001).
+               10  YEAROFFSET                      PIC S9(00009) BINARY.
+           05  QWC-TIME-ZONE-INF-LENGTH            PIC S9(00009) BINARY.
+           05  QWC-PRECISION-INDICATOR             PIC  X(00001).
+           05  QWC-INPUT-TIME-INDICATOR            PIC  X(00001).
+      ****************************************************************
+      *                   CONSTANTES                                 *
+      ****************************************************************
+       77 WS-PROGNAME           PIC X(10) VALUE 'VIAR1010'.
+       77 CON-CONVERTE          PIC X(10) VALUE 'QWCCVTDT'.
+      ****************************************************************
+       LINKAGE SECTION.
+      *
+       COPY VIAL1010.
+       COPY ETCL0002.
+      *
+       PROCEDURE DIVISION USING VIAL1010-COMMAREA
+                                ETCL0002-COMMAREA.
+      ****************************************************************
+      *           0000-MAINLINE                                      *
+      ****************************************************************
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2099-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3099-FIM-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      *                       1000-INICIO-PROGRAMA                     *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      *
+           SET ETCL0002-SEM-ERROS             TO TRUE.
+      *
+           IF  VIAL1010-DINPUT NOT EQUAL SPACES
+           AND VIAL1010-HINPUT NOT EQUAL SPACES
+              MOVE VIAL1010-DINPUT            TO WS-DATA10
+              MOVE VIAL1010-HINPUT            TO WS-HORAS8
+              MOVE '000000'                   TO WS-MILISSEGUNDO26
+           ELSE
+              IF VIAL1010-TSINPUT NOT EQUAL SPACES
+                 MOVE VIAL1010-TSINPUT        TO WS-TIMESTAMP26
+              ELSE
+                 MOVE VIAK0002-ERROS-FUNCAO   TO ETCL0002-IND-ERROS
+                 MOVE VIAK0001-DT-TS-OBRIG    TO ETCL0002-NR-ERRO
+                                                 ETCL0002-ST-ERRO
+                 MOVE VIAK0002-APLIC-VI       TO ETCL0002-CAPLIC-ERRO
+              END-IF
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+              IF VIAL1010-TIMEZONEOUT EQUAL SPACES
+                 MOVE VIAK0002-ERROS-FUNCAO   TO ETCL0002-IND-ERROS
+                 MOVE VIAK0001-TZ-OUT-OBRIG   TO ETCL0002-NR-ERRO
+                                                 ETCL0002-ST-ERRO
+                 MOVE VIAK0002-APLIC-VI       TO ETCL0002-CAPLIC-ERRO
+              END-IF
+           END-IF.
+      *
+      * Caso a Timezone de input nao esteja preenchida assume a de sistema
+      *
+           IF ETCL0002-SEM-ERROS
+              IF VIAL1010-TIMEZONEIN EQUAL SPACES
+                 MOVE '*SYS'                  TO VIAL1010-TIMEZONEIN
+              END-IF
+           END-IF.
+      *
+      * Formata o timestamp no formato 20 bytes para passar para a API
+      *
+           IF ETCL0002-SEM-ERROS
+              MOVE WS-ANO10                   TO WS-ANO8
+              MOVE WS-MES10                   TO WS-MES8
+              MOVE WS-DIA10                   TO WS-DIA8
+              MOVE WS-HORA8                   TO WS-HORA6
+              MOVE WS-MINUTO8                 TO WS-MINUTO6
+              MOVE WS-SEGUNDO8                TO WS-SEGUNDO6
+              MOVE WS-MILISSEGUNDO26          TO WS-MILISSEGUNDO20
+           END-IF.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       2000-PROC-PROGRAMA                       *
+      *                                                                *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      *
+           MOVE '*YYMD'                TO QWC-INPUT-FORMAT
+           MOVE WS-TIMESTAMP20         TO QWC-INPUT-VARIABLE
+           MOVE '*YYMD'                TO QWC-OUTPUT-FORMAT
+           MOVE VIAL1010-TIMEZONEIN    TO QWC-INPUT-TIMEZONE
+           MOVE VIAL1010-TIMEZONEOUT   TO QWC-OUTPUT-TIMEZONE
+           MOVE 116                    TO QWC-TIME-ZONE-INF-LENGTH
+           MOVE '0'                    TO QWC-PRECISION-INDICATOR
+           MOVE '1'                    TO QWC-INPUT-TIME-INDICATOR
+      *
+           CALL CON-CONVERTE USING QWC-INPUT-FORMAT
+                                   QWC-INPUT-VARIABLE
+                                   QWC-OUTPUT-FORMAT
+                                   QWC-OUTPUT-VARIABLE
+                                   QWC-ERROR-CODE
+                                   QWC-INPUT-TIMEZONE
+                                   QWC-OUTPUT-TIMEZONE
+                                   QWC-TIME-ZONE-INFO
+                                   QWC-TIME-ZONE-INF-LENGTH
+                                   QWC-PRECISION-INDICATOR
+                                   QWC-INPUT-TIME-INDICATOR.
+      *
+           IF ERR-BYTES-AVAILABLE EQUAL ZEROES
+              MOVE QWC-OUTPUT-VARIABLE       TO WS-TIMESTAMP20
+              MOVE WS-ANO8                    TO WS-ANO10
+              MOVE WS-MES8                    TO WS-MES10
+              MOVE WS-DIA8                    TO WS-DIA10
+              MOVE WS-HORA6                   TO WS-HORA8
+              MOVE WS-MINUTO6                 TO WS-MINUTO8
+              MOVE WS-SEGUNDO6                TO WS-SEGUNDO8
+              IF  VIAL1010-DINPUT NOT EQUAL SPACES
+              AND VIAL1010-HINPUT NOT EQUAL SPACES
+                 MOVE WS-DATA10               TO VIAL1010-DOUTPUT
+                 MOVE WS-HORAS8               TO VIAL1010-HOUTPUT
+              ELSE
+                 MOVE WS-TIMESTAMP26          TO VIAL1010-TSOUTPUT
+              END-IF
+           ELSE
+              MOVE VIAK0002-ERROS-FUNCAO     TO ETCL0002-IND-ERROS
+              MOVE VIAK0001-ERR-API-QWCCVTDT TO ETCL0002-NR-ERRO
+                                                ETCL0002-ST-ERRO
+              MOVE VIAK0002-APLIC-VI         TO ETCL0002-CAPLIC-ERRO
+              MOVE ERR-EXCEPTION-ID          TO ETCL0002-GINFO-ERRO
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       3000-FIM-PROGRAMA                        *
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      *
+           CONTINUE.
+      *
+       3099-FIM-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************

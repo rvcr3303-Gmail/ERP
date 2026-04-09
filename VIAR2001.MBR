@@ -1,0 +1,223 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. VIAR2001.
+      ****************************************************************
+      *                                                              *
+      *     PROGRAMA VIAR2001.                                       *
+      *                                                              *
+      *     CONTROLO DO SISTEMA TRANSACCIONAL TABELAS CENTRAIS       *
+      *                     (TRATAMENTOS FINAIS)                     *
+      *                                                              *
+      ****************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+         SPECIAL-NAMES.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+      *
+       COPY VIAL0015.
+      *
+       COPY VIAL0001.
+      *
+       COPY VIAK0001.
+      *
+       COPY VIAK0002.
+      *
+       COPY VIAK0003.
+      *
+       COPY VIAW0003.
+      *
+       COPY ARCK0002.
+      *
+       COPY ARCV1490.
+      *
+       COPY ARCV1491.
+      *
+      ****************************************************************
+      *                   STATUS DB2                                 *
+      ****************************************************************
+       COPY VIAW0005.
+           88 VIAT0100-NOTFND              VALUE +100.
+           88 VIAT0100-OK                  VALUE +0.
+      ****************************************************************
+      *                   DECLARACOES DB2                            *
+      ****************************************************************
+      *
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *
+      ****************************************************************
+      *                COMMAREA STANDARD DA APLICACAO                *
+      ****************************************************************
+       COPY VIAL2000.
+       COPY VIAL0002.
+      ****************************************************************
+      *                             VARIABLES                        *
+      ****************************************************************
+      *
+       01  WS-PGMID.
+           05 WS-PGMID-CCT                 PIC X(06).
+           05 WS-PGMID-SUFIX               PIC X(02).
+       01  WS-AUX.
+           05 WS-SQLCODE                   PIC -9(09).
+           05 IND-NRSEQO                   PIC S9(04) BINARY.
+       01  SW-SWITCHES.
+           05 SW-PROC-INI                  PIC X(1) VALUE SPACES.
+              88 SW-PROC-INI-OK                     VALUE 'S'.
+       01  WS-IND                          PIC S9(04) COMP-3
+                                                    VALUE ZEROES.
+       01  WS-IND2                         PIC S9(04) COMP-3
+                                                    VALUE ZEROES.
+      ****************************************************************
+      *                   CONSTANTES                                 *
+      ****************************************************************
+       01  CON-CONSTANTES.
+           05 WS-PROGNAME        PIC X(10) VALUE 'VIAR2001  '.
+      ****************************************************************
+      *
+       LINKAGE SECTION.
+      *
+       COPY VIAL0003.
+      *
+           EXEC SQL INCLUDE VIAP0008 END-EXEC.
+      *
+      ****************************************************************
+      *           0000-MAINLINE                                      *
+      ****************************************************************
+      *
+       0000-MAINLINE.
+      *
+           COPY VIAP0001.
+
+            PERFORM 4000-RESPOSTA
+               THRU 4099-RESPOSTA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      ******************************************************************
+      *                       4000-RESPOSTA                            *
+      *         DEVOLUCAO DE RESPOSTA DE ACORDO COM A ORIGEM           *
+      ******************************************************************
+       4000-RESPOSTA.
+
+           MOVE WS-PROGNAME                TO VIAL0001-PGMID.
+           SET VIAL0002-SEM-ERROS          TO TRUE.
+           MOVE ZEROES                     TO VIAL0002-COD-ERRO-GRAVE.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '4000-RESPOSTA.- VIAR2001' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0001-COPCAO EQUAL VIAK0002-TAB-CORE
+             PERFORM 4090-TRATA-TAB-CORE
+                THRU 4090-TRATA-TAB-CORE-EXIT
+           ELSE
+             PERFORM 4090-TRATA-TAB-CENTRAL
+                THRU 4090-TRATA-TAB-CENTRAL-EXIT
+           END-IF.
+
+           MOVE VIAL0001-IND-ERROS        TO VIAL2000-IND-ERROS
+           MOVE VIAL0001-NR-ERRO          TO VIAL2000-NR-ERRO
+
+           MOVE 2                         TO VIAL2000-REGISTOSPORPEDIDO
+
+           MOVE VIAL2000-COMMAREA         TO DFHCOMMAREA.
+
+       4099-RESPOSTA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       4090-TRATA-TAB-CENTRAL                   *
+      ******************************************************************
+       4090-TRATA-TAB-CENTRAL.
+
+           MOVE VIAL0001-MENSAGEM-OUTPUT     TO ARCV1491-MSG
+
+           MOVE 1 TO WS-IND
+           MOVE 1 TO WS-IND2
+
+           PERFORM 4100-RESP-TAB-CENTRAL
+              THRU 4100-RESP-TAB-CENTRAL-EXIT
+                   UNTIL WS-IND2 GREATER THAN 60.
+
+       4090-TRATA-TAB-CENTRAL-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       4090-TRATA-TAB-CORE                      *
+      ******************************************************************
+       4090-TRATA-TAB-CORE.
+
+           MOVE VIAL0001-MENSAGEM-OUTPUT     TO ARCV1491-MSG
+
+           MOVE 1 TO WS-IND
+           MOVE 1 TO WS-IND2
+           IF VIAL0015-DEBUG-SIM
+              MOVE '4090-TRATA-TAB-CORE    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM 4100-RESP-TAB-CORE
+              THRU 4100-RESP-TAB-CORE-EXIT
+                   UNTIL WS-IND2 GREATER THAN 60.
+
+       4090-TRATA-TAB-CORE-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       4100-RESP-TAB-CENTRAL                    *
+      ******************************************************************
+       4100-RESP-TAB-CENTRAL.
+
+           IF  ARCV1491-D-CCOD(WS-IND) NOT EQUAL SPACES
+             MOVE ARCV1491-D-CCOD(WS-IND2)  TO VIAL2000-D-CCOD(WS-IND)
+             MOVE ARCV1491-D-GDESC(WS-IND2) TO VIAL2000-D-GDESC(WS-IND)
+              IF VIAL0015-DEBUG-SIM
+                 MOVE '4100-RESP-TAB-CENTRAL   ' TO VIAL0015-CALLER-ID
+                 MOVE 'D-CCOD'                   TO VIAL0015-CAMPO-NM(1)
+                 MOVE  ARCV1491-D-CCOD(WS-IND2)
+                                                TO VIAL0015-CAMPO-VLR(1)
+                 MOVE 'D-GDESC'                  TO VIAL0015-CAMPO-NM(2)
+                 MOVE  ARCV1491-D-GDESC(WS-IND2)
+                                                TO VIAL0015-CAMPO-VLR(2)
+                 PERFORM VIAP0016-TRATA-DEBUG
+                    THRU VIAP0016-TRATA-DEBUG-EXIT
+              END-IF
+           END-IF.
+
+            ADD 1 TO WS-IND.
+            ADD 1 TO WS-IND2.
+
+       4100-RESP-TAB-CENTRAL-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       4100-RESP-TAB-CORE                       *
+      ******************************************************************
+       4100-RESP-TAB-CORE.
+
+              IF VIAL0015-DEBUG-SIM
+                 MOVE '4100-RESP-TAB-CENTRAL   ' TO VIAL0015-CALLER-ID
+                 MOVE 'D-CCOD'                   TO VIAL0015-CAMPO-NM(1)
+                 MOVE  ARCV1491-D-CCOD(WS-IND2)
+                                                TO VIAL0015-CAMPO-VLR(1)
+                 MOVE 'D-GDESC'                  TO VIAL0015-CAMPO-NM(2)
+                 MOVE  ARCV1491-D-GDESC(WS-IND2)
+                                                TO VIAL0015-CAMPO-VLR(2)
+                 PERFORM VIAP0016-TRATA-DEBUG
+                    THRU VIAP0016-TRATA-DEBUG-EXIT
+              END-IF
+
+           IF  ARCV1491-D-CCOD(WS-IND) NOT EQUAL SPACES
+             MOVE ARCV1491-D-CCOD(WS-IND2)  TO VIAL2000-D-CCOD(WS-IND)
+             MOVE ARCV1491-D-GDESC(WS-IND2) TO VIAL2000-D-GDESC(WS-IND)
+           END-IF.
+
+            ADD 1 TO WS-IND.
+            ADD 1 TO WS-IND2.
+
+       4100-RESP-TAB-CORE-EXIT.
+           EXIT.
+      ******************************************************************
+      *                         PROCEDURES                             *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      * debug
+           COPY VIAP0016.

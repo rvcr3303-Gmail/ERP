@@ -1,0 +1,935 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. VIA00900.
+      ******************************************************************
+      *                                                                *
+      *                    PREPARACAO DO AMBIENTE BANKA                *
+      *                                                                *
+      *    PROGRAMA   : VIA00900.                                      *
+      *                                                                *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+       SPECIAL-NAMES. DECIMAL-POINT IS COMMA.
+      *
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+      *
+       DATA DIVISION.
+      ******************************************************************
+      *              D A T A   D I V I S I O N                         *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                  WORKING STORAGE SECTION                       *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      *
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE VIA00900        '.
+      ******************************************************************
+      *                  CONSTANTES                                    *
+      ******************************************************************
+       01 WS-CONSTANTES.
+          05 WS-PROGNAME                   PIC  X(10) VALUE 'VIA00900'.
+          05 CON-ARVT0500                  PIC  X(08) VALUE 'ARVT0500'.
+      ******************************************************************
+      *                  FLAGS E SWITCHES                              *
+      ******************************************************************
+       01  ABEND-CALLER-ID                 PIC  X(60).
+      ******************************************************************
+      *           VARIAVEIS                                            *
+      ******************************************************************
+       01 WS-VARIAVEIS.
+          05 WS-N                          PIC 9(02) VALUE ZEROES.
+      ******************************************************************
+      *              DECLARACOES DE COPYBOOKS                          *
+      ******************************************************************
+       COPY VIAW0005.
+       COPY VIAW0050.
+       COPY VIAW0090.
+       COPY VIAW0020.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ETCK0001.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY ETCL9819.
+       COPY SXCL0002.
+       COPY ETCL0002.
+       COPY ETCL9074.
+       COPY ETCL9057.
+       COPY ETCL9056.
+       COPY ETCL9064.
+       COPY ETCL9113.
+       COPY ETCL9200.
+       COPY SXCL0900.
+       COPY SXCW0902.
+       COPY ETCW0818.
+       COPY VIAL0015.
+       COPY ETCK0002.
+       COPY ARCL2205.
+       COPY AQCW0005.
+      ******************************************************************
+      *                  DECLARACOES DE DB2                            *
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+           EXEC SQL INCLUDE ARCD0500 END-EXEC.
+      ******************************************************************
+       01  FILLER                          PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE VIA00900        '.
+      ******************************************************************
+      *                    LINKAGE SECTION                             *
+      ******************************************************************
+       LINKAGE SECTION.
+       COPY VIAL0001.
+       COPY VIAL0002.
+      ******************************************************************
+      *                  PROCEDURE DIVISION                            *
+      ******************************************************************
+       PROCEDURE DIVISION USING VIAL0001-COMMAREA
+                                VIAL0002-COMMAREA.
+      ******************************************************************
+      *    PROCESSO                                                    *
+      ******************************************************************
+       0000-MAINLINE.
+
+           MOVE '0000-MAINLINE'            TO ABEND-CALLER-ID.
+
+           IF VIAL0001-DEBUG-SIM
+              DISPLAY ABEND-CALLER-ID
+           END-IF.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3099-FIM-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      *                  1000-INICIO-PROGRAMA                          *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+
+           MOVE '1000-INICIO-PROGRAMA'     TO ABEND-CALLER-ID.
+
+           IF VIAL0001-DEBUG-SIM
+              DISPLAY ABEND-CALLER-ID
+           END-IF.
+
+           IF VIAL0001-MSGQ EQUAL SPACES
+              MOVE 'VIA00100'              TO VIAL0001-MSGQ
+           END-IF.
+
+           MOVE VIAL0001-CUTILIZA-I        TO VIAL0001-CUSER-EXTRN.
+      **R NO INICIO A DATA EXTERNA É IGUAL A DO SERVIDOR WEB.
+      **R DEPOIS É ESMAGADA PELA DATA DO CORE APLICACIONAL COM QUE
+      **R INTEGRAMOS
+           MOVE VIAL0001-DATA-PROCESSO-I   TO VIAL0001-DATA-EXTRN
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                  2000-PROC-PROGRAMA                            *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              INITIALIZE VIAL0015-DATA
+              MOVE '2000-PROC-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0001-VERSAO-V203 OR VIAL0001-VERSAO-V300
+              CALL 'VIA00901'
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+             PERFORM 1110-OBTEM-PAIS-INST
+                THRU 1110-OBTEM-PAIS-INST-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+             PERFORM 1025-EXEC-LOGIN
+                THRU 1025-EXEC-LOGIN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             PERFORM 1100-DADOS-UTILIZ
+                THRU 1199-DADOS-UTILIZ-EXIT
+           END-IF.
+
+ES    *    IF VIAL0002-SEM-ERROS
+ES    *      PERFORM 1200-IDIOMA
+ES    *         THRU 1299-IDIOMA-EXIT
+ES    *    END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             PERFORM 1035-OBTEM-BANCO-INST
+                THRU 1035-OBTEM-BANCO-INST-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+             PERFORM 1045-OBTEM-MOEDA-INST
+                THRU 1045-OBTEM-MOEDA-INST-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+             PERFORM 1046-OBTEM-CAIXA
+                THRU 1046-OBTEM-CAIXA-EXIT
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                  1100-OBTEM-CORE                               *
+      ******************************************************************
+       1100-OBTEM-CORE.
+
+           IF VIAL0001-DEBUG-SIM
+              INITIALIZE VIAL0015-DATA
+              MOVE '1100-OBTEM-CORE       ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ARCL2205-DATA  REPLACING  NUMERIC BY ZEROES
+                                           ALPHANUMERIC BY SPACES.
+
+           MOVE VIAK0002-PARAM-CORE         TO ARCL2205-CPARAM.
+           MOVE VIAK0002-APLIC-AT           TO ARCL2205-CAPLIC.
+
+           PERFORM CALL-ARM2205
+              THRU CALL-ARM2205-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              MOVE ARCL2205-GVALOR1         TO VIAL0001-VERSAO-SYS
+           ELSE
+              MOVE 'VIAL0002-IND-ERROS  '    TO VIAL0015-CAMPO-NM (1)
+              MOVE VIAL0002-IND-ERROS        TO VIAL0015-CAMPO-VLR (1)
+              MOVE 'ARCL2205-GVALOR1    '    TO VIAL0015-CAMPO-NM (2)
+              MOVE ARCL2205-GVALOR1          TO VIAL0015-CAMPO-VLR (2)
+              MOVE 'VIAL0002-IND-ERROS  '    TO VIAL0015-CAMPO-NM (3)
+              MOVE VIAL0002-IND-ERROS        TO VIAL0015-CAMPO-VLR (3)
+              MOVE 'VIAL0002-COD-ERRO-GRAVE' TO VIAL0015-CAMPO-NM (3)
+              MOVE VIAL0002-COD-ERRO-GRAVE   TO VIAL0015-CAMPO-VLR (3)
+              MOVE 'VIAL0002-CAPLIC-ERRO   ' TO VIAL0015-CAMPO-NM (3)
+              MOVE VIAL0002-CAPLIC-ERRO      TO VIAL0015-CAMPO-VLR (3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       1100-OBTEM-CORE-EXIT.
+           EXIT.
+      *****************************************************************
+      *                       1110-OBTEM-PAIS-INST
+      *      OBTEM O CODIGO DE PAIS          DA INSTALACAO
+      *****************************************************************
+       1110-OBTEM-PAIS-INST.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1110-OBTEM-PAIS-INST.' TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-CVERSAO   '      TO VIAL0015-CAMPO-NM (1)
+              MOVE ETCL0002-CVERSAO           TO VIAL0015-CAMPO-VLR (1)
+              MOVE 'VIAL0001-VERSAO-SYS'      TO VIAL0015-CAMPO-NM (2)
+              MOVE VIAL0001-VERSAO-SYS        TO VIAL0015-CAMPO-VLR (2)
+              MOVE 'VIAL0002-IND-ERROS '      TO VIAL0015-CAMPO-NM (3)
+              MOVE VIAL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR (3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ZEROES                    TO VIAL0001-CBALM
+
+           INITIALIZE ETCL0002-COMMAREA REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+           INITIALIZE ETCL9113-DATA     REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+           MOVE ZEROES                     TO VIAW0020-RCODE.
+      *
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'FORM IN              ' TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-CVERSAO   '      TO VIAL0015-CAMPO-NM (1)
+              MOVE ETCL0002-CVERSAO           TO VIAL0015-CAMPO-VLR (1)
+              MOVE 'VIAL0001-VERSAO-SYS'      TO VIAL0015-CAMPO-NM (2)
+              MOVE VIAL0001-VERSAO-SYS        TO VIAL0015-CAMPO-VLR (2)
+              MOVE 'ETCL0002-IND-ERROS '      TO VIAL0015-CAMPO-NM (3)
+              MOVE ETCL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR (3)
+              MOVE 'VIAL0002-IND-ERROS '      TO VIAL0015-CAMPO-NM (4)
+              MOVE VIAL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR (4)
+              MOVE 'VIAL0001-IND-ERROS '      TO VIAL0015-CAMPO-NM (5)
+              MOVE VIAL0001-IND-ERROS         TO VIAL0015-CAMPO-VLR (5)
+              MOVE 'ETCL0002-RCODE     '      TO VIAL0015-CAMPO-NM (6)
+              MOVE ETCL0002-RCODE             TO VIAL0015-CAMPO-VLR (6)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           PERFORM CALL-ETR90113
+              THRU CALL-ETR90113-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'FORM OUT             ' TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-CVERSAO   '      TO VIAL0015-CAMPO-NM (1)
+              MOVE ETCL0002-CVERSAO           TO VIAL0015-CAMPO-VLR (1)
+              MOVE 'VIAL0001-VERSAO-SYS'      TO VIAL0015-CAMPO-NM (2)
+              MOVE VIAL0001-VERSAO-SYS        TO VIAL0015-CAMPO-VLR (2)
+              MOVE 'ETCL0002-IND-ERROS '      TO VIAL0015-CAMPO-NM (3)
+              MOVE ETCL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR (3)
+              MOVE 'VIAL0002-IND-ERROS '      TO VIAL0015-CAMPO-NM (4)
+              MOVE VIAL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR (4)
+              MOVE 'VIAL0001-IND-ERROS '      TO VIAL0015-CAMPO-NM (5)
+              MOVE VIAL0001-IND-ERROS         TO VIAL0015-CAMPO-VLR (5)
+              MOVE 'ETCL0002-RCODE     '      TO VIAL0015-CAMPO-NM (6)
+              MOVE ETCL0002-RCODE             TO VIAL0015-CAMPO-VLR (6)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'FORM OUT 2           ' TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-CVERSAO   '      TO VIAL0015-CAMPO-NM (1)
+              MOVE ETCL0002-CVERSAO           TO VIAL0015-CAMPO-VLR (1)
+              MOVE 'VIAL0001-VERSAO-SYS'      TO VIAL0015-CAMPO-NM (2)
+              MOVE VIAL0001-VERSAO-SYS        TO VIAL0015-CAMPO-VLR (2)
+              MOVE 'ETCL0002-IND-ERROS '      TO VIAL0015-CAMPO-NM (3)
+              MOVE ETCL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR (3)
+              MOVE 'VIAL0002-IND-ERROS '      TO VIAL0015-CAMPO-NM (4)
+              MOVE VIAL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR (4)
+              MOVE 'VIAL0001-IND-ERROS '      TO VIAL0015-CAMPO-NM (5)
+              MOVE VIAL0001-IND-ERROS         TO VIAL0015-CAMPO-VLR (5)
+              MOVE 'ETCL0002-RCODE     '      TO VIAL0015-CAMPO-NM (6)
+              MOVE ETCL0002-RCODE             TO VIAL0015-CAMPO-VLR (6)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             MOVE ETCL0002-RCODE             TO VIAW0020-RCODE
+
+             PERFORM VIAP0020-TRATA-RCODE
+                THRU VIAP0020-TRATA-RCODE-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              MOVE ETCL9113-CPAIS-2P       TO VIAL0001-PAIS
+           ELSE
+              MOVE VIAK0002-ERROS-ARQ      TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-CPAIS-NOTFND   TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1110-OBTEM-PAIS-INST-EXIT'   TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-RCODE '          TO VIAL0015-CAMPO-NM (1)
+              MOVE ETCL0002-RCODE             TO VIAL0015-CAMPO-VLR (1)
+              MOVE 'ETCL9113-CPAIS-2P'        TO VIAL0015-CAMPO-NM (2)
+              MOVE ETCL9113-CPAIS-2P          TO VIAL0015-CAMPO-VLR (2)
+              MOVE 'VIAL0001-PAIS    '        TO VIAL0015-CAMPO-NM (3)
+              MOVE VIAL0001-PAIS              TO VIAL0015-CAMPO-VLR (3)
+              MOVE 'ETCL0002-RCODE   '        TO VIAL0015-CAMPO-NM (4)
+              MOVE ETCL0002-RCODE             TO VIAL0015-CAMPO-VLR (4)
+              MOVE 'ETCL0002-IND-ERROS'       TO VIAL0015-CAMPO-NM (5)
+              MOVE ETCL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR (5)
+              MOVE 'ETCL0002-NR-ERRO  '       TO VIAL0015-CAMPO-NM (6)
+              MOVE ETCL0002-NR-ERRO           TO VIAL0015-CAMPO-VLR (6)
+              MOVE 'ETCL0002-ST-ERRO  '       TO VIAL0015-CAMPO-NM (7)
+              MOVE ETCL0002-ST-ERRO           TO VIAL0015-CAMPO-VLR (7)
+              MOVE 'VIAL0001-VERSAO-SYS'      TO VIAL0015-CAMPO-NM (8)
+              MOVE VIAL0001-VERSAO-SYS        TO VIAL0015-CAMPO-VLR (8)
+              MOVE 'ETCL0002-CVERSAO   '      TO VIAL0015-CAMPO-NM (9)
+              MOVE ETCL0002-CVERSAO           TO VIAL0015-CAMPO-VLR (9)
+              MOVE 'VIAL0002-IND-ERROS'       TO VIAL0015-CAMPO-NM (9)
+              MOVE VIAL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR (9)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       1110-OBTEM-PAIS-INST-EXIT.
+           EXIT.
+      ******************************************************************
+      *                      1100-DADOS-UTILIZ                         *
+      ******************************************************************
+       1100-DADOS-UTILIZ.
+
+           IF VIAL0001-DEBUG-SIM
+              INITIALIZE VIAL0015-DATA
+              MOVE '1100-DADOS-UTILIZ     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ETCL0002-COMMAREA REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+           INITIALIZE ETCL9064-DATA     REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+           MOVE ZEROES                     TO VIAW0020-RCODE.
+
+           MOVE VIAL0001-CUSER-EXTRN       TO ETCL9064-USER.
+
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+
+           PERFORM CALL-ETR90064
+              THRU CALL-ETR90064-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              INITIALIZE VIAL0015-DATA
+              MOVE 'fim ETR90064          ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              INITIALIZE VIAL0015-DATA
+              MOVE 'fim std end           ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             MOVE ETCL0002-RCODE             TO VIAW0020-RCODE
+
+             PERFORM VIAP0020-TRATA-RCODE
+                THRU VIAP0020-TRATA-RCODE-EXIT
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              INITIALIZE VIAL0015-DATA
+              MOVE '1100-DADOS-UTILIZ     ' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS  '   TO VIAL0015-CAMPO-NM(1)
+              MOVE VIAL0002-IND-ERROS       TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ETCL0002-NR-ERRO    '   TO VIAL0015-CAMPO-NM(2)
+              MOVE ETCL0002-NR-ERRO         TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              MOVE ETCL9064-BAL            TO VIAL0001-CBALM
+              MOVE ETCL9064-BAL            TO VIAL0001-CBAL-ETRAB
+      *    ELSE
+      *       MOVE VIAK0002-ERROS-ARQ        TO VIAL0002-IND-ERROS
+      *       MOVE VIAK0001-ERRO-USR-NOTFND  TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       1199-DADOS-UTILIZ-EXIT.
+           EXIT.
+      ******************************************************************
+      *                  1200-IDIOMA                                   *
+      ******************************************************************
+      *1200-IDIOMA.
+      *
+      **R  MOVE '1200-IDIOMA           ' TO VIAL0015-CALLER-ID
+      **R
+      **R  INITIALIZE ARCL0105-DATA     REPLACING  NUMERIC BY ZEROES
+      **R                                     ALPHANUMERIC BY SPACES.
+      **R
+      **R
+      **R  MOVE VIAL0001-CUSER-EXTRN       TO ARCL0105-GUSERNAME
+      **R
+      **R  PERFORM CALL-ARM0105
+      **R     THRU CALL-ARM0105-EXIT.
+      **R
+      **R  IF VIAL0001-DEBUG-SIM
+      **R     MOVE 'ARCL0105-CLINGUA    '
+      **R       TO VIAL0015-CAMPO-NM ( 1 )
+      **R     MOVE ARCL0105-CLINGUA
+      **R       TO VIAL0015-CAMPO-VLR ( 1 )
+      **R     PERFORM VIAP0016-TRATA-DEBUG
+      **R        THRU VIAP0016-TRATA-DEBUG-EXIT
+      **R  END-IF.
+      **R
+      **R  EVALUATE TRUE
+      **R  WHEN VIAL0002-SEM-ERROS
+      **R     MOVE ARCL0105-CLINGUA        TO VIAL0001-IDIOMA
+      **R  WHEN OTHER
+      **R     MOVE VIAK0002-ERROS-ARQ      TO VIAL0002-IND-ERROS
+      **R     MOVE ARCK0001-ERR-GUSERNAME  TO VIAL0002-COD-ERRO-GRAVE
+      **R  END-EVALUATE.
+      **R
+      *1299-IDIOMA-EXIT.
+      **R  EXIT.
+      ******************************************************************
+      *               1025-EXEC-LOGIN                             *
+      ******************************************************************
+       1025-EXEC-LOGIN.
+
+           MOVE '1025-EXEC-LOGIN '    TO VIAL0015-CALLER-ID
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'VIAL0001-CUSER-EXTRN'
+                TO VIAL0015-CAMPO-NM ( 1 )
+              MOVE VIAL0001-CUSER-EXTRN
+                TO VIAL0015-CAMPO-VLR ( 1 )
+              MOVE 'VIAL0001-CALLERID'
+                TO VIAL0015-CAMPO-NM ( 2 )
+              MOVE VIAL0001-CALLERID
+                TO VIAL0015-CAMPO-VLR ( 2 )
+              MOVE 'VIAL0001-VERSAO-SYS'
+                TO VIAL0015-CAMPO-NM ( 3 )
+              MOVE VIAL0001-VERSAO-SYS
+                TO VIAL0015-CAMPO-VLR ( 3 )
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE ETCL0002-COMMAREA REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL9819-PGMC     REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+
+      *  E NECESSARIO FORMATAR COM A DATA DO DIA VIA
+           MOVE VIAL0001-DATA-PROCESSO-I  TO VIAL0001-DATA-EXTRN
+      *  E NECESSARIO FORMATAR COM O BALCAO DE MOVIMENTO VIA
+           MOVE ZEROES                    TO VIAL0001-CBALM
+      *  E NECESSARIO FORMATAR COM O PAIS VIA
+      *
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+      *
+           PERFORM CALL-ETR90819
+              THRU CALL-ETR90819-EXIT.
+      *
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT.
+
+           PERFORM VIAP0016-TRATA-DEBUG
+              THRU VIAP0016-TRATA-DEBUG-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+             MOVE ETCL0002-RCODE             TO VIAW0020-RCODE
+
+             PERFORM VIAP0020-TRATA-RCODE
+                THRU VIAP0020-TRATA-RCODE-EXIT
+           END-IF.
+      *
+           IF NOT VIAL0002-SEM-ERROS
+             IF VIAL0001-NR-ERRO = ETCK0001-ERR-VERSAO
+               MOVE VIAL0001-NR-ERRO   TO VIAL0002-COD-ERRO-GRAVE
+               MOVE VIAL0002-IND-ERROS TO VIAL0001-IND-ERROS
+             ELSE
+               PERFORM 1026-TRATA-ERR-LOGIN
+                  THRU 1026-TRATA-ERR-LOGIN-EXIT
+             END-IF
+           ELSE
+
+              MOVE 'VIAL0001-DATA-EXTRN    ' TO VIAL0015-CAMPO-NM (1)
+              MOVE VIAL0001-DATA-EXTRN       TO VIAL0015-CAMPO-VLR (1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+              IF NOT VIAL0001-VERSAO-NOCORE
+                MOVE ETCL9819-DTAPL          TO VIAL0001-DATA-EXTRN
+                MOVE ETCL9819-NBAL           TO VIAL0001-CBALM
+              END-IF
+              MOVE 'VIAL0001-DATA-EXTRN    ' TO VIAL0015-CAMPO-NM (1)
+              MOVE VIAL0001-DATA-EXTRN       TO VIAL0015-CAMPO-VLR (1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+
+       1025-EXEC-LOGIN-EXIT.
+           EXIT.
+      ******************************************************************
+      *                     1026-TRATA-ERR-LOGIN                       *
+      ******************************************************************
+       1026-TRATA-ERR-LOGIN.
+
+           MOVE '1026-TRATA-ERR-LOGIN '    TO VIAL0015-CALLER-ID.
+
+           IF VIAL0001-DEBUG-SIM
+             PERFORM VIAP0016-TRATA-DEBUG
+                THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE VIAW0090-ERROS-BANKA REPLACING  NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES.
+
+           MOVE VIAL0001-MSGQ  TO VIAW0090-MSGQ
+           MOVE ZEROES         TO VIAW0090-CONTA
+
+      **R  PERFORM VIAP0090-TRATA-ERRO-BANKA
+      **R     THRU VIAP0090-TRATA-ERRO-BANKA-EXIT
+
+           IF VIAW0090-COD-ERR NOT EQUAL ZEROES
+             MOVE VIAK0002-ERROS-ARQ        TO VIAL0002-IND-ERROS
+             MOVE VIAW0090-COD-ERR          TO VIAL0002-COD-ERRO-GRAVE
+           ELSE
+             MOVE VIAK0002-ERROS-ARQ        TO VIAL0002-IND-ERROS
+             MOVE VIAK0001-ERRO-LOGIN-EXTRN TO VIAL0002-COD-ERRO-GRAVE
+      **R    PERFORM 2100-MSG-BANKA
+      **R       THRU 2199-MSG-BANKA-EXIT
+           END-IF.
+
+       1026-TRATA-ERR-LOGIN-EXIT.
+           EXIT.
+      ******************************************************************
+      *                        2100-MSG-BANKA                          *
+      ******************************************************************
+       2100-MSG-BANKA.
+
+           MOVE '2100-MSG-BANKA'           TO VIAL0015-CALLER-ID.
+      *
+           INITIALIZE ETCL0002-COMMAREA    REPLACING  NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL9200-DATA        REPLACING  NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES.
+
+
+           MOVE VIAL0001-MSGQ              TO ETCL9200-PGMQ.
+      *
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+      *
+           PERFORM CALL-ETR90200
+              THRU CALL-ETR90200-EXIT.
+      *
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+             MOVE ETCL0002-RCODE             TO VIAW0020-RCODE
+
+             PERFORM VIAP0020-TRATA-RCODE
+                THRU VIAP0020-TRATA-RCODE-EXIT
+           END-IF.
+      *
+           CALL 'VIA00907'   USING VIAL0001-COMMAREA
+                                   VIAL0002-COMMAREA
+                                   ETCL9200-DATA.
+              IF VIAL0001-DEBUG-SIM
+                 MOVE '****-APÓS-VIA00907' TO VIAL0015-CALLER-ID
+                 PERFORM VIAP0016-TRATA-DEBUG
+                    THRU VIAP0016-TRATA-DEBUG-EXIT
+              END-IF
+
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-MSG-BANKA' TO VIAL0015-CALLER-ID
+
+              MOVE 'TRX............=     '
+                TO VIAL0015-CAMPO-NM ( 1 )
+              MOVE VIAL0001-TRANSACCAO
+                TO VIAL0015-CAMPO-VLR ( 1 )
+              MOVE 'USER/DATA/SEQ..=     '
+                TO VIAL0015-CAMPO-NM ( 2 )
+              MOVE VIAL0001-NR-ELECTRONICO-INPUT
+                TO VIAL0015-CAMPO-VLR ( 2 )
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+
+              PERFORM VARYING WS-N FROM 1 BY 1
+                UNTIL (WS-N > 10)
+                   OR ETCL9200-WRMG(WS-N) EQUAL SPACES
+                 MOVE 'ETCL9200-WRMG'     TO VIAL0015-CAMPO-NM(WS-N)
+                 MOVE ETCL9200-WRMG(WS-N) TO VIAL0015-CAMPO-VLR(WS-N)
+              END-PERFORM
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '****-APÓS-ESCRITA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      **R  PERFORM VIAP0090-INIT-MSG-BANKA
+      **R     THRU VIAP0090-INIT-MSG-BANKA-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '****-APÓS-VIAP0090' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       2199-MSG-BANKA-EXIT.
+           EXIT.
+      *****************************************************************
+      *                       1035-OBTEM-BANCO-INST
+      *      OBTEM O CODIGO DE EMPRESA/BANCO DA INSTALACAO
+      *****************************************************************
+       1035-OBTEM-BANCO-INST.
+
+           IF VIAL0001-DEBUG-SIM
+              INITIALIZE VIAL0015-DATA
+              MOVE '1035-OBTEM-BANCO-INST.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ETCL0002-COMMAREA    REPLACING  NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL9057-DATA        REPLACING  NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES.
+
+
+           MOVE ZEROES                     TO VIAW0020-RCODE.
+
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+
+           PERFORM CALL-ETR90057
+              THRU CALL-ETR90057-EXIT.
+
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT
+
+           IF VIAL0002-SEM-ERROS
+             MOVE ETCL0002-RCODE             TO VIAW0020-RCODE
+
+             PERFORM VIAP0020-TRATA-RCODE
+                THRU VIAP0020-TRATA-RCODE-EXIT
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              INITIALIZE VIAL0015-DATA
+              MOVE '****-FIM-ETR90057     ' TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-RCODE.=     '
+                TO VIAL0015-CAMPO-NM (1)
+              MOVE ETCL0002-RCODE
+                TO VIAL0015-CAMPO-VLR (1)
+              MOVE 'ETCL9057-2CEMP       '
+                TO VIAL0015-CAMPO-NM (2)
+              MOVE ETCL9057-2CEMP
+                TO VIAL0015-CAMPO-VLR (2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              MOVE ETCL9057-2CEMP          TO VIAL0001-CBANCO
+           ELSE
+              MOVE VIAK0002-ERROS-ARQ      TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-EMP-NOTFND     TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       1035-OBTEM-BANCO-INST-EXIT.
+           EXIT.
+      *****************************************************************
+      *                       1045-OBTEM-MOEDA-INST
+      *      OBTEM O CODIGO DE MOEDA         DA INSTALACAO
+      *****************************************************************
+       1045-OBTEM-MOEDA-INST.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1045-OBTEM-MOEDA-INST.' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ETCL0002-COMMAREA    REPLACING  NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL9056-DATA        REPLACING  NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES.
+
+
+           MOVE ZEROES                     TO VIAW0020-RCODE.
+
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+
+           PERFORM CALL-ETR90056
+              THRU CALL-ETR90056-EXIT.
+
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT
+
+           IF VIAL0002-SEM-ERROS
+             MOVE ETCL0002-RCODE             TO VIAW0020-RCODE
+
+             PERFORM VIAP0020-TRATA-RCODE
+                THRU VIAP0020-TRATA-RCODE-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              MOVE ETCL9056-D2MOEO         TO VIAL0001-CMOEDA
+           ELSE
+              MOVE VIAK0002-ERROS-ARQ      TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-MOE-NOTFND     TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1045-OBTEM-MOEDA-INST-EXIT'
+                TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-RCODE '
+                TO VIAL0015-CAMPO-NM ( 1 )
+              MOVE ETCL0002-RCODE
+                TO VIAL0015-CAMPO-VLR ( 1 )
+              MOVE 'ETCL9056-D2MOEO'
+                TO VIAL0015-CAMPO-NM ( 2 )
+              MOVE ETCL9056-D2MOEO
+                TO VIAL0015-CAMPO-VLR ( 2 )
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       1045-OBTEM-MOEDA-INST-EXIT.
+           EXIT.
+      *****************************************************************
+      *                       1046-OBTEM-CAIXA
+      *      OBTEM O CODIGO DE CAIXA DO UTILIZADOR
+      *****************************************************************
+       1046-OBTEM-CAIXA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1046-OBTEM-CAIXA.' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-CALLERID' TO VIAL0015-CAMPO-NM(1)
+              MOVE VIAL0001-CALLERID   TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ETCL0002-COMMAREA    REPLACING  NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING  NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL9074-DATA        REPLACING  NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES.
+      *
+           MOVE VIAL0001-CALLERID          TO ETCL9074-CQETRB.
+      *
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+
+           MOVE ZEROES                     TO VIAW0020-RCODE.
+
+           PERFORM CALL-ETR90074
+              THRU CALL-ETR90074-EXIT.
+
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT
+
+           IF VIAL0002-SEM-ERROS
+             MOVE ETCL0002-RCODE             TO VIAW0020-RCODE
+
+             PERFORM VIAP0020-TRATA-RCODE
+                THRU VIAP0020-TRATA-RCODE-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              MOVE ETCL9074-CQBAL           TO VIAL0001-CBAL-ETRAB
+              MOVE ETCL9074-CQNCX           TO VIAL0001-NCAIXA
+              IF VIAL0001-CBAL-ETRAB EQUAL ZEROES
+                 MOVE VIAL0001-CBALM        TO VIAL0001-CBAL-ETRAB
+              END-IF
+           ELSE
+              MOVE ZEROES                   TO VIAL0001-CBAL-ETRAB
+              MOVE ZEROES                   TO VIAL0001-NCAIXA
+              MOVE VIAK0002-ERROS-ARQ       TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-CAIXA-NOTFND    TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1046-OBTEM-CAIXA-EXIT'
+                TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-RCODE '
+                TO VIAL0015-CAMPO-NM ( 1 )
+              MOVE ETCL0002-RCODE
+                TO VIAL0015-CAMPO-VLR ( 1 )
+              MOVE 'ETCL9074-CQNCX '
+                TO VIAL0015-CAMPO-NM ( 2 )
+              MOVE ETCL9074-CQNCX
+                TO VIAL0015-CAMPO-VLR ( 2 )
+              MOVE 'ETCL9074-CQBAL '
+                TO VIAL0015-CAMPO-NM ( 3 )
+              MOVE ETCL9074-CQBAL
+                TO VIAL0015-CAMPO-VLR ( 3 )
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       1046-OBTEM-CAIXA-EXIT.
+           EXIT.
+      ******************************************************************
+      *               3000-FIM-PROGRAMA                                *
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+
+           MOVE '3000-FIM-PROGRAMA'        TO ABEND-CALLER-ID
+                                              VIAL0015-CALLER-ID.
+
+       3099-FIM-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                         PROCEDURES                             *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      * debug
+           COPY VIAP0016.
+      * Empresa
+           COPY ETCR9057.
+      * Utilizador
+           COPY ETCR9064.
+      * Init Area Std
+           COPY ETCP0002.
+      * MOEDA
+           COPY ETCR9056.
+      * Tratamento de erros
+           COPY VIAP0020.
+      * Tratamento de erros
+      **R  COPY VIAP0090.
+      * Tratamento de erros
+           COPY SXCP0902.
+      * Tratamento de Login
+           COPY ETCR9819.
+      * Tratamento de Login
+           COPY ETCP9113.
+      * Tratamento de Queue Erros
+           COPY ETCR9200.
+      * CONSULTA UTILIZADOR
+      **R  COPY ARCR0105.
+      * CONSULTA PARAMETROS
+           COPY ARCR2205.
+      * CAIXA
+           COPY ETCR9074.
+      * DT-8-10-8
+           COPY AQCP0005.
+      * **********
+           COPY VIAP0050.
+           COPY VIAP0015.

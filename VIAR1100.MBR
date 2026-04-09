@@ -1,0 +1,197 @@
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. VIAR1100.
+      ******************************************************************
+      *                          ARQUITECTURA                          *
+      ******************************************************************
+      * OBJECTIVO: Chama a rotina de datas standard VIAR1000           *
+      *          : Valida feriados na instalacao atraves de ETR90088   *
+      *          : Trata retorno VIAL1000 para formatar ETCL0002       *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+       01  FILLER                      PIC  X(40) VALUE
+           'INICIO WORKING-STORAGE DO VIAR1100   '.
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC  X(10)  VALUE 'VIAR1100'.
+           05 WS-DIA-UTIL               PIC  X(01)  VALUE 'U'.
+           05 WS-UTIL-SIM               PIC  X(01)  VALUE 'S'.
+           05 WS-UTIL-NAO               PIC  X(01)  VALUE 'N'.
+           05 WS-FERIADO                PIC  X(01)  VALUE 'F'.
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 FILLER                    PIC  X(01).
+      ******************************************************************
+      * TABELAS
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA     END-EXEC.
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAL0015.
+           COPY ETCL9088.
+      ******************************************************************
+       01  FILLER                      PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ONLINE         '.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+           COPY ETCL0002.
+           COPY VIAL1000.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                VIAL1000-AREA-COMUNICACAO.
+      ******************************************************************
+       0000-MAINLINE.
+      ******************************************************************
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           MOVE '1000-INICIO-PROGRAMA     ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE WS-VARIAVEIS.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+           MOVE '2000-PROC-PROGRAMA       ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      * Chama a rotina de datas para fazer a sua funcao
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT
+
+           IF VIAL1000-SEM-ERROS
+      * Se nao houve erros e a rotina devolveu o codigo de dia util
+      * entao chama a ETR90088 para validar a data na instalacao
+              IF VIAL1000-DAT-RES-TIPO = WS-DIA-UTIL
+                 PERFORM 2100-VALIDAR-FERIADOS
+                    THRU 2100-VALIDAR-FERIADOS-EXIT
+              END-IF
+           ELSE
+      * Trata o retorno do erro para transformar em codigo ETCL0002
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE VIAK0002-APLIC-AT        TO ETCL0002-CAPLIC-ERRO
+
+      *       MOVE VIAL1000-IND-ERROS       TO ETCL0002-IND-ERROS
+              MOVE VIAL1000-COD-ERRO-GRAVE  TO ETCL0002-NR-ERRO
+              MOVE VIAL1000-COD-ERRO-GRAVE  TO ETCL0002-ST-ERRO
+              MOVE VIAL1000-MSG             TO ETCL0002-GINFO-ERRO
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2100-VALIDAR-FERIADOS.
+      ******************************************************************
+           MOVE '2100-VALIDAR-FERIADOS    ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE                          ETCL9088-DATA.
+           MOVE ETCL0002-CVERSAO            TO ETCL9088-VERSAO.
+           MOVE ETCL0002-PGMQC              TO ETCL9088-PGMQC.
+           MOVE ETCL0002-RCODE              TO ETCL9088-RCODE.
+           MOVE VIAL1000-DAT-RES            TO ETCL9088-DADAT8.
+
+           PERFORM CALL-ETR90088
+              THRU CALL-ETR90088-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+      * Usa a mesma logica existente no VIAR1000 para os feriados
+      * constantes (devolve 'F' ou 'N' dependendo do codigo de processo)
+              IF ETCL9088-DAUTIL NOT EQUAL WS-UTIL-SIM
+                 IF VIAL1000-COD-PROCESSO = '99'
+                    MOVE WS-FERIADO         TO VIAL1000-DAT-RES-TIPO
+                 ELSE
+                    MOVE WS-UTIL-NAO        TO VIAL1000-DAT-RES-TIPO
+                 END-IF
+              END-IF
+           END-IF.
+
+       2100-VALIDAR-FERIADOS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           MOVE '3000-FIM-PROGRAMA        ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           CONTINUE.
+
+       3000-FIM-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+           COPY VIAP0015.
+           COPY VIAP1000.
+           COPY ETCP9088.

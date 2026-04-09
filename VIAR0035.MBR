@@ -1,0 +1,349 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. VIAR0035.
+      ******************************************************************
+      *                                                                *
+      *                      VIA CONSULTING                            *
+      *                                                                *
+      *    PROGRAMA   : VIAR0035.                                      *
+      *    DESCRICAO  : ROTINA ENCRIPTACAO/DESENCRIPTACAO PIN          *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+       SPECIAL-NAMES. DECIMAL-POINT IS COMMA.
+      *
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+      *
+       DATA DIVISION.
+      ******************************************************************
+      *              D A T A   D I V I S I O N                         *
+      ******************************************************************
+      *                  WORKING STORAGE SECTION                       *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      *
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE VIAR0035         '.
+      ******************************************************************
+      *            DECLARACOES DE DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      ******************************************************************
+      *                  CONSTANTES                                    *
+      ******************************************************************
+       01 CONSTANTES.
+          05 CON-NULL                    PIC  X(65535) VALUE ALL X'00'.
+          05 CON-DES                     PIC  9(09) COMP VALUE 20.
+          05 CON-TDES                    PIC  9(09) COMP VALUE 21.
+          05 CON-AES                     PIC  9(09) COMP VALUE 22.
+      ******************************************************************
+      *                  FLAGS E SWITCHES                              *
+      ******************************************************************
+       01 SW-DEBUG                        PIC  X(01) VALUE 'N'.
+          88 SW-DEBUG-SIM                            VALUE 'S'.
+       01 ABEND-CALLER-ID                 PIC  X(60).
+      ******************************************************************
+      *                         VARIAVEIS                              *
+      ******************************************************************
+       01 VARIAVEIS.
+          05 WS-OUTERROR                  PIC  X(1024)  VALUE SPACES.
+          05 WS-QC3KEY                    PIC  X(1024)  VALUE SPACES.
+          05 WS-SSN                       PIC  X(128)   VALUE SPACES.
+          05 WS-RESULTS                   PIC  X(65535) VALUE SPACES.
+          05 WS-SECRETKEY                 PIC  X(32)    VALUE SPACES.
+          05 WS-CRYPTOPRO                 PIC  X(01)    VALUE SPACES.
+          05 WS-CRYPTODEV                 PIC  X(10)    VALUE SPACES.
+          05 WS-ENCRIPTLEN                PIC S9(09) BINARY.
+          05 WS-DISPLAYBYTES              PIC  X(52)    VALUE SPACES.
+          05 WS-CIPHERSETUP.
+             10 WS-ARGKEY                 PIC  X(1024).
+             10 WS-ARGALGORITHM           PIC S9(09) BINARY.
+          05 WS-ENCRYPTDATA.
+             10 WS-ARGDATA                PIC  X(1024).
+             10 WS-ARGOUTLEN              PIC S9(09) BINARY.
+          05 WS-DECRYPTDATA.
+             10 WS-ARGDATA                PIC  X(1024).
+             10 WS-ARGOUTLEN              PIC S9(09) BINARY.
+          05 WS-ARG-HEX                   PIC  X(50) VALUE SPACES.
+          05 WS-ERRCODE                   PIC  X(07) VALUE SPACES.
+          05 WS-ARGOUT                    PIC  X(16) VALUE SPACES.
+          05 WS-ARGIN                     PIC  X(15) VALUE SPACES.
+      ******************************************************************
+      *              DECLARACOES DE COPYBOOKS                          *
+      ******************************************************************
+       COPY VIAK0001.
+       COPY VCCK0001.
+       COPY VIAK0002.
+       COPY VIAL0040.
+      * API QC3ENCDT E QC3DECDT (ENCRIPTAÇÃO/DESENCRIPTAÇÃO)
+       COPY QC3L0001.
+       COPY ETCK0002.
+      ******************************************************************
+      *              DECLARACOES DE CURSORES DB2                       *
+      ******************************************************************
+       01  FILLER                          PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE VIAR0035         '.
+      ******************************************************************
+      *                    LINKAGE SECTION                             *
+      ******************************************************************
+       LINKAGE SECTION.
+       COPY VIAL0035.
+       COPY ETCL0002.
+      ******************************************************************
+      *                  PROCEDURE DIVISION                            *
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA VIAL0035-COMMAREA.
+      ******************************************************************
+      *    PROCESSO                                                    *
+      ******************************************************************
+       0000-MAINLINE.
+      *
+      *    SET SW-DEBUG-SIM                TO TRUE.
+      *
+           MOVE '0000-MAINLINE'            TO ABEND-CALLER-ID.
+      *
+           IF SW-DEBUG-SIM
+              DISPLAY ABEND-CALLER-ID
+           END-IF.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+      *
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+      *
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3099-FIM-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      *                  1000-INICIO-PROGRAMA                          *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE '1000-INICIO-PROGRAMA'     TO ABEND-CALLER-ID.
+      *
+           IF SW-DEBUG-SIM
+              DISPLAY ABEND-CALLER-ID
+           END-IF.
+      *
+           SET ETCL0002-SEM-ERROS          TO TRUE.
+           MOVE SPACES                     TO VIAL0035-OUTPUT
+                                              VIAL0035-OUTPUT-HEX.
+      *
+           PERFORM 1100-VALIDA-DADOS-API
+              THRU 1199-VALIDA-DADOS-API-EXIT.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                  1100-VALIDA-DADOS-API                         *
+      ******************************************************************
+       1100-VALIDA-DADOS-API.
+      *
+           IF VIAL0035-ENCRIPTA
+              IF VIAL0035-INPUT ( 16 : ) NOT EQUAL SPACES
+                 MOVE VIAK0002-ERROS-ARQ  TO ETCL0002-IND-ERROS
+                                             ETCL0002-CAPLIC-ERRO
+                 MOVE VIAK0001-ERR-CCHAVE TO ETCL0002-ST-ERRO
+              END-IF
+           END-IF.
+      *
+       1199-VALIDA-DADOS-API-EXIT.
+           EXIT.
+      ******************************************************************
+      *                  2000-PROC-PROGRAMA                            *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      *
+           MOVE '2000-PROC-PROGRAMA'       TO ABEND-CALLER-ID.
+      *
+           IF SW-DEBUG-SIM
+              DISPLAY ABEND-CALLER-ID
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+              IF VIAL0035-ENCRIPTA
+                 PERFORM 2100-ENCRIPTA
+                    THRU 2199-ENCRIPTA-EXIT
+              ELSE
+                 PERFORM 2200-DESENCRIPTA
+                    THRU 2299-DESENCRIPTA-EXIT
+              END-IF
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                  2100-ENCRIPTA                                 *
+      ******************************************************************
+       2100-ENCRIPTA.
+      *
+           MOVE CON-NULL             TO QC3L0001-COMMAREA.
+           MOVE '987654320'          TO WS-SSN.
+           MOVE 'MC_pr3$$!0nL1N3_'   TO WS-SECRETKEY.
+           MOVE '----- AES ENCRYPTION -----'
+             TO WS-DISPLAYBYTES.
+           MOVE WS-SECRETKEY         TO WS-ARGKEY.
+           MOVE CON-AES              TO WS-ARGALGORITHM.
+           MOVE VIAL0035-INPUT       TO WS-ARGDATA OF WS-ENCRYPTDATA.
+           MOVE 15                   TO WS-ARGOUTLEN OF WS-ENCRYPTDATA.
+           MOVE CON-NULL             TO QC3L0001-QC3D0200.
+           MOVE WS-ARGALGORITHM      TO QC3L0001-QC3BCA.
+           MOVE 16                   TO QC3L0001-QC3BL.
+           MOVE '1'                  TO QC3L0001-QC3MODE.
+           MOVE '1'                  TO QC3L0001-QC3PO.
+           MOVE ZERO                 TO QC3L0001-QC3EKS.
+           MOVE CON-NULL             TO QC3L0001-KEYD0200.
+           MOVE WS-ARGALGORITHM      TO QC3L0001-QC3KT.
+           MOVE '0'                  TO QC3L0001-QC3KF.
+           MOVE 16                   TO QC3L0001-QC3KSL.
+           MOVE WS-ARGKEY            TO WS-QC3KEY.
+           MOVE CON-NULL             TO QC3L0001-ERRCODE.
+           MOVE 1040                 TO QC3L0001-QUSBPRV.
+           MOVE '0'                  TO WS-CRYPTOPRO.
+           MOVE SPACES               TO WS-CRYPTODEV.
+           MOVE WS-QC3KEY            TO QC3L0001-QC3KEY.
+           MOVE WS-CRYPTOPRO         TO QC3L0001-ARGCRYPTOPRO.
+           MOVE WS-CRYPTODEV         TO QC3L0001-ARGCRYPTODEV.
+           MOVE 25                   TO QC3L0001-ARGOUTBUFFLEN.
+      *
+           MOVE WS-ARGDATA OF WS-ENCRYPTDATA
+             TO QC3L0001-ARGIN.
+           MOVE WS-ARGOUTLEN OF WS-ENCRYPTDATA
+             TO QC3L0001-ARGINLEN.
+           MOVE 'DATA0100'           TO QC3L0001-ARGINFOR.
+           MOVE 'ALGD0200'           TO QC3L0001-ARGALGFMT.
+           MOVE 'KEYD0200'           TO QC3L0001-ARGKEYFMT.
+           CALL QC3L0001-NM-ROT-ENC USING QC3L0001-ARGIN
+                                        , QC3L0001-ARGINLEN
+                                        , QC3L0001-ARGINFOR
+                                        , QC3L0001-QC3D0200
+                                        , QC3L0001-ARGALGFMT
+                                        , QC3L0001-KEYD0200
+                                        , QC3L0001-ARGKEYFMT
+                                        , QC3L0001-ARGCRYPTOPRO
+                                        , QC3L0001-ARGCRYPTODEV
+                                        , QC3L0001-ARGOUT
+                                        , QC3L0001-ARGOUTBUFFLEN
+                                        , QC3L0001-ARGOUTLEN
+                                        , QC3L0001-ERRCODE.
+           IF QC3L0001-QUSBAVL GREATER ZERO
+              SET ETCL0002-ERROS-FUNCAO TO TRUE
+              MOVE VCCK0001-ERR-PIN   TO ETCL0002-ST-ERRO
+              MOVE VIAK0002-APLIC-VC  TO ETCL0002-CAPLIC-ERRO
+              MOVE QC3L0001-QUSEI     TO VIAL0035-ERRMSGID
+              MOVE SPACES             TO VIAL0035-OUTPUT-HEX
+                                         VIAL0035-OUTPUT
+           ELSE
+              SET VIAL0035-SEM-ERROS  TO TRUE
+              MOVE QC3L0001-ARGOUT    TO WS-ARGOUT
+              EXEC SQL
+                  SET :WS-ARG-HEX = HEX(:WS-ARGOUT)
+              END-EXEC
+              MOVE WS-ARG-HEX          TO VIAL0035-OUTPUT-HEX
+              MOVE WS-ARGOUT           TO VIAL0035-OUTPUT
+           END-IF.
+      *
+       2199-ENCRIPTA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                  2200-DESENCRIPTA                              *
+      ******************************************************************
+       2200-DESENCRIPTA.
+      *
+           MOVE CON-NULL            TO QC3L0001-COMMAREA.
+           MOVE '987654320'         TO WS-SSN.
+           MOVE 'MC_pr3$$!0nL1N3_'  TO WS-SECRETKEY.
+           MOVE '----- AES ENCRYPTION -----'
+             TO WS-DISPLAYBYTES.
+           MOVE WS-SECRETKEY        TO WS-ARGKEY.
+           MOVE CON-AES             TO WS-ARGALGORITHM.
+           MOVE VIAL0035-INPUT-HEX  TO VIAL0040-STR-IN.
+
+           CALL 'VIAR0040' USING VIAL0040-COMMAREA.
+
+           MOVE VIAL0040-STR-OUT    TO WS-ARGDATA OF WS-DECRYPTDATA.
+           MOVE 16                  TO WS-ARGOUTLEN OF WS-DECRYPTDATA.
+           MOVE CON-NULL            TO QC3L0001-QC3D0200.
+           MOVE WS-ARGALGORITHM     TO QC3L0001-QC3BCA.
+           MOVE 16                  TO QC3L0001-QC3BL.
+           MOVE '1'                 TO QC3L0001-QC3MODE.
+           MOVE '1'                 TO QC3L0001-QC3PO.
+           MOVE ZERO                TO QC3L0001-QC3EKS.
+           MOVE CON-NULL            TO QC3L0001-KEYD0200.
+           MOVE WS-ARGALGORITHM     TO QC3L0001-QC3KT.
+           MOVE '0'                 TO QC3L0001-QC3KF.
+           MOVE 16                  TO QC3L0001-QC3KSL.
+           MOVE WS-ARGKEY           TO WS-QC3KEY.
+           MOVE CON-NULL            TO QC3L0001-ERRCODE.
+           MOVE 1040                TO QC3L0001-QUSBPRV.
+           MOVE '0'                 TO WS-CRYPTOPRO.
+           MOVE SPACES              TO WS-CRYPTODEV.
+           MOVE WS-QC3KEY           TO QC3L0001-QC3KEY.
+           MOVE WS-CRYPTOPRO        TO QC3L0001-ARGCRYPTOPRO.
+           MOVE WS-CRYPTODEV        TO QC3L0001-ARGCRYPTODEV.
+           MOVE 25                  TO QC3L0001-ARGOUTBUFFLEN.
+      *
+           MOVE WS-ARGDATA OF WS-DECRYPTDATA
+             TO QC3L0001-ARGIN.
+           MOVE WS-ARGOUTLEN OF WS-DECRYPTDATA
+             TO QC3L0001-ARGINLEN.
+           MOVE 'ALGD0200'             TO QC3L0001-ARGALGFMT
+           MOVE 'KEYD0200'             TO QC3L0001-ARGKEYFMT
+           CALL QC3L0001-NM-ROT-DES USING QC3L0001-ARGIN
+                                        , QC3L0001-ARGINLEN
+                                        , QC3L0001-QC3D0200
+                                        , QC3L0001-ARGALGFMT
+                                        , QC3L0001-KEYD0200
+                                        , QC3L0001-ARGKEYFMT
+                                        , QC3L0001-ARGCRYPTOPRO
+                                        , QC3L0001-ARGCRYPTODEV
+                                        , QC3L0001-ARGOUT
+                                        , QC3L0001-ARGOUTBUFFLEN
+                                        , QC3L0001-ARGOUTLEN
+                                        , QC3L0001-ERRCODE
+           IF QC3L0001-QUSBAVL GREATER ZERO
+              SET ETCL0002-ERROS-FUNCAO TO TRUE
+              MOVE VCCK0001-ERR-PIN   TO ETCL0002-ST-ERRO
+              MOVE VIAK0002-APLIC-VC  TO ETCL0002-CAPLIC-ERRO
+              MOVE QC3L0001-QUSEI     TO VIAL0035-ERRMSGID
+              MOVE SPACES             TO VIAL0035-OUTPUT-HEX
+                                         VIAL0035-OUTPUT
+           ELSE
+              SET VIAL0035-SEM-ERROS  TO TRUE
+              MOVE SPACES             TO VIAL0035-OUTPUT-HEX
+              MOVE QC3L0001-ARGOUT    TO WS-ARGIN
+              MOVE WS-ARGIN           TO VIAL0035-OUTPUT
+           END-IF.
+      *
+       2299-DESENCRIPTA-EXIT.
+           EXIT.
+      ******************************************************************
+      *               3000-FIM-PROGRAMA                                *
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      *
+           MOVE '3000-FIM-PROGRAMA'        TO ABEND-CALLER-ID.
+      *
+           IF SW-DEBUG-SIM
+              DISPLAY ABEND-CALLER-ID
+              DISPLAY 'VIAL0035-OUTPUT-HEX:' VIAL0035-OUTPUT-HEX
+              DISPLAY 'VIAL0035-OUTPUT    :' VIAL0035-OUTPUT
+           END-IF.
+      *
+       3099-FIM-PROGRAMA-EXIT.
+            EXIT.
+      ******************************************************************
+           EXEC SQL INCLUDE ETCP0021 END-EXEC.
+      ******************************************************************

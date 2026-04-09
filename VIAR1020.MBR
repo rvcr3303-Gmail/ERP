@@ -1,0 +1,138 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.       VIAR1020.
+      ****************************************************************
+      *  PROGRAMA      : VIAR1020
+      *                  Obter Timezone Aplicação
+      *
+      ****************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+      *
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCL2205.
+       COPY VIATL100.
+       COPY VIAL1010.
+       COPY VIAL0015.
+      ****************************************************************
+      *                   STATUS DB2                                 *
+      ****************************************************************
+       COPY VIAW0005.
+      ****************************************************************
+      *                   DECLARACOES DB2                            *
+      ****************************************************************
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      ****************************************************************
+      *                             VARIABLES                        *
+      ****************************************************************
+       01 WS-VARIAVEIS.
+           05 WS-TS-X26                        PIC X(26) VALUE SPACES.
+      ****************************************************************
+      *                   CONSTANTES                                 *
+      ****************************************************************
+       01 CONSTANTES.
+           05 WS-PROGNAME           PIC X(10) VALUE 'VIAR1020'.
+      ****************************************************************
+       LINKAGE SECTION.
+      *
+       COPY VIAL1020.
+       COPY ETCL0002.
+      ****************************************************************
+       PROCEDURE DIVISION USING VIAL1020-COMMAREA
+                                ETCL0002-COMMAREA.
+      ****************************************************************
+      *           0000-MAINLINE                                      *
+      ****************************************************************
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2099-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3099-FIM-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      *                       1000-INICIO-PROGRAMA                     *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE '1000-INICIO-PROGRAMA   '  TO VIAL0015-CALLER-ID
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT.
+      *
+           SET ETCL0002-SEM-ERROS          TO TRUE.
+      *
+           EXEC SQL
+                SET :WS-TS-X26 = CURRENT_TIMESTAMP
+           END-EXEC.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       2000-PROC-PROGRAMA                       *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      *
+      * TIMEZONE DA APLICACAO (SE NAO EXISTIR CONSIDERA *SYS)
+           INITIALIZE ARCL2205-DATA.
+           MOVE VIAK0002-PARAM-TIMEZONE TO ARCL2205-CPARAM
+           MOVE VIAL1020-CAPLIC         TO ARCL2205-CAPLIC
+           PERFORM CALL-ARM2206
+              THRU CALL-ARM2206-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              CONTINUE
+           ELSE
+              SET  ETCL0002-SEM-ERROS      TO TRUE
+              MOVE ZEROS                   TO ETCL0002-NR-ERRO
+              MOVE SPACES                  TO ETCL0002-CAPLIC-ERRO
+              MOVE VIAK0002-SYS-TIMEZONE
+                TO ARCL2205-GVALOR1
+           END-IF.
+
+      ******
+      * Converte do Timezone da aplicacao para o do sistema
+      ******
+           IF ARCL2205-GVALOR1 NOT EQUAL VIAK0002-SYS-TIMEZONE
+              INITIALIZE VIAL1010-COMMAREA
+              MOVE WS-TS-X26             TO VIAL1010-TSINPUT
+              MOVE ARCL2205-GVALOR1      TO VIAL1010-TIMEZONEIN
+              MOVE VIAK0002-SYS-TIMEZONE TO VIAL1010-TIMEZONEOUT
+
+              CALL VIAL1010-NM-ROTINA  USING VIAL1010-COMMAREA ,
+                                             ETCL0002-COMMAREA
+                ON EXCEPTION
+                   SET  ETCL0002-ERROS-ARQ   TO TRUE
+                   MOVE VIAK0001-PROG-NOTFND TO ETCL0002-NR-ERRO
+                   MOVE ETCL0002-IND-ERROS   TO ETCL0002-CAPLIC-ERRO
+              END-CALL
+
+              IF ETCL0002-SEM-ERROS
+                 MOVE SPACES                TO ETCL0002-CAPLIC-ERRO
+                 MOVE VIAL1010-TSOUTPUT     TO WS-TS-X26
+              END-IF
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       3000-FIM-PROGRAMA                        *
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      *
+           MOVE WS-TS-X26                   TO VIAL1020-HTIMEST.
+      *
+       3099-FIM-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+       COPY ARCR2206.
+       COPY VIAP0015.
