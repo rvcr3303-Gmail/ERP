@@ -1,0 +1,1767 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI94604.
+      ******************************************************************
+      *     PROGRAMA COI94604.                                         *
+      *                                                                *
+      *      Aprovação de Férias - Detalhe
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI94604         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD5303 END-EXEC.
+           EXEC SQL INCLUDE COCD5403 END-EXEC.
+           EXEC SQL INCLUDE COCD7001 END-EXEC.
+           EXEC SQL INCLUDE COCD7101 END-EXEC.
+           EXEC SQL INCLUDE ARCD7001 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+       01 WS-SQL-AUXILIARY.
+         05 IND-NULL                       PIC S9(04) BINARY.
+
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV9460.
+       COPY COCV9461.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL1000.
+       COPY VIATW300.
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY TGCL2000.
+       COPY EXCL0200.
+       COPY ETCL0002.
+       COPY EXCK0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT7001  PIC X(08) VALUE 'COVT7001'.
+           05 CON-COVT7101  PIC X(08) VALUE 'COVT7101'.
+           05 CON-COVT5303  PIC X(08) VALUE 'COVT5303'.
+           05 CON-COVT5403  PIC X(08) VALUE 'COVT5403'.
+           05 CON-ARVT7001  PIC X(08) VALUE 'ARVT7001'.
+           05 CON-APROVADAS PIC X(01) VALUE 'A'.
+           05 CON-DATA-MIN  PIC X(10) VALUE '0001-01-01'.
+           05 CON-4         PIC X(01) VALUE '4'.
+           05 CON-8         PIC X(01) VALUE '8'.
+           05 CON-4-9       PIC 9(01) VALUE 4.
+           05 CON-8-9       PIC 9(01) VALUE 8.
+           05 CON-01        PIC X(02) VALUE '01'.
+           05 CON-02        PIC X(02) VALUE '02'.
+           05 CON-03        PIC X(02) VALUE '03'.
+           05 CON-04        PIC X(02) VALUE '04'.
+           05 CON-05        PIC X(02) VALUE '05'.
+           05 CON-06        PIC X(02) VALUE '06'.
+           05 CON-07        PIC X(02) VALUE '07'.
+           05 CON-08        PIC X(02) VALUE '08'.
+           05 CON-09        PIC X(02) VALUE '09'.
+           05 CON-10        PIC X(02) VALUE '10'.
+           05 CON-11        PIC X(02) VALUE '11'.
+           05 CON-12        PIC X(02) VALUE '12'.
+           05 CON-13        PIC X(02) VALUE '13'.
+           05 CON-14        PIC X(02) VALUE '14'.
+           05 CON-15        PIC X(02) VALUE '15'.
+           05 CON-16        PIC X(02) VALUE '16'.
+           05 CON-17        PIC X(02) VALUE '17'.
+           05 CON-18        PIC X(02) VALUE '18'.
+           05 CON-19        PIC X(02) VALUE '19'.
+           05 CON-20        PIC X(02) VALUE '20'.
+           05 CON-21        PIC X(02) VALUE '21'.
+           05 CON-22        PIC X(02) VALUE '22'.
+           05 CON-23        PIC X(02) VALUE '23'.
+           05 CON-24        PIC X(02) VALUE '24'.
+           05 CON-25        PIC X(02) VALUE '25'.
+           05 CON-26        PIC X(02) VALUE '26'.
+           05 CON-27        PIC X(02) VALUE '27'.
+           05 CON-28        PIC X(02) VALUE '28'.
+           05 CON-29        PIC X(02) VALUE '29'.
+           05 CON-30        PIC X(02) VALUE '30'.
+           05 CON-31        PIC X(02) VALUE '31'.
+           05 CON-99        PIC X(02) VALUE '99'.
+           05 CON-SEP       PIC X(01) VALUE '-'.
+           05 CON-F         PIC X(01) VALUE 'F'.
+           05 CON-T         PIC X(01) VALUE 'T'.
+           05 CON-S         PIC X(01) VALUE 'S'.
+           05 CON-D         PIC X(01) VALUE 'D'.
+           05 CON-SIM       PIC X(01) VALUE 'S'.
+           05 CON-NAO       PIC X(01) VALUE 'N'.
+           05 CON-A         PIC X(01) VALUE 'A'.
+           05 CON-N         PIC X(01) VALUE 'N'.
+
+      *--------------------------------------------------------------
+      * PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'COI94604'.
+           05 WS-SUM-NDIAS         PIC S9(03)V99 VALUE ZEROES.
+           05 WS-SUM-NDIASREG      PIC S9(03)V99 VALUE ZEROES.
+           05 WS-NUM-DIAS          PIC 9(02)V99.
+           05 WS-NUM-DIAS-ANO      PIC 9(03)V99.
+           05 WS-NUM-DIAS-APR      PIC 9(03)V99.
+           05 WS-NUM-DIAS-TOT      PIC 9(09)V99.
+           05 WS-NUM-DIAS-TOL      PIC 9(09)V99.
+           05 WS-NUM-DIAS-TOLA     PIC 9(09)V99.
+           05 WS-NUM-DIAS-TOLM     PIC 9(09)V99.
+           05 WS-FERIADO           PIC X(01).
+           05 WS-APROVADO          PIC X(01).
+           05 WS-JA-APROVADO       PIC 9(01).
+           05 WS-X                 PIC 9(02).
+           05 WS-HORAS             PIC S9(8) COMP-3.
+           05 WS-DIFERENTE         PIC 9(01).
+           05 WS-QUO               PIC 9(04).
+           05 WS-RES               PIC 9(04).
+           05 WS-DFERIAS-MIN       PIC X(10) VALUE SPACES.
+           05 WS-DFERIAS-MAX       PIC X(10) VALUE SPACES.
+           05 WS-DTMESANO          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DTMESANO.
+              10 WS-DTMESANO-ANO   PIC X(04).
+              10 WS-DTMESANO-SEP1  PIC X(01).
+              10 WS-DTMESANO-MES   PIC X(02).
+              10 WS-DTMESANO-SEP2  PIC X(01).
+              10 WS-DTMESANO-DIA   PIC X(02).
+
+           05 WS-DATA-INF          PIC X(10).
+           05 FILLER REDEFINES WS-DATA-INF.
+              10 WS-DATA-INF-ANO   PIC X(04).
+              10 WS-DATA-INF-SEP1  PIC X(01).
+              10 WS-DATA-INF-MES   PIC X(02).
+              10 WS-DATA-INF-SEP2  PIC X(01).
+              10 WS-DATA-INF-DIA   PIC X(02).
+
+           05 WS-DATA-SUP          PIC X(10).
+           05 FILLER REDEFINES WS-DATA-SUP.
+              10 WS-DATA-SUP-ANO   PIC X(04).
+              10 WS-DATA-SUP-SEP1  PIC X(01).
+              10 WS-DATA-SUP-MES   PIC X(02).
+              10 WS-DATA-SUP-SEP2  PIC X(01).
+              10 WS-DATA-SUP-DIA   PIC X(02).
+
+           05 WS-ANO-X             PIC X(04).
+           05 FILLER REDEFINES WS-ANO-X.
+              10 WS-ANO-9          PIC 9(04).
+
+           05 WS-TABELA-DIAS.
+              10 WS-DIAS OCCURS 31 TIMES PIC X.
+              10 WS-APRV OCCURS 31 TIMES PIC X.
+
+           05 WS-DDATA-MIN         PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DDATA-MIN.
+              10 WS-DDATA-MIN-ANO      PIC X(04).
+              10 WS-DDATA-MIN-FILL1    PIC X(01).
+              10 WS-DDATA-MIN-MES      PIC X(02).
+              10 WS-DDATA-MIN-FILL2    PIC X(01).
+              10 WS-DDATA-MIN-DIA      PIC X(02).
+
+           05 WS-DDATA-MAX         PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DDATA-MAX.
+              10 WS-DDATA-MAX-ANO      PIC X(04).
+              10 WS-DDATA-MAX-FILL1    PIC X(01).
+              10 WS-DDATA-MAX-MES      PIC X(02).
+              10 WS-DDATA-MAX-FILL2    PIC X(01).
+              10 WS-DDATA-MAX-DIA      PIC X(02).
+
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+
+           EXEC SQL
+            DECLARE CURART01 CURSOR FOR
+            SELECT DDATA
+                 , CDIASEM
+                 , CTIPOFER
+            FROM ARVT7001
+            WHERE CTIPOFER  = :CON-T
+              AND DDATA    >= :WS-DDATA-MIN
+              AND DDATA    <= :WS-DDATA-MAX
+            ORDER BY DDATA
+           END-EXEC.
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI94604         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV9460-MSG.
+           MOVE COCV9460-ASE               TO COCV9461-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9460-ADE               TO COCV9461-ADE.
+
+           PERFORM 2100-VALIDACOES
+              THRU 2199-VALIDACOES-EXIT
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2150-VAL-SEM-ALT
+                 THRU 2150-VAL-SEM-ALT-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-TRATA-DADOS
+                 THRU 2200-TRATA-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES' TO VIAL0015-CALLER-ID
+              MOVE 'COCV9461-CIDEMP' TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCV9461-CIDEMP  TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *------------------------------------------*
+      *--- LER COT53_PESSOAS com NTRABALHADOR ---*
+      *------------------------------------------*
+           MOVE COCV9461-CIDEMP        TO COCD5303-NTRABALHADOR.
+      *
+           EXEC SQL
+             SELECT NTRABALHADOR
+                  , GNOME
+                  , CEMPRESA
+               INTO :COCD5303-NTRABALHADOR
+                  , :COCD5303-GNOME
+                  , :COCD5303-CEMPRESA
+               FROM COVT5303_PESSOAS
+            WHERE NTRABALHADOR = :COCD5303-NTRABALHADOR
+            FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT5303               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+      *------------------------------------------------*
+      *--- Ler COT54_EMPRESAS de modo a obter CPAIS ---*
+      *------------------------------------------------*
+           MOVE COCD5303-CEMPRESA      TO COCD5403-CEMPRESA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES'   TO VIAL0015-CALLER-ID
+              MOVE 'COCD5303-CEMPRESA' TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCD5303-CEMPRESA  TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+             SELECT CEMPRESA
+                  , CPAIS
+               INTO :COCD5403-CEMPRESA
+                  , :COCD5403-CPAIS
+               FROM COVT5403_EMPRESAS
+            WHERE CEMPRESA = :COCD5403-CEMPRESA
+            FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT5403               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *------------------------------------*
+      *--- Validar se aprovaram em dias ---*
+      *--- diferentes de 4 ou 8         ---*
+      *--- e                            ---*
+      *--- validar se diferente de "A"  ---*
+      *--- ou de "N"                    ---*
+      *------------------------------------*
+
+      *--- C01
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A01      EQUAL CON-A
+           AND ( COCV9460-C01  NOT EQUAL CON-4
+           AND   COCV9460-C01  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A01-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A01-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C01      EQUAL CON-4
+            OR   COCV9460-C01      EQUAL CON-8 )
+           AND ( COCV9460-A01  NOT EQUAL CON-A
+           AND   COCV9460-A01  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A01-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A01-CAPLIC
+           END-IF.
+
+      *--- C02
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A02      EQUAL CON-A
+           AND ( COCV9460-C02  NOT EQUAL CON-4
+           AND   COCV9460-C02  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A02-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A02-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A02-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C02      EQUAL CON-4
+            OR   COCV9460-C02      EQUAL CON-8 )
+           AND ( COCV9460-A02  NOT EQUAL CON-A
+           AND   COCV9460-A02  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A02-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A02-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A02-CAPLIC
+           END-IF.
+
+      *--- C03
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A03      EQUAL CON-A
+           AND ( COCV9460-C03  NOT EQUAL CON-4
+           AND   COCV9460-C03  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A03-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A03-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A03-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C03      EQUAL CON-4
+            OR   COCV9460-C03      EQUAL CON-8 )
+           AND ( COCV9460-A03  NOT EQUAL CON-A
+           AND   COCV9460-A03  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A03-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A03-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A03-CAPLIC
+           END-IF.
+
+      *--- C04
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A04      EQUAL CON-A
+           AND ( COCV9460-C04  NOT EQUAL CON-4
+           AND   COCV9460-C04  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A04-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A04-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A04-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C04      EQUAL CON-4
+            OR   COCV9460-C04      EQUAL CON-8 )
+           AND ( COCV9460-A04  NOT EQUAL CON-A
+           AND   COCV9460-A04  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A04-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A04-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A04-CAPLIC
+           END-IF.
+
+      *--- C05
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A05      EQUAL CON-A
+           AND ( COCV9460-C05  NOT EQUAL CON-4
+           AND   COCV9460-C05  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A05-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A05-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A05-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C05      EQUAL CON-4
+            OR   COCV9460-C05      EQUAL CON-8 )
+           AND ( COCV9460-A05  NOT EQUAL CON-A
+           AND   COCV9460-A05  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A05-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A05-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A05-CAPLIC
+           END-IF.
+
+      *--- C06
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A06      EQUAL CON-A
+           AND ( COCV9460-C06  NOT EQUAL CON-4
+           AND   COCV9460-C06  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A06-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A06-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A06-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C06      EQUAL CON-4
+            OR   COCV9460-C06      EQUAL CON-8 )
+           AND ( COCV9460-A06  NOT EQUAL CON-A
+           AND   COCV9460-A06  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A06-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A06-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A06-CAPLIC
+           END-IF.
+
+      *--- C07
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A07      EQUAL CON-A
+           AND ( COCV9460-C07  NOT EQUAL CON-4
+           AND   COCV9460-C07  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A07-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A07-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A07-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C07      EQUAL CON-4
+            OR   COCV9460-C07      EQUAL CON-8 )
+           AND ( COCV9460-A07  NOT EQUAL CON-A
+           AND   COCV9460-A07  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A07-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A07-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A07-CAPLIC
+           END-IF.
+
+      *--- C08
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A08      EQUAL CON-A
+           AND ( COCV9460-C08  NOT EQUAL CON-4
+           AND   COCV9460-C08  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A08-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A08-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A08-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C08      EQUAL CON-4
+            OR   COCV9460-C08      EQUAL CON-8 )
+           AND ( COCV9460-A08  NOT EQUAL CON-A
+           AND   COCV9460-A08  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A08-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A08-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A08-CAPLIC
+           END-IF.
+
+      *--- C09
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A09      EQUAL CON-A
+           AND ( COCV9460-C09  NOT EQUAL CON-4
+           AND   COCV9460-C09  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A09-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A09-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A09-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C09      EQUAL CON-4
+            OR   COCV9460-C09      EQUAL CON-8 )
+           AND ( COCV9460-A09  NOT EQUAL CON-A
+           AND   COCV9460-A09  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A09-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A09-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A09-CAPLIC
+           END-IF.
+
+      *--- C10
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A10      EQUAL CON-A
+           AND ( COCV9460-C10  NOT EQUAL CON-4
+           AND   COCV9460-C10  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A10-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A10-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A10-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C10      EQUAL CON-4
+            OR   COCV9460-C10      EQUAL CON-8 )
+           AND ( COCV9460-A10  NOT EQUAL CON-A
+           AND   COCV9460-A10  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A10-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A10-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A10-CAPLIC
+           END-IF.
+
+      *--- C11
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A11      EQUAL CON-A
+           AND ( COCV9460-C11  NOT EQUAL CON-4
+           AND   COCV9460-C11  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A11-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A11-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A11-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C11      EQUAL CON-4
+            OR   COCV9460-C11      EQUAL CON-8 )
+           AND ( COCV9460-A11  NOT EQUAL CON-A
+           AND   COCV9460-A11  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A11-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A11-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A11-CAPLIC
+           END-IF.
+
+      *--- C12
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A12      EQUAL CON-A
+           AND ( COCV9460-C12  NOT EQUAL CON-4
+           AND   COCV9460-C12  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A12-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A12-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A12-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C12      EQUAL CON-4
+            OR   COCV9460-C12      EQUAL CON-8 )
+           AND ( COCV9460-A12  NOT EQUAL CON-A
+           AND   COCV9460-A12  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A12-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A12-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A12-CAPLIC
+           END-IF.
+
+      *--- C13
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A13      EQUAL CON-A
+           AND ( COCV9460-C13  NOT EQUAL CON-4
+           AND   COCV9460-C13  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A13-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A13-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A13-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C13      EQUAL CON-4
+            OR   COCV9460-C13      EQUAL CON-8 )
+           AND ( COCV9460-A13  NOT EQUAL CON-A
+           AND   COCV9460-A13  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A13-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A13-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A13-CAPLIC
+           END-IF.
+
+      *--- C14
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A14      EQUAL CON-A
+           AND ( COCV9460-C14  NOT EQUAL CON-4
+           AND   COCV9460-C14  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A14-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A14-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A14-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C14      EQUAL CON-4
+            OR   COCV9460-C14      EQUAL CON-8 )
+           AND ( COCV9460-A14  NOT EQUAL CON-A
+           AND   COCV9460-A14  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A14-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A14-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A14-CAPLIC
+           END-IF.
+
+      *--- C15
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A15      EQUAL CON-A
+           AND ( COCV9460-C15  NOT EQUAL CON-4
+           AND   COCV9460-C15  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A15-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A15-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A15-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C15      EQUAL CON-4
+            OR   COCV9460-C15      EQUAL CON-8 )
+           AND ( COCV9460-A15  NOT EQUAL CON-A
+           AND   COCV9460-A15  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A15-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A15-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A15-CAPLIC
+           END-IF.
+
+      *--- C16
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A16      EQUAL CON-A
+           AND ( COCV9460-C16  NOT EQUAL CON-4
+           AND   COCV9460-C16  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A16-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A16-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A16-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C16      EQUAL CON-4
+            OR   COCV9460-C16      EQUAL CON-8 )
+           AND ( COCV9460-A16  NOT EQUAL CON-A
+           AND   COCV9460-A16  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A16-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A16-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A16-CAPLIC
+           END-IF.
+
+      *--- C17
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A17      EQUAL CON-A
+           AND ( COCV9460-C17  NOT EQUAL CON-4
+           AND   COCV9460-C17  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A17-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A17-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A17-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C17      EQUAL CON-4
+            OR   COCV9460-C17      EQUAL CON-8 )
+           AND ( COCV9460-A17  NOT EQUAL CON-A
+           AND   COCV9460-A17  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A17-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A17-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A17-CAPLIC
+           END-IF.
+
+      *--- C18
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A18      EQUAL CON-A
+           AND ( COCV9460-C18  NOT EQUAL CON-4
+           AND   COCV9460-C18  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A18-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A18-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A18-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C18      EQUAL CON-4
+            OR   COCV9460-C18      EQUAL CON-8 )
+           AND ( COCV9460-A18  NOT EQUAL CON-A
+           AND   COCV9460-A18  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A18-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A18-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A18-CAPLIC
+           END-IF.
+
+      *--- C19
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A19      EQUAL CON-A
+           AND ( COCV9460-C19  NOT EQUAL CON-4
+           AND   COCV9460-C19  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A19-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A19-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A19-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C19      EQUAL CON-4
+            OR   COCV9460-C19      EQUAL CON-8 )
+           AND ( COCV9460-A19  NOT EQUAL CON-A
+           AND   COCV9460-A19  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A19-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A19-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A19-CAPLIC
+           END-IF.
+
+      *--- C20
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A20      EQUAL CON-A
+           AND ( COCV9460-C20  NOT EQUAL CON-4
+           AND   COCV9460-C20  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A20-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A20-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A20-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C20      EQUAL CON-4
+            OR   COCV9460-C20      EQUAL CON-8 )
+           AND ( COCV9460-A20  NOT EQUAL CON-A
+           AND   COCV9460-A20  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A20-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A20-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A20-CAPLIC
+           END-IF.
+
+      *--- C21
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A21      EQUAL CON-A
+           AND ( COCV9460-C21  NOT EQUAL CON-4
+           AND   COCV9460-C21  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A21-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A21-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A21-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C21      EQUAL CON-4
+            OR   COCV9460-C21      EQUAL CON-8 )
+           AND ( COCV9460-A21  NOT EQUAL CON-A
+           AND   COCV9460-A21  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A21-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A21-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A21-CAPLIC
+           END-IF.
+
+      *--- C22
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A22      EQUAL CON-A
+           AND ( COCV9460-C22  NOT EQUAL CON-4
+           AND   COCV9460-C22  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A22-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A22-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A22-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C22      EQUAL CON-4
+            OR   COCV9460-C22      EQUAL CON-8 )
+           AND ( COCV9460-A22  NOT EQUAL CON-A
+           AND   COCV9460-A22  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A22-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A22-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A22-CAPLIC
+           END-IF.
+
+      *--- C23
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A23      EQUAL CON-A
+           AND ( COCV9460-C23  NOT EQUAL CON-4
+           AND   COCV9460-C23  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A23-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A23-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A23-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C23      EQUAL CON-4
+            OR   COCV9460-C23      EQUAL CON-8 )
+           AND ( COCV9460-A23  NOT EQUAL CON-A
+           AND   COCV9460-A23  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A23-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A23-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A23-CAPLIC
+           END-IF.
+
+      *--- C24
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A24      EQUAL CON-A
+           AND ( COCV9460-C24  NOT EQUAL CON-4
+           AND   COCV9460-C24  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A24-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A24-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A24-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C24      EQUAL CON-4
+            OR   COCV9460-C24      EQUAL CON-8 )
+           AND ( COCV9460-A24  NOT EQUAL CON-A
+           AND   COCV9460-A24  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A24-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A24-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A24-CAPLIC
+           END-IF.
+
+      *--- C25
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A25      EQUAL CON-A
+           AND ( COCV9460-C25  NOT EQUAL CON-4
+           AND   COCV9460-C25  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A25-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A25-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A25-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C25      EQUAL CON-4
+            OR   COCV9460-C25      EQUAL CON-8 )
+           AND ( COCV9460-A25  NOT EQUAL CON-A
+           AND   COCV9460-A25  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A25-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A25-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A25-CAPLIC
+           END-IF.
+
+      *--- C26
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A26      EQUAL CON-A
+           AND ( COCV9460-C26  NOT EQUAL CON-4
+           AND   COCV9460-C26  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A26-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A26-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A26-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C26      EQUAL CON-4
+            OR   COCV9460-C26      EQUAL CON-8 )
+           AND ( COCV9460-A26  NOT EQUAL CON-A
+           AND   COCV9460-A26  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A26-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A26-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A26-CAPLIC
+           END-IF.
+
+      *--- C27
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A27      EQUAL CON-A
+           AND ( COCV9460-C27  NOT EQUAL CON-4
+           AND   COCV9460-C27  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A27-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A27-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A27-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C27      EQUAL CON-4
+            OR   COCV9460-C27      EQUAL CON-8 )
+           AND ( COCV9460-A27  NOT EQUAL CON-A
+           AND   COCV9460-A27  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A27-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A27-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A27-CAPLIC
+           END-IF.
+
+      *--- C28
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A28      EQUAL CON-A
+           AND ( COCV9460-C28  NOT EQUAL CON-4
+           AND   COCV9460-C28  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A28-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A28-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A28-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C28      EQUAL CON-4
+            OR   COCV9460-C28      EQUAL CON-8 )
+           AND ( COCV9460-A28  NOT EQUAL CON-A
+           AND   COCV9460-A28  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A28-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A28-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A28-CAPLIC
+           END-IF.
+
+      *--- C29
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A29      EQUAL CON-A
+           AND ( COCV9460-C29  NOT EQUAL CON-4
+           AND   COCV9460-C29  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A29-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A29-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A29-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C29      EQUAL CON-4
+            OR   COCV9460-C29      EQUAL CON-8 )
+           AND ( COCV9460-A29  NOT EQUAL CON-A
+           AND   COCV9460-A29  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A29-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A29-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A29-CAPLIC
+           END-IF.
+
+      *--- C30
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A30      EQUAL CON-A
+           AND ( COCV9460-C30  NOT EQUAL CON-4
+           AND   COCV9460-C30  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A30-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A30-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A30-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C30      EQUAL CON-4
+            OR   COCV9460-C30      EQUAL CON-8 )
+           AND ( COCV9460-A30  NOT EQUAL CON-A
+           AND   COCV9460-A30  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A30-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A30-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A30-CAPLIC
+           END-IF.
+
+      *--- C31
+           IF  VIAL0002-SEM-ERROS
+           AND   COCV9460-A31      EQUAL CON-A
+           AND ( COCV9460-C31  NOT EQUAL CON-4
+           AND   COCV9460-C31  NOT EQUAL CON-8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A31-S
+              MOVE COCK0001-CAMPO-INV-AP TO COCV9461-A31-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A31-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV9460-C31      EQUAL CON-4
+            OR   COCV9460-C31      EQUAL CON-8 )
+           AND ( COCV9460-A31  NOT EQUAL CON-A
+           AND   COCV9460-A31  NOT EQUAL CON-N )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A31-S
+              MOVE COCK0001-CAMPO-INV-A   TO COCV9461-A31-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A31-CAPLIC
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS'   TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0002-IND-ERROS    TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV9461-A01-MSG  '   TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCV9461-A01-MSG      TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCV9461-A02-MSG  '   TO VIAL0015-CAMPO-NM(3)
+              MOVE  COCV9461-A02-MSG      TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2199-VALIDACOES-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2150-VALIDA-SEM-ALTERACOES
+      *--------------------------------------------------------------
+       2150-VAL-SEM-ALT.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2150-VAL-SEM-ALT' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Retira do ecran para a tabela
+           MOVE COCV9461-A01 TO WS-APRV(01).
+           MOVE COCV9461-A02 TO WS-APRV(02).
+           MOVE COCV9461-A03 TO WS-APRV(03).
+           MOVE COCV9461-A04 TO WS-APRV(04).
+           MOVE COCV9461-A05 TO WS-APRV(05).
+           MOVE COCV9461-A06 TO WS-APRV(06).
+           MOVE COCV9461-A07 TO WS-APRV(07).
+           MOVE COCV9461-A08 TO WS-APRV(08).
+           MOVE COCV9461-A09 TO WS-APRV(09).
+           MOVE COCV9461-A10 TO WS-APRV(10).
+           MOVE COCV9461-A11 TO WS-APRV(11).
+           MOVE COCV9461-A12 TO WS-APRV(12).
+           MOVE COCV9461-A13 TO WS-APRV(13).
+           MOVE COCV9461-A14 TO WS-APRV(14).
+           MOVE COCV9461-A15 TO WS-APRV(15).
+           MOVE COCV9461-A16 TO WS-APRV(16).
+           MOVE COCV9461-A17 TO WS-APRV(17).
+           MOVE COCV9461-A18 TO WS-APRV(18).
+           MOVE COCV9461-A19 TO WS-APRV(19).
+           MOVE COCV9461-A20 TO WS-APRV(20).
+           MOVE COCV9461-A21 TO WS-APRV(21).
+           MOVE COCV9461-A22 TO WS-APRV(22).
+           MOVE COCV9461-A23 TO WS-APRV(23).
+           MOVE COCV9461-A24 TO WS-APRV(24).
+           MOVE COCV9461-A25 TO WS-APRV(25).
+           MOVE COCV9461-A26 TO WS-APRV(26).
+           MOVE COCV9461-A27 TO WS-APRV(27).
+           MOVE COCV9461-A28 TO WS-APRV(28).
+           MOVE COCV9461-A29 TO WS-APRV(29).
+           MOVE COCV9461-A30 TO WS-APRV(30).
+           MOVE COCV9461-A31 TO WS-APRV(31).
+
+           MOVE ZEROS TO WS-DIFERENTE.
+           MOVE 1     TO WS-X.
+
+           PERFORM UNTIL WS-X > 31
+                      OR WS-DIFERENTE NOT = ZEROS
+                   MOVE COCV9461-CIDEMP  TO COCD7001-CIDEMP
+                   MOVE COCV9461-CANO    TO WS-DTMESANO-ANO
+                   MOVE COCV9461-CMES    TO WS-DTMESANO-MES
+                   MOVE CON-SEP          TO WS-DTMESANO-SEP1
+                   MOVE CON-SEP          TO WS-DTMESANO-SEP2
+                   MOVE WS-X             TO WS-DTMESANO-DIA
+                   MOVE WS-DTMESANO      TO COCD7001-DFERIAS
+
+                   EXEC SQL
+                     SELECT CIDEMP
+                          , DFERIAS
+                          , CSITU
+                      INTO  :COCD7001-CIDEMP
+                          , :COCD7001-DFERIAS
+                          , :COCD7001-CSITU
+                      FROM COVT7001
+                     WHERE CIDEMP   = :COCD7001-CIDEMP
+                     AND   DFERIAS  = :COCD7001-DFERIAS
+                   END-EXEC
+
+                   MOVE CON-COVT7001
+                     TO VIAL0002-TABLE-NAME
+
+                   PERFORM 9020-DB2CHECK
+                      THRU 9029-DB2CHECK-EXIT
+
+                   IF VIAL0002-SEM-ERROS
+                      IF DB2-OK
+                         IF COCD7001-CSITU NOT = WS-APRV(WS-X)
+                            MOVE 1 TO WS-DIFERENTE
+                         END-IF
+                      END-IF
+                   END-IF
+
+                   ADD 1 TO WS-X
+           END-PERFORM.
+
+           IF WS-DIFERENTE = ZEROS
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9461-A01-S
+              MOVE COCK0001-SEM-ALTERACAO TO COCV9461-A01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9461-A01-CAPLIC
+           END-IF.
+
+       2150-VAL-SEM-ALT-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2200-TRATA-DADOS
+      *--------------------------------------------------------------
+       2200-TRATA-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-TRATA-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2900-PROCESSA THRU 2900-PROCESSA-EXIT
+           END-IF.
+
+       2200-TRATA-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2900-PROCESSA
+      *--------------------------------------------------------------
+       2900-PROCESSA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2900-PROCESSA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Retira do écran e coloca na tabela
+           MOVE COCV9461-C01 TO WS-DIAS(01).
+           MOVE COCV9461-C02 TO WS-DIAS(02).
+           MOVE COCV9461-C03 TO WS-DIAS(03).
+           MOVE COCV9461-C04 TO WS-DIAS(04).
+           MOVE COCV9461-C05 TO WS-DIAS(05).
+           MOVE COCV9461-C06 TO WS-DIAS(06).
+           MOVE COCV9461-C07 TO WS-DIAS(07).
+           MOVE COCV9461-C08 TO WS-DIAS(08).
+           MOVE COCV9461-C09 TO WS-DIAS(09).
+           MOVE COCV9461-C10 TO WS-DIAS(10).
+           MOVE COCV9461-C11 TO WS-DIAS(11).
+           MOVE COCV9461-C12 TO WS-DIAS(12).
+           MOVE COCV9461-C13 TO WS-DIAS(13).
+           MOVE COCV9461-C14 TO WS-DIAS(14).
+           MOVE COCV9461-C15 TO WS-DIAS(15).
+           MOVE COCV9461-C16 TO WS-DIAS(16).
+           MOVE COCV9461-C17 TO WS-DIAS(17).
+           MOVE COCV9461-C18 TO WS-DIAS(18).
+           MOVE COCV9461-C19 TO WS-DIAS(19).
+           MOVE COCV9461-C20 TO WS-DIAS(20).
+           MOVE COCV9461-C21 TO WS-DIAS(21).
+           MOVE COCV9461-C22 TO WS-DIAS(22).
+           MOVE COCV9461-C23 TO WS-DIAS(23).
+           MOVE COCV9461-C24 TO WS-DIAS(24).
+           MOVE COCV9461-C25 TO WS-DIAS(25).
+           MOVE COCV9461-C26 TO WS-DIAS(26).
+           MOVE COCV9461-C27 TO WS-DIAS(27).
+           MOVE COCV9461-C28 TO WS-DIAS(28).
+           MOVE COCV9461-C29 TO WS-DIAS(29).
+           MOVE COCV9461-C30 TO WS-DIAS(30).
+           MOVE COCV9461-C31 TO WS-DIAS(31).
+
+           MOVE COCV9461-A01 TO WS-APRV(01).
+           MOVE COCV9461-A02 TO WS-APRV(02).
+           MOVE COCV9461-A03 TO WS-APRV(03).
+           MOVE COCV9461-A04 TO WS-APRV(04).
+           MOVE COCV9461-A05 TO WS-APRV(05).
+           MOVE COCV9461-A06 TO WS-APRV(06).
+           MOVE COCV9461-A07 TO WS-APRV(07).
+           MOVE COCV9461-A08 TO WS-APRV(08).
+           MOVE COCV9461-A09 TO WS-APRV(09).
+           MOVE COCV9461-A10 TO WS-APRV(10).
+           MOVE COCV9461-A11 TO WS-APRV(11).
+           MOVE COCV9461-A12 TO WS-APRV(12).
+           MOVE COCV9461-A13 TO WS-APRV(13).
+           MOVE COCV9461-A14 TO WS-APRV(14).
+           MOVE COCV9461-A15 TO WS-APRV(15).
+           MOVE COCV9461-A16 TO WS-APRV(16).
+           MOVE COCV9461-A17 TO WS-APRV(17).
+           MOVE COCV9461-A18 TO WS-APRV(18).
+           MOVE COCV9461-A19 TO WS-APRV(19).
+           MOVE COCV9461-A20 TO WS-APRV(20).
+           MOVE COCV9461-A21 TO WS-APRV(21).
+           MOVE COCV9461-A22 TO WS-APRV(22).
+           MOVE COCV9461-A23 TO WS-APRV(23).
+           MOVE COCV9461-A24 TO WS-APRV(24).
+           MOVE COCV9461-A25 TO WS-APRV(25).
+           MOVE COCV9461-A26 TO WS-APRV(26).
+           MOVE COCV9461-A27 TO WS-APRV(27).
+           MOVE COCV9461-A28 TO WS-APRV(28).
+           MOVE COCV9461-A29 TO WS-APRV(29).
+           MOVE COCV9461-A30 TO WS-APRV(30).
+           MOVE COCV9461-A31 TO WS-APRV(31).
+      *--- Actualiza para todos os que sejam 8 ou 4
+           MOVE 1 TO WS-X.
+           MOVE ZEROS TO WS-NUM-DIAS.
+
+           PERFORM UNTIL WS-X > 31
+                   IF WS-DIAS(WS-X) = CON-8
+                   OR WS-DIAS(WS-X) = CON-4
+      *-------------- Conta dias deste Ano / Mês
+                      IF WS-DIAS(WS-X) = CON-8
+                         COMPUTE WS-NUM-DIAS = WS-NUM-DIAS + 1
+                      END-IF
+
+                      IF WS-DIAS(WS-X) = CON-4
+                         COMPUTE WS-NUM-DIAS = WS-NUM-DIAS + 0.5
+                      END-IF
+                      MOVE WS-NUM-DIAS TO COCV9461-NUMDIAS
+      *-------------- Actualiza registo
+                       MOVE COCV9461-CIDEMP  TO COCD7001-CIDEMP
+                       MOVE COCV9461-CANO    TO WS-DTMESANO-ANO
+                       MOVE COCV9461-CMES    TO WS-DTMESANO-MES
+                       MOVE CON-SEP          TO WS-DTMESANO-SEP1
+                       MOVE CON-SEP          TO WS-DTMESANO-SEP2
+                       MOVE WS-X             TO WS-DTMESANO-DIA
+                       MOVE WS-DTMESANO      TO COCD7001-DFERIAS
+
+                       IF WS-APRV(WS-X) = CON-N
+                          MOVE CON-N         TO COCD7001-CSITU
+                          MOVE SPACES        TO COCD7001-CUSERAPR
+                          MOVE COCK0002-DATA-MIN
+                                             TO COCD7001-DDTAPR
+                       ELSE
+                          MOVE CON-A         TO COCD7001-CSITU
+                          MOVE VIAL0001-CUTILIZA-I
+                                              TO COCD7001-CUSERAPR
+                          MOVE VIAL0001-DATA-PROCESSO-I
+                                             TO COCD7001-DDTAPR
+                       END-IF
+
+                       MOVE VIAL0001-CUTILIZA-I TO COCD7001-CUSERID
+
+                       IF VIAL0002-SEM-ERROS
+                          PERFORM 2950-UPDATE
+                             THRU 2950-UPDATE-EXIT
+                       END-IF
+                   END-IF
+                   ADD 1 TO WS-X
+           END-PERFORM.
+
+      *--- Preenche campos acumulados dias ferias Ano e
+      *--- dias ferias Ano aprovados
+           PERFORM 2960-CALCULA-ACM
+              THRU 2960-CALCULA-ACM-EXIT.
+
+       2900-PROCESSA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2950-UPDATE
+      *--------------------------------------------------------------
+       2950-UPDATE.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2950-UPDATE     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+            UPDATE COVT7001
+
+            SET CSITU     = :COCD7001-CSITU
+              , CUSERAPR  = :COCD7001-CUSERAPR
+              , DDTAPR    = :COCD7001-DDTAPR
+              , CUSERID   = :COCD7001-CUSERID
+              , HTIMEST   = CURRENT TIMESTAMP
+
+            WHERE CIDEMP  = :COCD7001-CIDEMP
+              AND DFERIAS = :COCD7001-DFERIAS
+           END-EXEC.
+
+           MOVE CON-COVT7001 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF DB2-OK
+              CONTINUE
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2950-UPDATE-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2960-CALCULA-ACM
+      *--------------------------------------------------------------
+       2960-CALCULA-ACM.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2960-CALCULA-ACM' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Obtém crédito de férias
+      *--- Obtém Total de dias de férias de todos os anos
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2121-CREDITOS
+                 THRU 2121-CREDITOS-EXIT
+           END-IF.
+
+      *--- Preenche campos acumulados dias ferias Ano e
+      *--- dias ferias Ano aprovados
+           MOVE ZEROS             TO WS-NUM-DIAS-ANO.
+           MOVE ZEROS             TO WS-NUM-DIAS-APR.
+           MOVE COCV9460-CIDEMP   TO COCD7001-CIDEMP.
+           MOVE COCV9460-CANO     TO WS-DATA-INF-ANO.
+           MOVE CON-01            TO WS-DATA-INF-MES.
+           MOVE CON-01            TO WS-DATA-INF-DIA.
+           MOVE CON-SEP           TO WS-DATA-INF-SEP1.
+           MOVE CON-SEP           TO WS-DATA-INF-SEP2.
+           MOVE COCV9460-CANO     TO WS-DATA-SUP-ANO.
+           MOVE CON-12            TO WS-DATA-SUP-MES.
+           MOVE CON-31            TO WS-DATA-SUP-DIA.
+           MOVE CON-SEP           TO WS-DATA-SUP-SEP1.
+           MOVE CON-SEP           TO WS-DATA-SUP-SEP2.
+
+           EXEC SQL
+                SELECT CIDEMP, IFNULL(SUM(ZHORAS), 0)
+                 INTO  :COCD7001-CIDEMP
+                    ,  :WS-HORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 AND   DFERIAS >= :WS-DATA-INF
+                 AND   DFERIAS <= :WS-DATA-SUP
+                 GROUP BY CIDEMP
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NUM-DIAS-ANO = WS-HORAS / 8
+                 MOVE WS-NUM-DIAS-ANO TO COCV9461-NUMDIASANO
+              END-IF
+           END-IF.
+
+           EXEC SQL
+                SELECT CIDEMP, IFNULL(SUM(ZHORAS), 0)
+                 INTO  :COCD7001-CIDEMP
+                    ,  :WS-HORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 AND   DFERIAS >= :WS-DATA-INF
+                 AND   DFERIAS <= :WS-DATA-SUP
+                 AND   CSITU    = :CON-A
+                 GROUP BY CIDEMP
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NUM-DIAS-APR = WS-HORAS / 8
+                 MOVE WS-NUM-DIAS-APR TO COCV9461-NUMDIASAPR
+              END-IF
+           END-IF.
+
+       2960-CALCULA-ACM-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *            2121-CREDITOS
+      *--------------------------------------------------------------
+       2121-CREDITOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2121-CREDITOS      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Obtém crédito de férias
+           MOVE COCV9460-CIDEMP   TO COCD7101-CIDEMP.
+           MOVE COCV9460-CANO     TO COCD7101-CANO.
+
+           EXEC SQL
+                SELECT IFNULL(SUM(NDIAS), 0)
+                 INTO
+                       :WS-SUM-NDIAS
+                 FROM COVT7101
+                 WHERE CIDEMP   = :COCD7101-CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7101
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 CONTINUE
+              ELSE
+                 MOVE ZEROS TO WS-SUM-NDIAS
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             PERFORM 2121-DIAS-REGUL
+                THRU 2121-DIAS-REGUL-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             PERFORM 2121-DEBITOS
+                THRU 2121-DEBITOS-EXIT
+           END-IF.
+
+       2121-CREDITOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2121-DIAS-REGUL
+      *--------------------------------------------------------------
+       2121-DIAS-REGUL.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2121-DIAS-REGUL' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *--- Obtém crédito adicionais ou dias a regularizar
+           EXEC SQL
+                SELECT IFNULL(SUM(NDIASREG), 0)
+                 INTO  :WS-SUM-NDIASREG
+                 FROM COVT7101
+                 WHERE CIDEMP   = :COCD7101-CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7101
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+             IF DB2-OK
+               COMPUTE WS-SUM-NDIAS =
+                       WS-SUM-NDIAS + WS-SUM-NDIASREG
+             ELSE
+               MOVE ZEROS TO WS-SUM-NDIASREG
+             END-IF
+           END-IF.
+      *
+       2121-DIAS-REGUL-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2121-DEBITOS
+      *--------------------------------------------------------------
+       2121-DEBITOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2121-DEBITOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+
+      *--- Obtem todos os dias de férias de todos os anos
+           MOVE ZEROS             TO WS-NUM-DIAS-TOT.
+           MOVE COCV9460-CIDEMP   TO COCD7001-CIDEMP.
+
+           EXEC SQL
+                SELECT CIDEMP, IFNULL(SUM(ZHORAS), 0)
+                 INTO  :COCD7001-CIDEMP
+                    ,  :WS-HORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 GROUP BY CIDEMP
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NUM-DIAS-TOT = WS-HORAS / 8
+              END-IF
+           END-IF.
+
+      *--- Ver se existe algum dia de férias marcado numa tolerância.
+      *--- Se existir, não conta como férias, somando ao saldo.
+           MOVE ZEROS             TO WS-NUM-DIAS-TOL.
+           MOVE ZEROS             TO WS-NUM-DIAS-TOLA.
+           MOVE ZEROS             TO WS-NUM-DIAS-TOLM.
+
+           PERFORM 2125-VERIFICA-TOL
+              THRU 2125-VERIFICA-TOL-EXIT.
+
+      *--- Preenche campo saldo de férias
+           IF VIAL0002-SEM-ERROS
+              COMPUTE COCV9461-SALDOFER = WS-SUM-NDIAS
+                                        - WS-NUM-DIAS-TOT
+           END-IF.
+
+       2121-DEBITOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2125-VERIFICA-TOL
+      *--------------------------------------------------------------
+       2125-VERIFICA-TOL.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2125-VERIFICA-TOL' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2026-OPEN
+                 THRU 2026-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2027-FETCH
+                 THRU 2027-FETCH-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF DB2-OK
+                PERFORM 2028-CONTINUA
+                   THRU 2028-CONTINUA-EXIT
+           END-IF.
+
+           PERFORM 2029-CLOSE
+              THRU 2029-CLOSE-EXIT.
+
+       2125-VERIFICA-TOL-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2026-OPEN
+      *--------------------------------------------------------------
+       2026-OPEN.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2026-OPEN' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV9460-CANO       TO WS-DDATA-MIN-ANO.
+           MOVE CON-SEP             TO WS-DDATA-MIN-FILL1.
+           MOVE CON-01              TO WS-DDATA-MIN-MES.
+           MOVE CON-SEP             TO WS-DDATA-MIN-FILL2.
+           MOVE CON-01              TO WS-DDATA-MIN-DIA.
+
+           MOVE COCV9460-CANO       TO WS-DDATA-MAX-ANO.
+           MOVE CON-SEP             TO WS-DDATA-MAX-FILL1.
+           MOVE CON-12              TO WS-DDATA-MAX-MES.
+           MOVE CON-SEP             TO WS-DDATA-MAX-FILL2.
+           MOVE CON-31              TO WS-DDATA-MAX-DIA.
+
+           EXEC SQL
+             OPEN CURART01
+           END-EXEC.
+      *
+           MOVE CON-ARVT7001               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+       2026-OPEN-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2027-FETCH
+      *--------------------------------------------------------------
+       2027-FETCH.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2027-FETCH' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+              FETCH CURART01
+              INTO  :ARCD7001-DDATA
+                  , :ARCD7001-CDIASEM
+                  , :ARCD7001-CTIPOFER
+           END-EXEC.
+      *
+           MOVE CON-COVT7001               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+       2027-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2028-CONTINUA
+      *--------------------------------------------------------------
+       2028-CONTINUA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2028-CONTINUA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           PERFORM 2030-TRATA-OCCURS
+              THRU 2030-TRATA-OCCURS-EXIT
+             UNTIL NOT DB2-OK
+                OR NOT VIAL0002-SEM-ERROS.
+      *
+       2028-CONTINUA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2030-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2030-TRATA-OCCURS.
+      *
+           IF VIAL0001-DEBUG-SIM
+             MOVE '2030-TRATA-OCCURS'          TO VIAL0015-CALLER-ID
+             PERFORM VIAP0016-TRATA-DEBUG
+                THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Verifica se existe registo no COT70 para o mesmo dia da
+      *--- tolerancia que foi lida no ART70.
+           MOVE COCV9460-CIDEMP   TO COCD7001-CIDEMP.
+           MOVE ARCD7001-DDATA    TO COCD7001-DFERIAS.
+
+           EXEC SQL
+                SELECT CIDEMP
+                     , DFERIAS
+                     , CSITU
+                 INTO  :COCD7001-CIDEMP
+                    ,  :COCD7001-DFERIAS
+                    ,  :COCD7001-CSITU
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                   AND DFERIAS  = :COCD7001-DFERIAS
+                 FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF COCD7001-CSITU = CON-APROVADAS
+                   COMPUTE WS-NUM-DIAS-TOLA = WS-NUM-DIAS-TOLA + 1
+                 ELSE
+                   COMPUTE WS-NUM-DIAS-TOLM = WS-NUM-DIAS-TOLM + 1
+                 END-IF
+              END-IF
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+             PERFORM 2027-FETCH
+                THRU 2027-FETCH-EXIT
+           END-IF.
+      *
+       2030-TRATA-OCCURS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2029-CLOSE
+      *--------------------------------------------------------------
+       2029-CLOSE.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2029-CLOSE' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+               CLOSE CURART01
+           END-EXEC.
+      *
+       2029-CLOSE-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9461-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV9461-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV9461-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP1000.
+           COPY VIATP300.
+           COPY VIAP0010.
+           COPY VIAP0016.
+           COPY TGCP2000.
+           COPY EXCP0200.

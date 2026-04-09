@@ -1,0 +1,457 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI95201.
+      ******************************************************************
+      *     PROGRAMA COI95201.                                         *
+      *                                                                *
+      *     Lista de Contas                                            *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI95201         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV9520.
+       COPY COCV9521.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY TGCL1000.
+       COPY TGCL2000.
+       COPY TGCK0002.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME            PIC X(08) VALUE 'COI95201'.
+
+           05 CON-CTABELA-CIDEMP    PIC X(05) VALUE 'CO510'.
+           05 CON-CTABELA-PROJECTO   PIC X(05) VALUE 'CO001'.
+           05 CON-CTABELA-BACTIVE    PIC X(05) VALUE 'CO152'.
+
+           05 CON-CTABELA-PAIS       PIC X(05) VALUE 'AR047'.
+           05 CON-CTABELA-D-DCIDEMP PIC X(05) VALUE 'CO510'.
+           05 CON-CTABELA-D-PROJECTO PIC X(05) VALUE 'CO001'.
+           05 CON-CTABELA-D-BACTIVE  PIC X(05) VALUE 'CO152'.
+           05 CON-CTABELA-D-CMOEDA   PIC X(05) VALUE 'AR041'.
+           05 CON-CTABELA-D-PAIS     PIC X(05) VALUE 'AR047'.
+           05 CON-CTABELA-D-LINHANEG PIC X(05) VALUE 'CO702'.
+           05 CON-CTABELA-D-TIPONEG  PIC X(05) VALUE 'CO703'.
+           05 CON-CTABELA-D-RESPONS  PIC X(05) VALUE 'CO507'.
+
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-CTABELA                   PIC X(05) VALUE SPACES.
+           05 WS-CCOD                      PIC X(40) VALUE SPACES.
+           05 WS-C2COD                     PIC X(40) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI95201         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+
+           IF VIAL0001-DEBUG-SIM
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV9520-MSG.
+           MOVE VIAL0001-MENSAGEM-OUTPUT   TO COCV9521-MSG.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+
+           IF VIAL0001-DEBUG-SIM
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-DESC-CAMPOS
+                 THRU 2100-DESC-CAMPOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-DESC-CAMPOS
+      *--------------------------------------------------------------
+       2100-DESC-CAMPOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-DESC-CAMPOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9521-CIDEMP      NOT EQUAL SPACES
+           AND COCV9521-XDESCCIDEMP     EQUAL SPACES
+
+              MOVE CON-CTABELA-CIDEMP  TO WS-CTABELA
+              MOVE COCV9521-CIDEMP     TO WS-CCOD
+              MOVE SPACES               TO WS-C2COD
+
+              PERFORM 2300-VAL-TAB-OUTRA
+                 THRU 2300-VAL-TAB-OUTRA-EXIT
+
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL1000-GDESC TO COCV9521-XDESCCIDEMP
+   RRM*       END-IF
+   RRM*    END-IF.
+
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-NIDPROJECTO  NOT EQUAL SPACES
+   RRM*    AND COCV9521-XDESCNIDPROJECTO EQUAL SPACES
+   RRM*
+   RRM*       MOVE CON-CTABELA-PROJECTO TO WS-CTABELA
+   RRM*       MOVE COCV9521-NIDPROJECTO TO WS-CCOD
+   RRM*       MOVE SPACES               TO WS-C2COD
+   RRM*       MOVE COCV9521-CIDEMP     TO WS-C2COD
+   RRM*
+   RRM*       PERFORM 2300-VAL-TAB-OUTRA
+   RRM*          THRU 2300-VAL-TAB-OUTRA-EXIT
+   RRM*
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL1000-GDESC TO COCV9521-XDESCNIDPROJECTO
+   RRM*       END-IF
+   RRM*    END-IF.
+
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-BACTIVE      NOT EQUAL SPACES
+   RRM*    AND COCV9521-XDESCBACTIVE     EQUAL SPACES
+   RRM*
+   RRM*       MOVE CON-CTABELA-BACTIVE  TO WS-CTABELA
+   RRM*       MOVE COCV9521-BACTIVE     TO WS-CCOD
+   RRM*       MOVE SPACES               TO WS-C2COD
+
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL2000-GDESC TO COCV9521-XDESCBACTIVE
+   RRM*       END-IF
+   RRM*    END-IF.
+
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-PAIS         NOT EQUAL SPACES
+   RRM*    AND COCV9521-XDESCPAIS        EQUAL SPACES
+   RRM*
+   RRM*       MOVE CON-CTABELA-PAIS     TO WS-CTABELA
+   RRM*       MOVE COCV9521-PAIS        TO WS-CCOD
+   RRM*       MOVE SPACES               TO WS-C2COD
+
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL2000-GDESC TO COCV9521-XDESCPAIS
+   RRM*       END-IF
+   RRM*    END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              MOVE ZEROS TO COCV9521-INDICE
+              PERFORM 2400-DESC-OCCURS
+                 THRU 2400-DESC-OCCURS-EXIT
+                UNTIL COCV9521-PAGINA-CHEIA
+                   OR COCV9521-INDICE >= VIAL0001-OCORRENCIAS
+           END-IF.
+
+       2100-DESC-CAMPOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-VAL-TAB-ART05
+      *--------------------------------------------------------------
+       2200-VAL-TAB-ART05.
+
+           INITIALIZE TGCL2000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL2000-CTABELA
+           MOVE WS-CCOD                   TO TGCL2000-CCOD
+           MOVE WS-C2COD                  TO TGCL2000-C2COD
+
+           PERFORM CALL-TGCP2000
+              THRU CALL-TGCP2000-EXIT.
+
+       2200-VAL-TAB-ART05-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2300-VAL-TAB-OUTRA
+      *--------------------------------------------------------------
+       2300-VAL-TAB-OUTRA.
+
+           INITIALIZE TGCL1000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL1000-CTABELA
+           MOVE WS-CCOD                   TO TGCL1000-CCOD
+           MOVE WS-C2COD                  TO TGCL1000-C2COD
+
+           PERFORM CALL-TGCP1000
+              THRU CALL-TGCP1000-EXIT.
+
+       2300-VAL-TAB-OUTRA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2400-DESC-OCCURS
+      *--------------------------------------------------------------
+       2400-DESC-OCCURS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2400-DESC-OCCURS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           ADD 1  TO COCV9521-INDICE.
+
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-D-CIDEMP(COCV9521-INDICE) NOT EQUAL SPACES
+   RRM*       MOVE CON-CTABELA-D-DCIDEMP              TO WS-CTABELA
+   RRM*       MOVE COCV9521-D-CIDEMP(COCV9521-INDICE) TO WS-CCOD
+   RRM*       MOVE SPACES                              TO WS-C2COD
+
+              PERFORM 2300-VAL-TAB-OUTRA
+                 THRU 2300-VAL-TAB-OUTRA-EXIT
+
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL1000-GDESC
+   RRM*            TO COCV9521-XDESCD-CIDEMP(COCV9521-INDICE)
+   RRM*       ELSE
+   RRM*          MOVE SPACES
+   RRM*          TO COCV9521-XDESCD-CIDEMP(COCV9521-INDICE)
+   RRM*          IF VIAL0002-ERROS-FUNCAO
+   RRM*              SET VIAL0002-SEM-ERROS     TO TRUE
+   RRM*          END-IF
+   RRM*       END-IF
+   RRM*    END-IF.
+   RRM*
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-D-NIDPROJECTO(COCV9521-INDICE) NOT EQUAL SPACES
+   RRM*       MOVE CON-CTABELA-D-PROJECTO                  TO WS-CTABELA
+   RRM*       MOVE COCV9521-D-NIDPROJECTO(COCV9521-INDICE) TO WS-CCOD
+   RRM*       MOVE SPACES                                  TO WS-C2COD
+   RRM*       MOVE COCV9521-CIDEMP                        TO WS-C2COD
+   RRM*
+   RRM*       PERFORM 2300-VAL-TAB-OUTRA
+   RRM*          THRU 2300-VAL-TAB-OUTRA-EXIT
+   RRM*
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL1000-GDESC
+   RRM*            TO COCV9521-XDESCD-NIDPROJECTO(COCV9521-INDICE)
+   RRM*       ELSE
+   RRM*          MOVE SPACES
+   RRM*          TO COCV9521-XDESCD-NIDPROJECTO(COCV9521-INDICE)
+   RRM*          IF VIAL0002-ERROS-FUNCAO
+   RRM*              SET VIAL0002-SEM-ERROS     TO TRUE
+   RRM*          END-IF
+   RRM*       END-IF
+   RRM*    END-IF.
+
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-D-BACTIVE(COCV9521-INDICE) NOT EQUAL SPACES
+   RRM*       MOVE CON-CTABELA-D-BACTIVE               TO WS-CTABELA
+   RRM*       MOVE COCV9521-D-BACTIVE(COCV9521-INDICE) TO WS-CCOD
+   RRM*       MOVE SPACES                              TO WS-C2COD
+
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL2000-GDESC
+   RRM*            TO COCV9521-XDESCD-BACTIVE(COCV9521-INDICE)
+   RRM*       ELSE
+   RRM*          MOVE SPACES
+   RRM*          TO COCV9521-XDESCD-BACTIVE(COCV9521-INDICE)
+   RRM*          IF VIAL0002-ERROS-FUNCAO
+   RRM*              SET VIAL0002-SEM-ERROS     TO TRUE
+   RRM*          END-IF
+   RRM*       END-IF
+   RRM*    END-IF.
+   RRM*
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-D-CMOEDA(COCV9521-INDICE) NOT EQUAL SPACES
+   RRM*       MOVE CON-CTABELA-D-CMOEDA               TO WS-CTABELA
+   RRM*       MOVE COCV9521-D-CMOEDA(COCV9521-INDICE) TO WS-CCOD
+   RRM*       MOVE SPACES                             TO WS-C2COD
+
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL2000-GDESC
+   RRM*            TO COCV9521-XDESCD-CMOEDA(COCV9521-INDICE)
+   RRM*       ELSE
+   RRM*          MOVE SPACES
+   RRM*          TO COCV9521-XDESCD-CMOEDA(COCV9521-INDICE)
+   RRM*          IF VIAL0002-ERROS-FUNCAO
+   RRM*              SET VIAL0002-SEM-ERROS     TO TRUE
+   RRM*          END-IF
+   RRM*       END-IF
+   RRM*    END-IF.
+
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-D-PAIS(COCV9521-INDICE) NOT EQUAL SPACES
+   RRM*       MOVE CON-CTABELA-D-PAIS               TO WS-CTABELA
+   RRM*       MOVE COCV9521-D-PAIS(COCV9521-INDICE) TO WS-CCOD
+   RRM*       MOVE SPACES                           TO WS-C2COD
+
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL2000-GDESC
+   RRM*            TO COCV9521-XDESCD-PAIS(COCV9521-INDICE)
+   RRM*       ELSE
+   RRM*          MOVE SPACES
+   RRM*          TO COCV9521-XDESCD-PAIS(COCV9521-INDICE)
+   RRM*          IF VIAL0002-ERROS-FUNCAO
+   RRM*              SET VIAL0002-SEM-ERROS     TO TRUE
+   RRM*          END-IF
+   RRM*       END-IF
+   RRM*    END-IF.
+
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-D-LINHANEG(COCV9521-INDICE) NOT EQUAL SPACES
+   RRM*       MOVE CON-CTABELA-D-LINHANEG               TO WS-CTABELA
+   RRM*       MOVE COCV9521-D-LINHANEG(COCV9521-INDICE) TO WS-CCOD
+   RRM*       MOVE SPACES                               TO WS-C2COD
+
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL2000-GDESC
+   RRM*            TO COCV9521-XDESCD-LINHANEG(COCV9521-INDICE)
+   RRM*       ELSE
+   RRM*          MOVE SPACES
+   RRM*          TO COCV9521-XDESCD-LINHANEG(COCV9521-INDICE)
+   RRM*          IF VIAL0002-ERROS-FUNCAO
+   RRM*              SET VIAL0002-SEM-ERROS     TO TRUE
+   RRM*          END-IF
+   RRM*       END-IF
+   RRM*    END-IF.
+   RRM*
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-D-TIPONEG(COCV9521-INDICE) NOT EQUAL SPACES
+   RRM*       MOVE CON-CTABELA-D-TIPONEG                TO WS-CTABELA
+   RRM*       MOVE COCV9521-D-TIPONEG(COCV9521-INDICE)  TO WS-CCOD
+   RRM*       MOVE COCV9521-D-LINHANEG(COCV9521-INDICE) TO WS-C2COD
+   RRM*
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+   RRM*
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL2000-GDESC
+   RRM*            TO COCV9521-XDESCD-TIPONEG(COCV9521-INDICE)
+   RRM*       ELSE
+   RRM*          MOVE SPACES
+   RRM*          TO COCV9521-XDESCD-TIPONEG(COCV9521-INDICE)
+   RRM*          IF VIAL0002-ERROS-FUNCAO
+   RRM*              SET VIAL0002-SEM-ERROS     TO TRUE
+   RRM*          END-IF
+   RRM*       END-IF
+   RRM*    END-IF.
+
+   RRM*    IF  VIAL0002-SEM-ERROS
+   RRM*    AND COCV9521-D-RESPONS(COCV9521-INDICE) NOT EQUAL SPACES
+   RRM*       MOVE CON-CTABELA-D-RESPONS               TO WS-CTABELA
+   RRM*       MOVE COCV9521-D-RESPONS(COCV9521-INDICE) TO WS-CCOD
+   RRM*       MOVE SPACES                              TO WS-C2COD
+   RRM*
+              PERFORM 2300-VAL-TAB-OUTRA
+                 THRU 2300-VAL-TAB-OUTRA-EXIT.
+
+   RRM*       IF VIAL0002-SEM-ERROS
+   RRM*          MOVE TGCL1000-GDESC
+   RRM*            TO COCV9521-XDESCD-RESPONS(COCV9521-INDICE)
+   RRM*       ELSE
+   RRM*          MOVE SPACES
+   RRM*          TO COCV9521-XDESCD-RESPONS(COCV9521-INDICE)
+   RRM*          IF VIAL0002-ERROS-FUNCAO
+   RRM*              SET VIAL0002-SEM-ERROS     TO TRUE
+   RRM*          END-IF
+   RRM*       END-IF
+   RRM*    END-IF.
+
+       2400-DESC-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              MOVE 'COCV9521-MSG' TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCV9521-MSG  TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9521-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV9520-MSG               TO VIAL0001-MENSAGEM-INPUT.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
+           COPY TGCP1000.
+           COPY TGCP2000.

@@ -1,0 +1,4227 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI94204.
+      ******************************************************************
+      *     PROGRAMA COI94204.                                         *
+      *                                                                *
+      *      Marcação de Férias
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI94204         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD5303 END-EXEC.
+           EXEC SQL INCLUDE COCD5403 END-EXEC.
+           EXEC SQL INCLUDE COCD7001 END-EXEC.
+           EXEC SQL INCLUDE COCD7100 END-EXEC.
+           EXEC SQL INCLUDE ARCD7001 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+       01 WS-SQL-AUXILIARY.
+         05 IND-NULL                       PIC S9(04) BINARY.
+
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV9420.
+       COPY COCV9421.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY AQCW0005.
+       COPY VIAL1000.
+       COPY VIATW300.
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY TGCL2000.
+       COPY EXCL0200.
+       COPY ETCL0002.
+       COPY EXCK0002.
+       COPY ETCK0001.
+       COPY ETCK0002.
+       COPY COCL0030.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT7001  PIC X(08) VALUE 'COVT7001'.
+           05 CON-COVT7100  PIC X(08) VALUE 'COVT7100'.
+           05 CON-COVT5303  PIC X(08) VALUE 'COVT5303'.
+           05 CON-COVT5403  PIC X(08) VALUE 'COVT5403'.
+           05 CON-ARVT7001  PIC X(08) VALUE 'ARVT7001'.
+           05 CON-APROVADAS PIC X(01) VALUE 'A'.
+           05 CON-DATA-MIN  PIC X(10) VALUE '0001-01-01'.
+           05 CON-4         PIC X(01) VALUE '4'.
+           05 CON-8         PIC X(01) VALUE '8'.
+           05 CON-4-9       PIC 9(01) VALUE 4.
+           05 CON-8-9       PIC 9(01) VALUE 8.
+           05 CON-01        PIC X(02) VALUE '01'.
+           05 CON-02        PIC X(02) VALUE '02'.
+           05 CON-03        PIC X(02) VALUE '03'.
+           05 CON-04        PIC X(02) VALUE '04'.
+           05 CON-05        PIC X(02) VALUE '05'.
+           05 CON-06        PIC X(02) VALUE '06'.
+           05 CON-07        PIC X(02) VALUE '07'.
+           05 CON-08        PIC X(02) VALUE '08'.
+           05 CON-09        PIC X(02) VALUE '09'.
+           05 CON-10        PIC X(02) VALUE '10'.
+           05 CON-11        PIC X(02) VALUE '11'.
+           05 CON-12        PIC X(02) VALUE '12'.
+           05 CON-13        PIC X(02) VALUE '13'.
+           05 CON-14        PIC X(02) VALUE '14'.
+           05 CON-15        PIC X(02) VALUE '15'.
+           05 CON-16        PIC X(02) VALUE '16'.
+           05 CON-17        PIC X(02) VALUE '17'.
+           05 CON-18        PIC X(02) VALUE '18'.
+           05 CON-19        PIC X(02) VALUE '19'.
+           05 CON-20        PIC X(02) VALUE '20'.
+           05 CON-21        PIC X(02) VALUE '21'.
+           05 CON-22        PIC X(02) VALUE '22'.
+           05 CON-23        PIC X(02) VALUE '23'.
+           05 CON-24        PIC X(02) VALUE '24'.
+           05 CON-25        PIC X(02) VALUE '25'.
+           05 CON-26        PIC X(02) VALUE '26'.
+           05 CON-27        PIC X(02) VALUE '27'.
+           05 CON-28        PIC X(02) VALUE '28'.
+           05 CON-29        PIC X(02) VALUE '29'.
+           05 CON-30        PIC X(02) VALUE '30'.
+           05 CON-31        PIC X(02) VALUE '31'.
+           05 CON-99        PIC X(02) VALUE '99'.
+           05 CON-SEP       PIC X(01) VALUE '-'.
+           05 CON-F         PIC X(01) VALUE 'F'.
+           05 CON-T         PIC X(01) VALUE 'T'.
+           05 CON-S         PIC X(01) VALUE 'S'.
+           05 CON-D         PIC X(01) VALUE 'D'.
+           05 CON-SIM       PIC X(01) VALUE 'S'.
+           05 CON-NAO       PIC X(01) VALUE 'N'.
+           05 CON-A         PIC X(01) VALUE 'A'.
+           05 CON-N         PIC X(01) VALUE 'N'.
+
+      *--------------------------------------------------------------
+      * PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'COI94204'.
+           05 WS-ULT-DIA-MES       PIC X(02).
+           05 WS-SUM-NDIAS         PIC S9(03)V99 COMP-3 VALUE ZEROES.
+           05 WS-NUM-DIAS          PIC 9(02)V99.
+           05 WS-NUM-DIAS-ANO      PIC 9(03)V99.
+           05 WS-NUM-DIAS-APR      PIC 9(03)V99.
+           05 WS-NUM-DIAS-TOT      PIC 9(09)V99.
+           05 WS-NUM-DIAS-TOL      PIC 9(09)V99.
+           05 WS-NUM-DIAS-TOLA     PIC 9(09)V99.
+           05 WS-NUM-DIAS-TOLM     PIC 9(09)V99.
+           05 WS-FERIADO           PIC X(01).
+           05 WS-APROVADO          PIC X(01).
+           05 WS-JA-APROVADO       PIC 9(01).
+           05 WS-X                 PIC 9(02).
+           05 WS-HORAS             PIC S9(8) COMP-3.
+           05 WS-QUO               PIC 9(04).
+           05 WS-RES               PIC 9(04).
+           05 WS-DFERIAS-MIN       PIC X(10) VALUE SPACES.
+           05 WS-DFERIAS-MAX       PIC X(10) VALUE SPACES.
+           05 WS-DTMESANO          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DTMESANO.
+              10 WS-DTMESANO-ANO   PIC X(04).
+              10 WS-DTMESANO-SEP1  PIC X(01).
+              10 WS-DTMESANO-MES   PIC X(02).
+              10 WS-DTMESANO-SEP2  PIC X(01).
+              10 WS-DTMESANO-DIA   PIC X(02).
+
+           05 WS-DATA-INF          PIC X(10).
+           05 FILLER REDEFINES WS-DATA-INF.
+              10 WS-DATA-INF-ANO   PIC X(04).
+              10 WS-DATA-INF-SEP1  PIC X(01).
+              10 WS-DATA-INF-MES   PIC X(02).
+              10 WS-DATA-INF-SEP2  PIC X(01).
+              10 WS-DATA-INF-DIA   PIC X(02).
+
+           05 WS-DATA-SUP          PIC X(10).
+           05 FILLER REDEFINES WS-DATA-SUP.
+              10 WS-DATA-SUP-ANO   PIC X(04).
+              10 WS-DATA-SUP-SEP1  PIC X(01).
+              10 WS-DATA-SUP-MES   PIC X(02).
+              10 WS-DATA-SUP-SEP2  PIC X(01).
+              10 WS-DATA-SUP-DIA   PIC X(02).
+
+           05 WS-ANO-X             PIC X(04).
+           05 FILLER REDEFINES WS-ANO-X.
+              10 WS-ANO-9          PIC 9(04).
+
+           05 WS-TABELA-DIAS.
+              10 WS-DIAS OCCURS 31 TIMES PIC X.
+
+           05 WS-DDATA-MIN         PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DDATA-MIN.
+              10 WS-DDATA-MIN-ANO      PIC X(04).
+              10 WS-DDATA-MIN-FILL1    PIC X(01).
+              10 WS-DDATA-MIN-MES      PIC X(02).
+              10 WS-DDATA-MIN-FILL2    PIC X(01).
+              10 WS-DDATA-MIN-DIA      PIC X(02).
+
+           05 WS-DDATA-MAX         PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DDATA-MAX.
+              10 WS-DDATA-MAX-ANO      PIC X(04).
+              10 WS-DDATA-MAX-FILL1    PIC X(01).
+              10 WS-DDATA-MAX-MES      PIC X(02).
+              10 WS-DDATA-MAX-FILL2    PIC X(01).
+              10 WS-DDATA-MAX-DIA      PIC X(02).
+
+           05 WS-DATA-ULT          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DATA-ULT.
+              10 WS-DATA-ULT-ANO   PIC X(04).
+              10 WS-DATA-ULT-SEP1  PIC X(01).
+              10 WS-DATA-ULT-MES   PIC X(02).
+              10 WS-DATA-ULT-SEP2  PIC X(01).
+              10 WS-DATA-ULT-DIA   PIC X(02).
+
+           05 WS-DATA-VER          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DATA-VER.
+              10 WS-DATA-VER-ANO   PIC X(04).
+              10 WS-DATA-VER-SEP1  PIC X(01).
+              10 WS-DATA-VER-MES   PIC X(02).
+              10 WS-DATA-VER-SEP2  PIC X(01).
+              10 WS-DATA-VER-DIA   PIC X(02).
+
+           05 WS-DATA-GAT          PIC X(20) VALUE SPACES.
+           05 FILLER REDEFINES WS-DATA-GAT.
+              10 WS-DATA-GAT-ANO   PIC X(10).
+              10 WS-DATA-GAT-USER  PIC X(10).
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+
+           EXEC SQL
+            DECLARE CURART01 CURSOR FOR
+            SELECT DDATA
+                 , CDIASEM
+                 , CTIPOFER
+            FROM ARVT7001
+            WHERE CTIPOFER  = :CON-T
+              AND DDATA    >= :WS-DDATA-MIN
+              AND DDATA    <= :WS-DDATA-MAX
+            ORDER BY DDATA
+           END-EXEC.
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI94204         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *    CALL 'ARREBENTA'.
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV9420-MSG.
+           MOVE COCV9420-ASE               TO COCV9421-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9420-ADE               TO COCV9421-ADE.
+
+           PERFORM 2100-VALIDACOES
+              THRU 2199-VALIDACOES-EXIT
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-TRATA-DADOS
+                 THRU 2200-TRATA-DADOS-EXIT
+           END-iF
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *----------------------------------*
+      *--- LER COT53_PESSOAS com USER ---*
+      *----------------------------------*
+      **R  MOVE COCV9421-CUSERID       TO COCD5303-CUTILIZA.
+           MOVE COCV9421-CUSERID       TO COCD5303-NTRABALHADOR.
+      *
+           EXEC SQL
+             SELECT NTRABALHADOR
+                  , GNOME
+                  , CEMPRESA
+               INTO :COCD5303-NTRABALHADOR
+                  , :COCD5303-GNOME
+                  , :COCD5303-CEMPRESA
+               FROM COVT5303_PESSOAS
+            WHERE NTRABALHADOR = :COCD5303-NTRABALHADOR
+            FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT5303               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'UTILIZADOR' TO VIAL0015-CALLER-ID
+              MOVE 'COCD5303-CUTILIZA'     TO VIAL0015-CAMPO-NM (1)
+              MOVE  COCD5303-CUTILIZA      TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCD5303-CEMPRESA'     TO VIAL0015-CAMPO-NM (2)
+              MOVE  COCD5303-CEMPRESA      TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'SQLCODE          '     TO VIAL0015-CAMPO-NM (3)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *------------------------------------------------*
+      *--- Ler COT54_EMPRESAS de modo a obter CPAIS ---*
+      *------------------------------------------------*
+           MOVE COCD5303-CEMPRESA      TO COCD5403-CEMPRESA.
+      *
+           EXEC SQL
+             SELECT CEMPRESA
+                  , CPAIS
+               INTO :COCD5403-CEMPRESA
+                  , :COCD5403-CPAIS
+               FROM COVT5403_EMPRESAS
+            WHERE CEMPRESA = :COCD5403-CEMPRESA
+            FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT5403               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'EMPRESA' TO VIAL0015-CALLER-ID
+              MOVE 'COCD5403-CPAIS   '     TO VIAL0015-CAMPO-NM (1)
+              MOVE  COCD5403-CPAIS         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCD5303-CEMPRESA'     TO VIAL0015-CAMPO-NM (2)
+              MOVE  COCD5303-CEMPRESA      TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'SQLCODE          '     TO VIAL0015-CAMPO-NM (3)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+      *------------------------------*
+      *--- Validar dias dos meses ---*
+      *------------------------------*
+      *--- Fevereiro
+           MOVE COCV9420-CANO TO WS-DATA-VER-ANO.
+           MOVE CON-02        TO WS-DATA-VER-MES.
+           MOVE CON-01        TO WS-DATA-VER-DIA.
+           MOVE CON-SEP       TO WS-DATA-VER-SEP1.
+           MOVE CON-SEP       TO WS-DATA-VER-SEP2.
+           PERFORM 2180-VER-ULT-DIA
+              THRU 2180-VER-ULT-DIA-EXIT.
+
+           IF WS-ULT-DIA-MES = CON-29
+              MOVE ZEROS TO WS-RES
+           ELSE
+              MOVE 1     TO WS-RES
+           END-IF
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9420-CMES     EQUAL CON-02
+           AND COCV9420-C31  NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+              MOVE COCK0001-CAMPO-INV     TO COCV9421-C31-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9420-CMES     EQUAL CON-02
+           AND COCV9420-C30  NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C30-S
+              MOVE COCK0001-CAMPO-INV     TO COCV9421-C30-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C30-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9420-CMES     EQUAL CON-02
+           AND WS-RES        NOT EQUAL ZEROS
+           AND COCV9420-C29  NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C29-S
+              MOVE COCK0001-CAMPO-INV     TO COCV9421-C29-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C29-CAPLIC
+           END-IF.
+
+      *--- Abril
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9420-CMES     EQUAL CON-04
+           AND COCV9420-C31  NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+              MOVE COCK0001-CAMPO-INV     TO COCV9421-C31-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+           END-IF.
+
+      *--- Junho
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9420-CMES     EQUAL CON-06
+           AND COCV9420-C31  NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+              MOVE COCK0001-CAMPO-INV     TO COCV9421-C31-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+           END-IF.
+
+      *--- Setembro
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9420-CMES     EQUAL CON-09
+           AND COCV9420-C31  NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+              MOVE COCK0001-CAMPO-INV     TO COCV9421-C31-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+           END-IF.
+
+      *--- Novembro
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9420-CMES     EQUAL CON-11
+           AND COCV9420-C31  NOT EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+              MOVE COCK0001-CAMPO-INV     TO COCV9421-C31-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+           END-IF.
+
+      *--------------------------------------------------------*
+      *--- Validar se marcaram férias em dias feriados      ---*
+      *---                                                  ---*
+      *--- Validar se marcaram feriados em dias não feriado ---*
+      *--------------------------------------------------------*
+           MOVE COCV9420-CANO TO WS-DTMESANO-ANO
+           MOVE COCV9420-CMES TO WS-DTMESANO-MES
+           MOVE CON-SEP       TO WS-DTMESANO-SEP1
+           MOVE CON-SEP       TO WS-DTMESANO-SEP2
+
+      *--- C01
+           MOVE CON-01        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C01  NOT EQUAL CON-F
+           AND   COCV9420-C01  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C01-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C01-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C01      EQUAL CON-F
+            OR   COCV9420-C01      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C01-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C01-CAPLIC
+           END-IF.
+
+      *--- C02
+           MOVE CON-02        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C02  NOT EQUAL CON-F
+           AND   COCV9420-C02  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C02-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C02-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C02-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C02      EQUAL CON-F
+            OR   COCV9420-C02      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C02-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C02-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C02-CAPLIC
+           END-IF.
+
+      *--- C03
+           MOVE CON-03        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C03  NOT EQUAL CON-F
+           AND   COCV9420-C03  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C03-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C03-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C03-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C03      EQUAL CON-F
+            OR   COCV9420-C03      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C03-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C03-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C03-CAPLIC
+           END-IF.
+
+      *--- C04
+           MOVE CON-04        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C04  NOT EQUAL CON-F
+           AND   COCV9420-C04  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C04-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C04-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C04-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C04      EQUAL CON-F
+            OR   COCV9420-C04      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C04-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C04-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C04-CAPLIC
+           END-IF.
+
+      *--- C05
+           MOVE CON-05        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'FER-05         ' TO VIAL0015-CALLER-ID
+              MOVE 'ARCD7001-DDATA'        TO VIAL0015-CAMPO-NM (1)
+              MOVE  ARCD7001-DDATA         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-FERIADO    '        TO VIAL0015-CAMPO-NM (2)
+              MOVE  WS-FERIADO             TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCV9420-C05  '        TO VIAL0015-CAMPO-NM (3)
+              MOVE  COCV9420-C05           TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'COCD5403-CPAIS'        TO VIAL0015-CAMPO-NM (4)
+              MOVE  COCD5403-CPAIS         TO VIAL0015-CAMPO-VLR(4)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C05  NOT EQUAL CON-F
+           AND   COCV9420-C05  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C05-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C05-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C05-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C05      EQUAL CON-F
+            OR   COCV9420-C05      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C05-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C05-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C05-CAPLIC
+           END-IF.
+
+      *--- C06
+           MOVE CON-06        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C06  NOT EQUAL CON-F
+           AND   COCV9420-C06  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C06-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C06-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C06-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C06      EQUAL CON-F
+            OR   COCV9420-C06      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C06-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C06-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C06-CAPLIC
+           END-IF.
+
+      *--- C07
+           MOVE CON-07        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C07  NOT EQUAL CON-F
+           AND   COCV9420-C07  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C07-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C07-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C07-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C07      EQUAL CON-F
+            OR   COCV9420-C07      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C07-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C07-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C07-CAPLIC
+           END-IF.
+
+      *--- C08
+           MOVE CON-08        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C08  NOT EQUAL CON-F
+           AND   COCV9420-C08  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C08-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C08-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C08-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C08      EQUAL CON-F
+            OR   COCV9420-C08      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C08-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C08-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C08-CAPLIC
+           END-IF.
+
+      *--- C09
+           MOVE CON-09        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C09  NOT EQUAL CON-F
+           AND   COCV9420-C09  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C09-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C09-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C09-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C09      EQUAL CON-F
+            OR   COCV9420-C09      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C09-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C09-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C09-CAPLIC
+           END-IF.
+
+      *--- C10
+           MOVE CON-10        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C10  NOT EQUAL CON-F
+           AND   COCV9420-C10  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C10-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C10-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C10-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C10      EQUAL CON-F
+            OR   COCV9420-C10      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C10-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C10-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C10-CAPLIC
+           END-IF.
+
+      *--- C11
+           MOVE CON-11        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C11  NOT EQUAL CON-F
+           AND   COCV9420-C11  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C11-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C11-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C11-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C11      EQUAL CON-F
+            OR   COCV9420-C11      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C11-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C11-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C11-CAPLIC
+           END-IF.
+
+      *--- C12
+           MOVE CON-12        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C12  NOT EQUAL CON-F
+           AND   COCV9420-C12  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C12-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C12-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C12-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C12      EQUAL CON-F
+            OR   COCV9420-C12      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C12-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C12-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C12-CAPLIC
+           END-IF.
+
+      *--- C13
+           MOVE CON-13        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C13  NOT EQUAL CON-F
+           AND   COCV9420-C13  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C13-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C13-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C13-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C13      EQUAL CON-F
+            OR   COCV9420-C13      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C13-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C13-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C13-CAPLIC
+           END-IF.
+
+      *--- C14
+           MOVE CON-14        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C14  NOT EQUAL CON-F
+           AND   COCV9420-C14  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C14-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C14-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C14-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C14      EQUAL CON-F
+            OR   COCV9420-C14      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C14-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C14-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C14-CAPLIC
+           END-IF.
+
+      *--- C15
+           MOVE CON-15        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C15  NOT EQUAL CON-F
+           AND   COCV9420-C15  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C15-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C15-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C15-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C15      EQUAL CON-F
+            OR   COCV9420-C15      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C15-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C15-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C15-CAPLIC
+           END-IF.
+
+      *--- C16
+           MOVE CON-16        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C16  NOT EQUAL CON-F
+           AND   COCV9420-C16  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C16-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C16-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C16-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C16      EQUAL CON-F
+            OR   COCV9420-C16      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C16-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C16-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C16-CAPLIC
+           END-IF.
+
+      *--- C17
+           MOVE CON-17        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C17  NOT EQUAL CON-F
+           AND   COCV9420-C17  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C17-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C17-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C17-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C17      EQUAL CON-F
+            OR   COCV9420-C17      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C17-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C17-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C17-CAPLIC
+           END-IF.
+
+      *--- C18
+           MOVE CON-18        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C18  NOT EQUAL CON-F
+           AND   COCV9420-C18  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C18-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C18-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C18-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C18      EQUAL CON-F
+            OR   COCV9420-C18      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C18-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C18-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C18-CAPLIC
+           END-IF.
+
+      *--- C19
+           MOVE CON-19        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C19  NOT EQUAL CON-F
+           AND   COCV9420-C19  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C19-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C19-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C19-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C19      EQUAL CON-F
+            OR   COCV9420-C19      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C19-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C19-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C19-CAPLIC
+           END-IF.
+
+      *--- C20
+           MOVE CON-20        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C20  NOT EQUAL CON-F
+           AND   COCV9420-C20  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C20-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C20-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C20-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C20      EQUAL CON-F
+            OR   COCV9420-C20      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C20-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C20-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C20-CAPLIC
+           END-IF.
+
+      *--- C21
+           MOVE CON-21        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C21  NOT EQUAL CON-F
+           AND   COCV9420-C21  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C21-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C21-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C21-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C21      EQUAL CON-F
+            OR   COCV9420-C21      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C21-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C21-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C21-CAPLIC
+           END-IF.
+
+      *--- C22
+           MOVE CON-22        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C22  NOT EQUAL CON-F
+           AND   COCV9420-C22  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C22-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C22-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C22-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C22      EQUAL CON-F
+            OR   COCV9420-C22      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C22-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C22-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C22-CAPLIC
+           END-IF.
+
+      *--- C23
+           MOVE CON-23        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C23  NOT EQUAL CON-F
+           AND   COCV9420-C23  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C23-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C23-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C23-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C23      EQUAL CON-F
+            OR   COCV9420-C23      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C23-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C23-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C23-CAPLIC
+           END-IF.
+
+      *--- C24
+           MOVE CON-24        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C24  NOT EQUAL CON-F
+           AND   COCV9420-C24  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C24-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C24-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C24-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C24      EQUAL CON-F
+            OR   COCV9420-C24      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C24-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C24-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C24-CAPLIC
+           END-IF.
+
+      *--- C25
+           MOVE CON-25        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C25  NOT EQUAL CON-F
+           AND   COCV9420-C25  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C25-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C25-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C25-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C25      EQUAL CON-F
+            OR   COCV9420-C25      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C25-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C25-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C25-CAPLIC
+           END-IF.
+
+      *--- C26
+           MOVE CON-26        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C26  NOT EQUAL CON-F
+           AND   COCV9420-C26  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C26-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C26-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C26-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C26      EQUAL CON-F
+            OR   COCV9420-C26      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C26-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C26-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C26-CAPLIC
+           END-IF.
+
+      *--- C27
+           MOVE CON-27        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C27  NOT EQUAL CON-F
+           AND   COCV9420-C27  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C27-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C27-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C27-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C27      EQUAL CON-F
+            OR   COCV9420-C27      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C27-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C27-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C27-CAPLIC
+           END-IF.
+
+      *--- C28
+           MOVE CON-28        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO ARCD7001-DDATA.
+           MOVE CON-NAO       TO WS-FERIADO.
+           PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-SIM
+           AND ( COCV9420-C28  NOT EQUAL CON-F
+           AND   COCV9420-C28  NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C28-S
+              MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C28-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C28-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND   WS-FERIADO        EQUAL CON-NAO
+           AND ( COCV9420-C28      EQUAL CON-F
+            OR   COCV9420-C28      EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C28-S
+              MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C28-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C28-CAPLIC
+           END-IF.
+
+      *--- C29
+           IF  COCV9421-CMES     = CON-02
+           AND WS-RES        NOT = ZEROS
+               CONTINUE
+           ELSE
+               MOVE CON-29        TO WS-DTMESANO-DIA
+               MOVE WS-DTMESANO   TO ARCD7001-DDATA
+               MOVE CON-NAO       TO WS-FERIADO
+               PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT
+
+               IF  VIAL0002-SEM-ERROS
+               AND   WS-FERIADO        EQUAL CON-SIM
+               AND ( COCV9420-C29  NOT EQUAL CON-F
+               AND   COCV9420-C29  NOT EQUAL CON-T )
+                   MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                   MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C29-S
+                   MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C29-MSG
+                   MOVE COCK0002-CAPLIC        TO COCV9421-C29-CAPLIC
+               END-IF
+
+               IF  VIAL0002-SEM-ERROS
+               AND   WS-FERIADO        EQUAL CON-NAO
+               AND ( COCV9420-C29      EQUAL CON-F
+                OR   COCV9420-C29      EQUAL CON-T )
+                   MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                   MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C29-S
+                   MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C29-MSG
+                   MOVE COCK0002-CAPLIC        TO COCV9421-C29-CAPLIC
+               END-IF
+           END-IF.
+
+      *--- C30
+           IF  COCV9421-CMES     = CON-02
+               CONTINUE
+           ELSE
+               MOVE CON-30        TO WS-DTMESANO-DIA
+               MOVE WS-DTMESANO   TO ARCD7001-DDATA
+               MOVE CON-NAO       TO WS-FERIADO
+               PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT
+
+               IF  VIAL0002-SEM-ERROS
+               AND   WS-FERIADO        EQUAL CON-SIM
+               AND ( COCV9420-C30  NOT EQUAL CON-F
+               AND   COCV9420-C30  NOT EQUAL CON-T )
+                   MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                   MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C30-S
+                   MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C30-MSG
+                   MOVE COCK0002-CAPLIC        TO COCV9421-C30-CAPLIC
+               END-IF
+
+               IF  VIAL0002-SEM-ERROS
+               AND   WS-FERIADO        EQUAL CON-NAO
+               AND ( COCV9420-C30      EQUAL CON-F
+                OR   COCV9420-C30      EQUAL CON-T )
+                   MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                   MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C30-S
+                   MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C30-MSG
+                   MOVE COCK0002-CAPLIC        TO COCV9421-C30-CAPLIC
+               END-IF
+           END-IF.
+
+      *--- C31
+           IF    COCV9421-CMES     = CON-02
+           OR    COCV9421-CMES     = CON-04
+           OR    COCV9421-CMES     = CON-06
+           OR    COCV9421-CMES     = CON-09
+           OR    COCV9421-CMES     = CON-11
+               CONTINUE
+           ELSE
+               MOVE CON-31        TO WS-DTMESANO-DIA
+               MOVE WS-DTMESANO   TO ARCD7001-DDATA
+               MOVE CON-NAO       TO WS-FERIADO
+               PERFORM 2500-LER-FERIADOS THRU 2500-LER-FERIADOS-EXIT
+
+               IF  VIAL0002-SEM-ERROS
+               AND   WS-FERIADO        EQUAL CON-SIM
+               AND ( COCV9420-C31  NOT EQUAL CON-F
+               AND   COCV9420-C31  NOT EQUAL CON-T )
+                   MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                   MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+                   MOVE COCK0001-CAMPO-INV-FER TO COCV9421-C31-MSG
+                   MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+               END-IF
+
+               IF  VIAL0002-SEM-ERROS
+               AND   WS-FERIADO        EQUAL CON-NAO
+               AND ( COCV9420-C31      EQUAL CON-F
+                OR   COCV9420-C31      EQUAL CON-T )
+                   MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                   MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+                   MOVE COCK0001-CAMPO-INV-NFR TO COCV9421-C31-MSG
+                   MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+               END-IF
+           END-IF.
+
+      *--------------------------------------------------------*
+      *--- Validar se marcaram férias em fim de semana      ---*
+      *---                                                  ---*
+      *--- Validar se marcaram Sabado ou Domingo em dias    ---*
+      *--- que não são fim de semana                        ---*
+      *--------------------------------------------------------*
+
+      *--- C01
+           MOVE CON-01         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C01         NOT EQUAL CON-S
+           AND   COCV9420-C01         NOT EQUAL CON-F
+           AND   COCV9420-C01         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C01-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C01-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C01         NOT EQUAL CON-D
+           AND   COCV9420-C01         NOT EQUAL CON-F
+           AND   COCV9420-C01         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C01-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C01-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C01             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C01-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C01-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C01             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C01-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C01-CAPLIC
+           END-IF.
+
+      *--- C02
+           MOVE CON-02         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C02         NOT EQUAL CON-S
+           AND   COCV9420-C02         NOT EQUAL CON-F
+           AND   COCV9420-C02         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C02-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C02-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C02-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C02         NOT EQUAL CON-D
+           AND   COCV9420-C02         NOT EQUAL CON-F
+           AND   COCV9420-C02         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C02-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C02-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C02-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C02             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C02-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C02-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C02-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C02             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C02-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C02-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C02-CAPLIC
+           END-IF.
+
+      *--- C03
+           MOVE CON-03         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C03         NOT EQUAL CON-S
+           AND   COCV9420-C03         NOT EQUAL CON-F
+           AND   COCV9420-C03         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C03-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C03-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C03-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C03         NOT EQUAL CON-D
+           AND   COCV9420-C03         NOT EQUAL CON-F
+           AND   COCV9420-C03         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C03-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C03-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C03-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C03             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C03-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C03-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C03-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C03             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C03-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C03-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C03-CAPLIC
+           END-IF.
+
+      *--- C04
+           MOVE CON-04         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C04         NOT EQUAL CON-S
+           AND   COCV9420-C04         NOT EQUAL CON-F
+           AND   COCV9420-C04         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C04-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C04-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C04-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C04         NOT EQUAL CON-D
+           AND   COCV9420-C04         NOT EQUAL CON-F
+           AND   COCV9420-C04         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C04-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C04-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C04-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C04             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C04-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C04-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C04-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C04             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C04-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C04-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C04-CAPLIC
+           END-IF.
+
+      *--- C05
+           MOVE CON-05         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C05         NOT EQUAL CON-S
+           AND   COCV9420-C05         NOT EQUAL CON-F
+           AND   COCV9420-C05         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C05-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C05-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C05-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C05         NOT EQUAL CON-D
+           AND   COCV9420-C05         NOT EQUAL CON-F
+           AND   COCV9420-C05         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C05-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C05-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C05-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C05             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C05-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C05-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C05-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C05             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C05-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C05-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C05-CAPLIC
+           END-IF.
+
+      *--- C06
+           MOVE CON-06         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C06         NOT EQUAL CON-S
+           AND   COCV9420-C06         NOT EQUAL CON-F
+           AND   COCV9420-C06         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C06-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C06-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C06-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C06         NOT EQUAL CON-D
+           AND   COCV9420-C06         NOT EQUAL CON-F
+           AND   COCV9420-C06         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C06-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C06-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C06-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C06             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C06-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C06-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C06-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C06             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C06-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C06-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C06-CAPLIC
+           END-IF.
+
+      *--- C07
+           MOVE CON-07         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C07         NOT EQUAL CON-S
+           AND   COCV9420-C07         NOT EQUAL CON-F
+           AND   COCV9420-C07         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C07-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C07-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C07-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C07         NOT EQUAL CON-D
+           AND   COCV9420-C07         NOT EQUAL CON-F
+           AND   COCV9420-C07         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C07-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C07-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C07-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C07             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C07-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C07-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C07-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C07             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C07-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C07-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C07-CAPLIC
+           END-IF.
+
+      *--- C08
+           MOVE CON-08         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C08         NOT EQUAL CON-S
+           AND   COCV9420-C08         NOT EQUAL CON-F
+           AND   COCV9420-C08         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C08-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C08-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C08-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C08         NOT EQUAL CON-D
+           AND   COCV9420-C08         NOT EQUAL CON-F
+           AND   COCV9420-C08         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C08-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C08-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C08-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C08             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C08-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C08-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C08-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C08             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C08-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C08-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C08-CAPLIC
+           END-IF.
+
+      *--- C09
+           MOVE CON-09         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C09         NOT EQUAL CON-S
+           AND   COCV9420-C09         NOT EQUAL CON-F
+           AND   COCV9420-C09         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C09-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C09-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C09-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C09         NOT EQUAL CON-D
+           AND   COCV9420-C09         NOT EQUAL CON-F
+           AND   COCV9420-C09         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C09-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C09-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C09-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C09             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C09-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C09-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C09-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C09             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C09-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C09-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C09-CAPLIC
+           END-IF.
+
+      *--- C10
+           MOVE CON-10         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C10         NOT EQUAL CON-S
+           AND   COCV9420-C10         NOT EQUAL CON-F
+           AND   COCV9420-C10         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C10-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C10-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C10-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C10         NOT EQUAL CON-D
+           AND   COCV9420-C10         NOT EQUAL CON-F
+           AND   COCV9420-C10         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C10-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C10-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C10-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C10             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C10-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C10-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C10-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C10             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C10-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C10-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C10-CAPLIC
+           END-IF.
+
+      *--- C11
+           MOVE CON-11         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C11         NOT EQUAL CON-S
+           AND   COCV9420-C11         NOT EQUAL CON-F
+           AND   COCV9420-C11         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C11-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C11-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C11-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C11         NOT EQUAL CON-D
+           AND   COCV9420-C11         NOT EQUAL CON-F
+           AND   COCV9420-C11         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C11-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C11-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C11-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C11             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C11-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C11-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C11-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C11             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C11-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C11-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C11-CAPLIC
+           END-IF.
+
+      *--- C12
+           MOVE CON-12         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C12         NOT EQUAL CON-S
+           AND   COCV9420-C12         NOT EQUAL CON-F
+           AND   COCV9420-C12         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C12-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C12-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C12-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C12         NOT EQUAL CON-D
+           AND   COCV9420-C12         NOT EQUAL CON-F
+           AND   COCV9420-C12         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C12-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C12-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C12-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C12             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C12-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C12-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C12-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C12             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C12-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C12-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C12-CAPLIC
+           END-IF.
+
+      *--- C13
+           MOVE CON-13         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C13         NOT EQUAL CON-S
+           AND   COCV9420-C13         NOT EQUAL CON-F
+           AND   COCV9420-C13         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C13-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C13-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C13-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C13         NOT EQUAL CON-D
+           AND   COCV9420-C13         NOT EQUAL CON-F
+           AND   COCV9420-C13         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C13-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C13-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C13-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C13             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C13-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C13-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C13-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C13             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C13-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C13-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C13-CAPLIC
+           END-IF.
+
+      *--- C14
+           MOVE CON-14         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C14         NOT EQUAL CON-S
+           AND   COCV9420-C14         NOT EQUAL CON-F
+           AND   COCV9420-C14         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C14-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C14-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C14-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C14         NOT EQUAL CON-D
+           AND   COCV9420-C14         NOT EQUAL CON-F
+           AND   COCV9420-C14         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C14-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C14-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C14-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C14             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C14-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C14-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C14-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C14             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C14-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C14-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C14-CAPLIC
+           END-IF.
+
+      *--- C15
+           MOVE CON-15         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C15         NOT EQUAL CON-S
+           AND   COCV9420-C15         NOT EQUAL CON-F
+           AND   COCV9420-C15         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C15-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C15-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C15-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C15         NOT EQUAL CON-D
+           AND   COCV9420-C15         NOT EQUAL CON-F
+           AND   COCV9420-C15         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C15-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C15-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C15-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C15             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C15-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C15-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C15-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C15             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C15-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C15-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C15-CAPLIC
+           END-IF.
+
+      *--- C16
+           MOVE CON-16         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C16         NOT EQUAL CON-S
+           AND   COCV9420-C16         NOT EQUAL CON-F
+           AND   COCV9420-C16         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C16-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C16-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C16-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C16         NOT EQUAL CON-D
+           AND   COCV9420-C16         NOT EQUAL CON-F
+           AND   COCV9420-C16         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C16-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C16-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C16-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C16             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C16-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C16-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C16-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C16             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C16-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C16-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C16-CAPLIC
+           END-IF.
+
+      *--- C17
+           MOVE CON-17         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C17         NOT EQUAL CON-S
+           AND   COCV9420-C17         NOT EQUAL CON-F
+           AND   COCV9420-C17         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C17-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C17-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C17-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C17         NOT EQUAL CON-D
+           AND   COCV9420-C17         NOT EQUAL CON-F
+           AND   COCV9420-C17         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C17-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C17-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C17-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C17             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C17-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C17-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C17-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C17             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C17-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C17-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C17-CAPLIC
+           END-IF.
+
+      *--- C18
+           MOVE CON-18         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C18         NOT EQUAL CON-S
+           AND   COCV9420-C18         NOT EQUAL CON-F
+           AND   COCV9420-C18         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C18-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C18-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C18-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C18         NOT EQUAL CON-D
+           AND   COCV9420-C18         NOT EQUAL CON-F
+           AND   COCV9420-C18         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C18-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C18-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C18-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C18             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C18-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C18-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C18-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C18             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C18-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C18-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C18-CAPLIC
+           END-IF.
+
+      *--- C19
+           MOVE CON-19         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C19         NOT EQUAL CON-S
+           AND   COCV9420-C19         NOT EQUAL CON-F
+           AND   COCV9420-C19         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C19-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C19-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C19-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C19         NOT EQUAL CON-D
+           AND   COCV9420-C19         NOT EQUAL CON-F
+           AND   COCV9420-C19         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C19-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C19-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C19-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C19             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C19-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C19-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C19-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C19             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C19-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C19-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C19-CAPLIC
+           END-IF.
+
+      *--- C20
+           MOVE CON-20         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C20         NOT EQUAL CON-S
+           AND   COCV9420-C20         NOT EQUAL CON-F
+           AND   COCV9420-C20         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C20-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C20-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C20-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C20         NOT EQUAL CON-D
+           AND   COCV9420-C20         NOT EQUAL CON-F
+           AND   COCV9420-C20         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C20-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C20-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C20-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C20             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C20-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C20-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C20-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C20             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C20-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C20-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C20-CAPLIC
+           END-IF.
+
+      *--- C21
+           MOVE CON-21         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C21         NOT EQUAL CON-S
+           AND   COCV9420-C21         NOT EQUAL CON-F
+           AND   COCV9420-C21         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C21-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C21-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C21-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C21         NOT EQUAL CON-D
+           AND   COCV9420-C21         NOT EQUAL CON-F
+           AND   COCV9420-C21         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C21-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C21-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C21-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C21             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C21-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C21-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C21-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C21             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C21-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C21-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C21-CAPLIC
+           END-IF.
+
+      *--- C22
+           MOVE CON-22         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C22         NOT EQUAL CON-S
+           AND   COCV9420-C22         NOT EQUAL CON-F
+           AND   COCV9420-C22         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C22-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C22-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C22-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C22         NOT EQUAL CON-D
+           AND   COCV9420-C22         NOT EQUAL CON-F
+           AND   COCV9420-C22         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C22-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C22-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C22-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C22             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C22-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C22-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C22-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C22             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C22-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C22-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C22-CAPLIC
+           END-IF.
+
+      *--- C23
+           MOVE CON-23         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C23         NOT EQUAL CON-S
+           AND   COCV9420-C23         NOT EQUAL CON-F
+           AND   COCV9420-C23         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C23-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C23-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C23-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C23         NOT EQUAL CON-D
+           AND   COCV9420-C23         NOT EQUAL CON-F
+           AND   COCV9420-C23         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C23-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C23-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C23-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C23             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C23-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C23-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C23-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C23             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C23-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C23-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C23-CAPLIC
+           END-IF.
+
+      *--- C24
+           MOVE CON-24         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C24         NOT EQUAL CON-S
+           AND   COCV9420-C24         NOT EQUAL CON-F
+           AND   COCV9420-C24         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C24-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C24-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C24-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C24         NOT EQUAL CON-D
+           AND   COCV9420-C24         NOT EQUAL CON-F
+           AND   COCV9420-C24         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C24-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C24-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C24-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C24             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C24-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C24-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C24-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C24             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C24-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C24-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C24-CAPLIC
+           END-IF.
+
+      *--- C25
+           MOVE CON-25         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C25         NOT EQUAL CON-S
+           AND   COCV9420-C25         NOT EQUAL CON-F
+           AND   COCV9420-C25         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C25-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C25-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C25-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C25         NOT EQUAL CON-D
+           AND   COCV9420-C25         NOT EQUAL CON-F
+           AND   COCV9420-C25         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C25-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C25-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C25-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C25             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C25-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C25-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C25-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C25             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C25-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C25-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C25-CAPLIC
+           END-IF.
+
+      *--- C26
+           MOVE CON-26         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C26         NOT EQUAL CON-S
+           AND   COCV9420-C26         NOT EQUAL CON-F
+           AND   COCV9420-C26         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C26-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C26-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C26-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C26         NOT EQUAL CON-D
+           AND   COCV9420-C26         NOT EQUAL CON-F
+           AND   COCV9420-C26         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C26-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C26-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C26-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C26             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C26-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C26-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C26-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C26             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C26-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C26-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C26-CAPLIC
+           END-IF.
+
+      *--- C27
+           MOVE CON-27         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C27         NOT EQUAL CON-S
+           AND   COCV9420-C27         NOT EQUAL CON-F
+           AND   COCV9420-C27         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C27-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C27-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C27-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C27         NOT EQUAL CON-D
+           AND   COCV9420-C27         NOT EQUAL CON-F
+           AND   COCV9420-C27         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C27-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C27-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C27-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C27             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C27-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C27-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C27-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C27             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C27-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C27-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C27-CAPLIC
+           END-IF.
+
+      *--- C28
+           MOVE CON-28         TO WS-DTMESANO-DIA.
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO    TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+           AND ( COCV9420-C28         NOT EQUAL CON-S
+           AND   COCV9420-C28         NOT EQUAL CON-F
+           AND   COCV9420-C28         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C28-S
+              MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C28-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C28-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+           AND ( COCV9420-C28         NOT EQUAL CON-D
+           AND   COCV9420-C28         NOT EQUAL CON-F
+           AND   COCV9420-C28         NOT EQUAL CON-T )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C28-S
+              MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C28-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C28-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+           AND   COCV9420-C28             EQUAL CON-S
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C28-S
+              MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C28-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C28-CAPLIC
+           END-IF.
+
+           IF    VIAL0002-SEM-ERROS
+           AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+           AND   COCV9420-C28             EQUAL CON-D
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C28-S
+              MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C28-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C28-CAPLIC
+           END-IF.
+
+      *--- C29
+           IF  COCV9421-CMES     = CON-02
+           AND WS-RES        NOT = ZEROS
+               CONTINUE
+           ELSE
+               MOVE CON-29         TO WS-DTMESANO-DIA
+               INITIALIZE VIAL1000-AREA-COMUNICACAO
+               MOVE CON-99         TO VIAL1000-COD-PROCESSO
+               MOVE WS-DTMESANO    TO VIATW300-DATA10
+               PERFORM VIATP300-CONV-DATA108
+                  THRU VIATP300-CONV-DATA108-EXIT
+               MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1
+               PERFORM VIAP1000-ROTINA-DATAS
+                  THRU VIAP1000-EXIT
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+               AND ( COCV9420-C29         NOT EQUAL CON-S
+               AND   COCV9420-C29         NOT EQUAL CON-F
+               AND   COCV9420-C29         NOT EQUAL CON-T )
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C29-S
+                  MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C29-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C29-CAPLIC
+               END-IF
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+               AND ( COCV9420-C29         NOT EQUAL CON-D
+               AND   COCV9420-C29         NOT EQUAL CON-F
+               AND   COCV9420-C29         NOT EQUAL CON-T )
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C29-S
+                  MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C29-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C29-CAPLIC
+               END-IF
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+               AND   COCV9420-C29             EQUAL CON-S
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C29-S
+                  MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C29-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C29-CAPLIC
+               END-IF
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+               AND   COCV9420-C29             EQUAL CON-D
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C29-S
+                  MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C29-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C29-CAPLIC
+               END-IF
+           END-IF.
+
+      *--- C30
+           IF  COCV9421-CMES     = CON-02
+               CONTINUE
+           ELSE
+               MOVE CON-30         TO WS-DTMESANO-DIA
+               INITIALIZE VIAL1000-AREA-COMUNICACAO
+               MOVE CON-99         TO VIAL1000-COD-PROCESSO
+               MOVE WS-DTMESANO    TO VIATW300-DATA10
+               PERFORM VIATP300-CONV-DATA108
+                  THRU VIATP300-CONV-DATA108-EXIT
+               MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1
+               PERFORM VIAP1000-ROTINA-DATAS
+                  THRU VIAP1000-EXIT
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+               AND ( COCV9420-C30         NOT EQUAL CON-S
+               AND   COCV9420-C30         NOT EQUAL CON-F
+               AND   COCV9420-C30         NOT EQUAL CON-T )
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C30-S
+                  MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C30-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C30-CAPLIC
+               END-IF
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+               AND ( COCV9420-C30         NOT EQUAL CON-D
+               AND   COCV9420-C30         NOT EQUAL CON-F
+               AND   COCV9420-C30         NOT EQUAL CON-T )
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C30-S
+                  MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C30-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C30-CAPLIC
+               END-IF
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+               AND   COCV9420-C30             EQUAL CON-S
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C30-S
+                  MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C30-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C30-CAPLIC
+               END-IF
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+               AND   COCV9420-C30             EQUAL CON-D
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C30-S
+                  MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C30-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C30-CAPLIC
+               END-IF
+           END-IF.
+
+      *--- C31
+           IF    COCV9421-CMES     = CON-02
+           OR    COCV9421-CMES     = CON-04
+           OR    COCV9421-CMES     = CON-06
+           OR    COCV9421-CMES     = CON-09
+           OR    COCV9421-CMES     = CON-11
+               CONTINUE
+           ELSE
+               MOVE CON-31         TO WS-DTMESANO-DIA
+               INITIALIZE VIAL1000-AREA-COMUNICACAO
+               MOVE CON-99         TO VIAL1000-COD-PROCESSO
+               MOVE WS-DTMESANO    TO VIATW300-DATA10
+               PERFORM VIATP300-CONV-DATA108
+                  THRU VIATP300-CONV-DATA108-EXIT
+               MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1
+               PERFORM VIAP1000-ROTINA-DATAS
+                  THRU VIAP1000-EXIT
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM     EQUAL CON-S
+               AND ( COCV9420-C31         NOT EQUAL CON-S
+               AND   COCV9420-C31         NOT EQUAL CON-F
+               AND   COCV9420-C31         NOT EQUAL CON-T )
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+                  MOVE COCK0001-CAMPO-INV-SAB TO COCV9421-C31-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+               END-IF
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM     EQUAL CON-D
+               AND ( COCV9420-C31         NOT EQUAL CON-D
+               AND   COCV9420-C31         NOT EQUAL CON-F
+               AND   COCV9420-C31         NOT EQUAL CON-T )
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+                  MOVE COCK0001-CAMPO-INV-DOM TO COCV9421-C31-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+               END-IF
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-S
+               AND   COCV9420-C31             EQUAL CON-S
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+                  MOVE COCK0001-CAMPO-INV-NSB TO COCV9421-C31-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+               END-IF
+
+               IF    VIAL0002-SEM-ERROS
+               AND   VIAL1000-DAT-RES-SEM NOT EQUAL CON-D
+               AND   COCV9420-C31             EQUAL CON-D
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+                  MOVE COCK0001-CAMPO-INV-NDM TO COCV9421-C31-MSG
+                  MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+               END-IF
+           END-IF.
+
+      *-----------------------------------------------*
+      *--- Validar se limparam férias já aprovadas ---*
+      *-----------------------------------------------*
+           MOVE COCV9420-CANO TO WS-DTMESANO-ANO
+           MOVE COCV9420-CMES TO WS-DTMESANO-MES
+           MOVE CON-SEP       TO WS-DTMESANO-SEP1
+           MOVE CON-SEP       TO WS-DTMESANO-SEP2
+
+      *--- C01
+           MOVE CON-01        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C01 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C01-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C01-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C01-CAPLIC
+           END-IF.
+
+      *--- C02
+           MOVE CON-02        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C02 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C02-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C02-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C02-CAPLIC
+           END-IF.
+
+      *--- C03
+           MOVE CON-03        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C03 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C03-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C03-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C03-CAPLIC
+           END-IF.
+
+      *--- C04
+           MOVE CON-04        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C04 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C04-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C04-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C04-CAPLIC
+           END-IF.
+
+      *--- C05
+           MOVE CON-05        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C05 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C05-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C05-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C05-CAPLIC
+           END-IF.
+
+      *--- C06
+           MOVE CON-06        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C06 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C06-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C06-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C06-CAPLIC
+           END-IF.
+
+      *--- C07
+           MOVE CON-07        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C07 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C07-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C07-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C07-CAPLIC
+           END-IF.
+
+      *--- C08
+           MOVE CON-08        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C08 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C08-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C08-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C08-CAPLIC
+           END-IF.
+
+      *--- C09
+           MOVE CON-09        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C09 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C09-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C09-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C09-CAPLIC
+           END-IF.
+
+      *--- C10
+           MOVE CON-10        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C10 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C10-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C10-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C10-CAPLIC
+           END-IF.
+
+      *--- C11
+           MOVE CON-11        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C11 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C11-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C11-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C11-CAPLIC
+           END-IF.
+
+      *--- C12
+           MOVE CON-12        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C12 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C12-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C12-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C12-CAPLIC
+           END-IF.
+
+      *--- C13
+           MOVE CON-13        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C13 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C13-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C13-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C13-CAPLIC
+           END-IF.
+
+      *--- C14
+           MOVE CON-14        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C14 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C14-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C14-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C14-CAPLIC
+           END-IF.
+
+      *--- C15
+           MOVE CON-15        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C15 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C15-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C15-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C15-CAPLIC
+           END-IF.
+
+      *--- C16
+           MOVE CON-16        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C16 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C16-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C16-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C16-CAPLIC
+           END-IF.
+
+      *--- C17
+           MOVE CON-17        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C17 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C17-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C17-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C17-CAPLIC
+           END-IF.
+
+      *--- C18
+           MOVE CON-18        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C18 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C18-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C18-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C18-CAPLIC
+           END-IF.
+
+      *--- C19
+           MOVE CON-19        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C19 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C19-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C19-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C19-CAPLIC
+           END-IF.
+
+      *--- C20
+           MOVE CON-20        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C20 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C20-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C20-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C20-CAPLIC
+           END-IF.
+
+      *--- C21
+           MOVE CON-21        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C21 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C21-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C21-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C21-CAPLIC
+           END-IF.
+
+      *--- C22
+           MOVE CON-22        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C22 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C22-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C22-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C22-CAPLIC
+           END-IF.
+
+      *--- C23
+           MOVE CON-23        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C23 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C23-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C23-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C23-CAPLIC
+           END-IF.
+
+      *--- C24
+           MOVE CON-24        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C24 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C24-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C24-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C24-CAPLIC
+           END-IF.
+
+      *--- C25
+           MOVE CON-25        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C25 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C25-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C25-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C25-CAPLIC
+           END-IF.
+
+      *--- C26
+           MOVE CON-26        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C26 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C26-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C26-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C26-CAPLIC
+           END-IF.
+
+      *--- C27
+           MOVE CON-27        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C27 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C27-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C27-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C27-CAPLIC
+           END-IF.
+
+      *--- C28
+           MOVE CON-28        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO COCD7001-DFERIAS.
+           MOVE CON-NAO       TO WS-APROVADO.
+           PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-APROVADO  EQUAL CON-SIM
+           AND COCV9420-C28 EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C28-S
+              MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C28-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9421-C28-CAPLIC
+           END-IF.
+
+      *--- C29
+           IF  COCV9421-CMES     = CON-02
+           AND WS-RES        NOT = ZEROS
+               CONTINUE
+           ELSE
+               MOVE CON-29        TO WS-DTMESANO-DIA
+               MOVE WS-DTMESANO   TO COCD7001-DFERIAS
+               MOVE CON-NAO       TO WS-APROVADO
+               PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT
+
+               IF  VIAL0002-SEM-ERROS
+               AND WS-APROVADO  EQUAL CON-SIM
+               AND COCV9420-C29 EQUAL SPACES
+                   MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                   MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C29-S
+                   MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C29-MSG
+                   MOVE COCK0002-CAPLIC        TO COCV9421-C29-CAPLIC
+               END-IF
+           END-IF.
+
+      *--- C30
+           IF  COCV9421-CMES     = CON-02
+               CONTINUE
+           ELSE
+               MOVE CON-30        TO WS-DTMESANO-DIA
+               MOVE WS-DTMESANO   TO COCD7001-DFERIAS
+               MOVE CON-NAO       TO WS-APROVADO
+               PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT
+
+               IF  VIAL0002-SEM-ERROS
+               AND WS-APROVADO  EQUAL CON-SIM
+               AND COCV9420-C30 EQUAL SPACES
+                   MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                   MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C30-S
+                   MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C30-MSG
+                   MOVE COCK0002-CAPLIC        TO COCV9421-C30-CAPLIC
+               END-IF
+           END-IF.
+
+      *--- C31
+           IF    COCV9421-CMES     = CON-02
+           OR    COCV9421-CMES     = CON-04
+           OR    COCV9421-CMES     = CON-06
+           OR    COCV9421-CMES     = CON-09
+           OR    COCV9421-CMES     = CON-11
+               CONTINUE
+           ELSE
+               MOVE CON-31        TO WS-DTMESANO-DIA
+               MOVE WS-DTMESANO   TO COCD7001-DFERIAS
+               MOVE CON-NAO       TO WS-APROVADO
+               PERFORM 2600-LER-APROVADO THRU 2600-LER-APROVADO-EXIT
+
+               IF  VIAL0002-SEM-ERROS
+               AND WS-APROVADO  EQUAL CON-SIM
+               AND COCV9420-C31 EQUAL SPACES
+                   MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                   MOVE COCK0002-STATUS-ACTIVO TO COCV9421-C31-S
+                   MOVE COCK0001-CAMPO-INV-APR TO COCV9421-C31-MSG
+                   MOVE COCK0002-CAPLIC        TO COCV9421-C31-CAPLIC
+               END-IF
+           END-IF.
+
+       2199-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2180-VER-ULT-DIA
+      *--------------------------------------------------------------
+       2180-VER-ULT-DIA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2180-VER-ULT-DIA ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ZEROS TO WS-ULT-DIA-MES.
+
+           INITIALIZE VIAL1000-AREA-COMUNICACAO
+                                   REPLACING  NUMERIC BY ZEROES
+                                         ALPHANUMERIC BY SPACES.
+
+           MOVE '09'             TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DATA-VER      TO AQCW0005-DTX10
+           PERFORM AQCP0005-CONV-DT10INDT8
+              THRU AQCP0005-CONV-DT10INDT8-EXIT
+           MOVE AQCW0005-DT98    TO VIAL1000-DAT-INPUT1
+
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF VIAL1000-SEM-ERROS
+              MOVE VIAL1000-DAT-RES-ED TO WS-DATA-ULT
+              MOVE WS-DATA-ULT-DIA     TO WS-ULT-DIA-MES
+           ELSE
+              MOVE VIAL1000-IND-ERROS TO VIAL0002-IND-ERROS
+              MOVE VIAL1000-COD-ERRO-GRAVE TO
+                                     VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2180-VER-ULT-DIA-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      * LER FERIADOS
+      *--------------------------------------------------------------
+       2500-LER-FERIADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-LER-FERIADOS  ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+
+           MOVE COCD5403-CPAIS TO ARCD7001-CPAIS.
+
+           EXEC SQL
+                 SELECT DDATA
+                 INTO  :ARCD7001-DDATA
+                 FROM ARVT7001
+                 WHERE CPAIS    = :ARCD7001-CPAIS
+                   AND DDATA    = :ARCD7001-DDATA
+           END-EXEC.
+
+           MOVE CON-ARVT7001 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE CON-SIM TO WS-FERIADO
+              ELSE
+                 MOVE CON-NAO TO WS-FERIADO
+              END-IF
+           END-IF.
+
+       2500-LER-FERIADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * LER APROVADOS
+      *--------------------------------------------------------------
+       2600-LER-APROVADO.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2600-LER-APROVADO  ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE CON-A            TO COCD7001-CSITU.
+           MOVE COCV9421-CIDEMP  TO COCD7001-CIDEMP.
+
+           EXEC SQL
+                 SELECT CIDEMP
+                      , DFERIAS
+                      , CSITU
+                 INTO   :COCD7001-CIDEMP
+                      , :COCD7001-DFERIAS
+                      , :COCD7001-CSITU
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                   AND DFERIAS  = :COCD7001-DFERIAS
+                   AND CSITU    = :COCD7001-CSITU
+           END-EXEC
+
+           MOVE CON-COVT7001 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE CON-SIM TO WS-APROVADO
+              ELSE
+                 MOVE CON-NAO TO WS-APROVADO
+              END-IF
+           END-IF.
+
+       2600-LER-APROVADO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2200-TRATA-DADOS
+      *--------------------------------------------------------------
+       2200-TRATA-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-TRATA-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2800-ELIMINA THRU 2800-ELIMINA-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2900-INSERE  THRU 2900-INSERE-EXIT
+           END-IF.
+
+       2200-TRATA-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2800-ELIMINA
+      *--------------------------------------------------------------
+       2800-ELIMINA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2800-ELIMINA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *--- Preenche campos da chave lógica de eliminação
+           MOVE COCV9421-CIDEMP TO COCD7001-CIDEMP.
+           MOVE CON-A           TO COCD7001-CSITU.
+
+           MOVE COCV9420-CANO TO WS-DTMESANO-ANO.
+           MOVE COCV9420-CMES TO WS-DTMESANO-MES.
+           MOVE CON-SEP       TO WS-DTMESANO-SEP1.
+           MOVE CON-SEP       TO WS-DTMESANO-SEP2.
+           MOVE CON-01        TO WS-DTMESANO-DIA.
+           MOVE WS-DTMESANO   TO WS-DFERIAS-MIN.
+
+           IF COCV9420-CMES = CON-02
+              IF WS-RES = ZEROS
+                 MOVE CON-29  TO WS-DTMESANO-DIA
+              ELSE
+                 MOVE CON-28  TO WS-DTMESANO-DIA
+              END-IF
+           END-IF.
+
+           IF COCV9420-CMES = CON-04
+           OR COCV9420-CMES = CON-06
+           OR COCV9420-CMES = CON-09
+           OR COCV9420-CMES = CON-11
+              MOVE CON-30  TO WS-DTMESANO-DIA
+           END-IF.
+
+           IF COCV9420-CMES = CON-01
+           OR COCV9420-CMES = CON-03
+           OR COCV9420-CMES = CON-05
+           OR COCV9420-CMES = CON-07
+           OR COCV9420-CMES = CON-08
+           OR COCV9420-CMES = CON-10
+           OR COCV9420-CMES = CON-12
+              MOVE CON-31  TO WS-DTMESANO-DIA
+           END-IF.
+
+           MOVE WS-DTMESANO   TO WS-DFERIAS-MAX.
+
+           EXEC SQL
+                 DELETE FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                   AND DFERIAS >= :WS-DFERIAS-MIN
+                   AND DFERIAS <= :WS-DFERIAS-MAX
+                   AND CSITU   <> :COCD7001-CSITU
+           END-EXEC
+
+           MOVE CON-COVT7001 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+              OR DB2-OK
+                 CONTINUE
+              ELSE
+                 MOVE VIAK0002-ABEND-DB2
+                   TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2
+                   TO VIAL0002-COD-ERRO-GRAVE
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2800-ELIMINA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2700-GERA-GATILHO.
+      *--------------------------------------------------------------
+       2700-GERA-GATILHO.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2700-GERA-GATILHO' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCK0002-GAT-COLAB-FERALT TO COCL0030-CGATILHO.
+           MOVE COCD7001-CIDEMP           TO COCL0030-CCHAVE.
+           MOVE SPACES                    TO COCL0030-GDESC.
+           MOVE COCD7001-DFERIAS          TO WS-DATA-GAT-ANO.
+           MOVE COCD7001-CUSERID          TO WS-DATA-GAT-USER.
+
+           MOVE WS-DATA-GAT               TO COCL0030-DADOS.
+
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+
+           PERFORM COCP0030-CALL-ROTINA
+              THRU COCP0030-CALL-ROTINA-EXIT.
+
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT.
+
+       2700-GERA-GATILHO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2900-INSERE
+      *--------------------------------------------------------------
+       2900-INSERE.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2900-INSERE ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *--- Retira do écran e coloca na tabela
+           MOVE COCV9421-C01 TO WS-DIAS(01).
+           MOVE COCV9421-C02 TO WS-DIAS(02).
+           MOVE COCV9421-C03 TO WS-DIAS(03).
+           MOVE COCV9421-C04 TO WS-DIAS(04).
+           MOVE COCV9421-C05 TO WS-DIAS(05).
+           MOVE COCV9421-C06 TO WS-DIAS(06).
+           MOVE COCV9421-C07 TO WS-DIAS(07).
+           MOVE COCV9421-C08 TO WS-DIAS(08).
+           MOVE COCV9421-C09 TO WS-DIAS(09).
+           MOVE COCV9421-C10 TO WS-DIAS(10).
+           MOVE COCV9421-C11 TO WS-DIAS(11).
+           MOVE COCV9421-C12 TO WS-DIAS(12).
+           MOVE COCV9421-C13 TO WS-DIAS(13).
+           MOVE COCV9421-C14 TO WS-DIAS(14).
+           MOVE COCV9421-C15 TO WS-DIAS(15).
+           MOVE COCV9421-C16 TO WS-DIAS(16).
+           MOVE COCV9421-C17 TO WS-DIAS(17).
+           MOVE COCV9421-C18 TO WS-DIAS(18).
+           MOVE COCV9421-C19 TO WS-DIAS(19).
+           MOVE COCV9421-C20 TO WS-DIAS(20).
+           MOVE COCV9421-C21 TO WS-DIAS(21).
+           MOVE COCV9421-C22 TO WS-DIAS(22).
+           MOVE COCV9421-C23 TO WS-DIAS(23).
+           MOVE COCV9421-C24 TO WS-DIAS(24).
+           MOVE COCV9421-C25 TO WS-DIAS(25).
+           MOVE COCV9421-C26 TO WS-DIAS(26).
+           MOVE COCV9421-C27 TO WS-DIAS(27).
+           MOVE COCV9421-C28 TO WS-DIAS(28).
+           MOVE COCV9421-C29 TO WS-DIAS(29).
+           MOVE COCV9421-C30 TO WS-DIAS(30).
+           MOVE COCV9421-C31 TO WS-DIAS(31).
+      *--- Cria registo para todos os que sejam 8 ou 4
+           MOVE 1 TO WS-X.
+           MOVE ZEROS TO WS-NUM-DIAS.
+           PERFORM UNTIL WS-X > 31
+                   IF WS-DIAS(WS-X) = CON-8
+                   OR WS-DIAS(WS-X) = CON-4
+      *-------------- Conta dias deste Ano / Mês
+                      IF WS-DIAS(WS-X) = CON-8
+                         COMPUTE WS-NUM-DIAS = WS-NUM-DIAS + 1
+                      END-IF
+
+                      IF WS-DIAS(WS-X) = CON-4
+                         COMPUTE WS-NUM-DIAS = WS-NUM-DIAS + 0.5
+                      END-IF
+                      MOVE WS-NUM-DIAS TO COCV9421-NUMDIAS
+      *-------------- Ver se já existe férias aprovadas para este dia
+                      MOVE COCV9421-CIDEMP  TO COCD7001-CIDEMP
+                      MOVE COCV9421-CANO    TO WS-DTMESANO-ANO
+                      MOVE COCV9421-CMES    TO WS-DTMESANO-MES
+                      MOVE CON-SEP          TO WS-DTMESANO-SEP1
+                      MOVE CON-SEP          TO WS-DTMESANO-SEP2
+                      MOVE WS-X             TO WS-DTMESANO-DIA
+                      MOVE WS-DTMESANO      TO COCD7001-DFERIAS
+                      MOVE CON-A            TO COCD7001-CSITU
+
+                      IF VIAL0002-SEM-ERROS
+
+                         EXEC SQL
+                          SELECT CIDEMP, DFERIAS, CSITU
+                          INTO  :COCD7001-CIDEMP
+                             ,  :COCD7001-DFERIAS
+                             ,  :COCD7001-CSITU
+                          FROM COVT7001
+                          WHERE CIDEMP   = :COCD7001-CIDEMP
+                            AND DFERIAS  = :COCD7001-DFERIAS
+                            AND CSITU    = :COCD7001-CSITU
+                         END-EXEC
+
+                         MOVE CON-COVT7001 TO VIAL0002-TABLE-NAME
+
+                         PERFORM 9020-DB2CHECK
+                            THRU 9029-DB2CHECK-EXIT
+
+                         IF DB2-OK
+                            MOVE 1 TO WS-JA-APROVADO
+                         ELSE
+                            MOVE ZEROS TO WS-JA-APROVADO
+                         END-IF
+                      END-IF
+
+                      IF WS-JA-APROVADO = ZEROS
+      *-------------- Cria registo
+                       MOVE COCV9421-CIDEMP  TO COCD7001-CIDEMP
+                       MOVE COCV9421-CANO    TO WS-DTMESANO-ANO
+                       MOVE COCV9421-CMES    TO WS-DTMESANO-MES
+                       MOVE CON-SEP          TO WS-DTMESANO-SEP1
+                       MOVE CON-SEP          TO WS-DTMESANO-SEP2
+                       MOVE WS-X             TO WS-DTMESANO-DIA
+                       MOVE WS-DTMESANO      TO COCD7001-DFERIAS
+                       IF WS-DIAS(WS-X) = CON-8
+                          MOVE CON-8-9       TO COCD7001-ZHORAS
+                       ELSE
+                          MOVE CON-4-9       TO COCD7001-ZHORAS
+                       END-IF
+                       MOVE CON-N            TO COCD7001-CSITU
+                       MOVE COCV9421-CUSERID TO COCD7001-CUSERID
+                       MOVE SPACES           TO COCD7001-CUSERAPR
+                       MOVE CON-DATA-MIN     TO COCD7001-DDTAPR
+
+                       IF VIAL0002-SEM-ERROS
+                          PERFORM 2950-ESCREVE-REG
+                             THRU 2950-ESCREVE-REG-EXIT
+                       END-IF
+                      END-IF
+                   END-IF
+                   ADD 1 TO WS-X
+           END-PERFORM.
+
+      *--- Preenche campos acumulados dias ferias Ano e
+      *--- dias ferias Ano aprovados
+           PERFORM 2960-CALCULA-ACM
+              THRU 2960-CALCULA-ACM-EXIT.
+
+       2900-INSERE-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2950-ESCREVE-REG
+      *--------------------------------------------------------------
+       2950-ESCREVE-REG.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2950-ESCREVE-REG   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+            INSERT INTO COVT7001
+            (  CIDEMP
+             , DFERIAS
+             , ZHORAS
+             , CSITU
+             , CUSERAPR
+             , DDTAPR
+             , CUSERID
+             , HTIMEST   )
+            VALUES
+            (  :COCD7001-CIDEMP
+             , :COCD7001-DFERIAS
+             , :COCD7001-ZHORAS
+             , :COCD7001-CSITU
+             , :COCD7001-CUSERAPR
+             , :COCD7001-DDTAPR
+             , :COCD7001-CUSERID
+             , CURRENT TIMESTAMP  )
+           END-EXEC.
+
+           MOVE CON-COVT7001 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF DB2-DUPREC
+           OR DB2-OK
+              IF DB2-OK
+                 PERFORM 2700-GERA-GATILHO
+                    THRU 2700-GERA-GATILHO-EXIT
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2950-ESCREVE-REG-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * 2960-CALCULA-ACM
+      *--------------------------------------------------------------
+       2960-CALCULA-ACM.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2960-CALCULA-ACM   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Obtém crédito de férias
+      *--- Obtém Total de dias de férias de todos os anos
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2121-CREDITOS
+                 THRU 2121-CREDITOS-EXIT
+           END-IF.
+
+      *--- Preenche campos acumulados dias ferias Ano e
+      *--- dias ferias Ano aprovados
+           MOVE ZEROS             TO WS-NUM-DIAS-ANO.
+           MOVE ZEROS             TO WS-NUM-DIAS-APR.
+           MOVE COCV9420-CIDEMP   TO COCD7001-CIDEMP.
+           MOVE COCV9420-CANO     TO WS-DATA-INF-ANO.
+           MOVE CON-01            TO WS-DATA-INF-MES.
+           MOVE CON-01            TO WS-DATA-INF-DIA.
+           MOVE CON-SEP           TO WS-DATA-INF-SEP1.
+           MOVE CON-SEP           TO WS-DATA-INF-SEP2.
+           MOVE COCV9420-CANO     TO WS-DATA-SUP-ANO.
+           MOVE CON-12            TO WS-DATA-SUP-MES.
+           MOVE CON-31            TO WS-DATA-SUP-DIA.
+           MOVE CON-SEP           TO WS-DATA-SUP-SEP1.
+           MOVE CON-SEP           TO WS-DATA-SUP-SEP2.
+
+           EXEC SQL
+                SELECT CIDEMP, IFNULL(SUM(ZHORAS), 0)
+                 INTO  :COCD7001-CIDEMP
+                    ,  :WS-HORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 AND   DFERIAS >= :WS-DATA-INF
+                 AND   DFERIAS <= :WS-DATA-SUP
+                 GROUP BY CIDEMP
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NUM-DIAS-ANO = WS-HORAS / 8
+                 MOVE WS-NUM-DIAS-ANO TO COCV9421-NUMDIASANO
+              END-IF
+           END-IF.
+
+           EXEC SQL
+                SELECT CIDEMP, IFNULL(SUM(ZHORAS), 0)
+                 INTO  :COCD7001-CIDEMP
+                    ,  :WS-HORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 AND   DFERIAS >= :WS-DATA-INF
+                 AND   DFERIAS <= :WS-DATA-SUP
+                 AND   CSITU    = :CON-A
+                 GROUP BY CIDEMP
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NUM-DIAS-APR = WS-HORAS / 8
+                 MOVE WS-NUM-DIAS-APR TO COCV9421-NUMDIASAPR
+              END-IF
+           END-IF.
+
+      *    COMPUTE COCV9421-NUMDIASANO = COCV9421-NUMDIASANO -
+      *                                  WS-NUM-DIAS-TOL.
+      *    COMPUTE COCV9421-NUMDIASAPR = COCV9421-NUMDIASAPR -
+      *                                  WS-NUM-DIAS-TOLA.
+
+       2960-CALCULA-ACM-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2121-CREDITOS
+      *--------------------------------------------------------------
+       2121-CREDITOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2121-CREDITOS      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Obtém crédito de férias
+           MOVE COCV9420-CIDEMP   TO COCD7100-CIDEMP.
+           MOVE COCV9420-CANO     TO COCD7100-CANO.
+
+           EXEC SQL
+                SELECT IFNULL(SUM(NDIAS), 0)
+                 INTO
+                       :WS-SUM-NDIAS
+                 FROM COVT7100
+                 WHERE CIDEMP   = :COCD7100-CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7100
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 CONTINUE
+              ELSE
+                 MOVE ZEROS TO WS-SUM-NDIAS
+              END-IF
+           END-IF.
+
+
+      *--- Obtem todos os dias de férias de todos os anos
+           MOVE ZEROS             TO WS-NUM-DIAS-TOT.
+           MOVE COCV9420-CIDEMP   TO COCD7001-CIDEMP.
+
+           EXEC SQL
+                SELECT CIDEMP, IFNULL(SUM(ZHORAS), 0)
+                 INTO  :COCD7001-CIDEMP
+                    ,  :WS-HORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 GROUP BY CIDEMP
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NUM-DIAS-TOT = WS-HORAS / 8
+              END-IF
+           END-IF.
+
+      *--- Ver se existe algum dia de férias marcado numa tolerância.
+      *--- Se existir, não conta como férias, somando ao saldo.
+           MOVE ZEROS             TO WS-NUM-DIAS-TOL.
+           MOVE ZEROS             TO WS-NUM-DIAS-TOLA.
+           MOVE ZEROS             TO WS-NUM-DIAS-TOLM.
+
+           PERFORM 2125-VERIFICA-TOL
+              THRU 2125-VERIFICA-TOL-EXIT.
+
+      *--- Preenche campo saldo de férias
+           IF VIAL0002-SEM-ERROS
+      *       COMPUTE WS-NUM-DIAS-TOL = WS-NUM-DIAS-TOLA +
+      *                                 WS-NUM-DIAS-TOLM
+      *       COMPUTE COCV9421-SALDOFER = COCD7100-NDIAS
+      *                                 - WS-NUM-DIAS-TOT
+      *                                 + WS-NUM-DIAS-TOL
+              COMPUTE COCV9421-SALDOFER = WS-SUM-NDIAS
+                                        - WS-NUM-DIAS-TOT
+           END-IF.
+
+       2121-CREDITOS-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *            2125-VERIFICA-TOL
+      *--------------------------------------------------------------
+       2125-VERIFICA-TOL.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2125-VERIFICA-TOL' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2026-OPEN
+                 THRU 2026-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2027-FETCH
+                 THRU 2027-FETCH-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF DB2-OK
+                PERFORM 2028-CONTINUA
+                   THRU 2028-CONTINUA-EXIT
+           END-IF.
+
+           PERFORM 2029-CLOSE
+              THRU 2029-CLOSE-EXIT.
+
+       2125-VERIFICA-TOL-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2026-OPEN
+      *--------------------------------------------------------------
+       2026-OPEN.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2026-OPEN' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV9420-CANO       TO WS-DDATA-MIN-ANO.
+           MOVE CON-SEP             TO WS-DDATA-MIN-FILL1.
+           MOVE CON-01              TO WS-DDATA-MIN-MES.
+           MOVE CON-SEP             TO WS-DDATA-MIN-FILL2.
+           MOVE CON-01              TO WS-DDATA-MIN-DIA.
+
+           MOVE COCV9420-CANO       TO WS-DDATA-MAX-ANO.
+           MOVE CON-SEP             TO WS-DDATA-MAX-FILL1.
+           MOVE CON-12              TO WS-DDATA-MAX-MES.
+           MOVE CON-SEP             TO WS-DDATA-MAX-FILL2.
+           MOVE CON-31              TO WS-DDATA-MAX-DIA.
+
+           EXEC SQL
+             OPEN CURART01
+           END-EXEC.
+      *
+           MOVE CON-ARVT7001               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+       2026-OPEN-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2027-FETCH
+      *--------------------------------------------------------------
+       2027-FETCH.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2027-FETCH' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+              FETCH CURART01
+              INTO  :ARCD7001-DDATA
+                  , :ARCD7001-CDIASEM
+                  , :ARCD7001-CTIPOFER
+           END-EXEC.
+      *
+           MOVE CON-COVT7001               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+       2027-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2028-CONTINUA
+      *--------------------------------------------------------------
+       2028-CONTINUA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2028-CONTINUA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           PERFORM 2030-TRATA-OCCURS
+              THRU 2030-TRATA-OCCURS-EXIT
+             UNTIL NOT DB2-OK
+                OR NOT VIAL0002-SEM-ERROS.
+      *
+       2028-CONTINUA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2030-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2030-TRATA-OCCURS.
+      *
+           IF VIAL0001-DEBUG-SIM
+             MOVE '2030-TRATA-OCCURS'          TO VIAL0015-CALLER-ID
+             PERFORM VIAP0016-TRATA-DEBUG
+                THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Verifica se existe registo no COT70 para o mesmo dia da
+      *--- tolerancia que foi lida no ART70.
+           MOVE COCV9420-CIDEMP   TO COCD7001-CIDEMP.
+           MOVE ARCD7001-DDATA    TO COCD7001-DFERIAS.
+
+           EXEC SQL
+                SELECT CIDEMP
+                     , DFERIAS
+                     , CSITU
+                 INTO  :COCD7001-CIDEMP
+                    ,  :COCD7001-DFERIAS
+                    ,  :COCD7001-CSITU
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                   AND DFERIAS  = :COCD7001-DFERIAS
+                 FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF COCD7001-CSITU = CON-APROVADAS
+                   COMPUTE WS-NUM-DIAS-TOLA = WS-NUM-DIAS-TOLA + 1
+                 ELSE
+                   COMPUTE WS-NUM-DIAS-TOLM = WS-NUM-DIAS-TOLM + 1
+                 END-IF
+              END-IF
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+             PERFORM 2027-FETCH
+                THRU 2027-FETCH-EXIT
+           END-IF.
+      *
+       2030-TRATA-OCCURS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2029-CLOSE
+      *--------------------------------------------------------------
+       2029-CLOSE.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2029-CLOSE' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+               CLOSE CURART01
+           END-EXEC.
+      *
+       2029-CLOSE-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9421-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV9421-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV9421-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP1000.
+           COPY VIATP300.
+           COPY VIAP0010.
+           COPY VIAP0016.
+           COPY TGCP2000.
+           COPY EXCP0200.
+           COPY AQCP0005.
+           COPY ETCP0002.
+           COPY COCP0030.

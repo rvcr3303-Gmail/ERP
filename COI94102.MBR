@@ -1,0 +1,1176 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI94102.
+      ******************************************************************
+      *     PROGRAMA COI94102.
+      *
+      *      Marcação de Férias
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI94102         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD3401 END-EXEC.
+           EXEC SQL INCLUDE COCD5101 END-EXEC.
+           EXEC SQL INCLUDE COCD7001 END-EXEC.
+           EXEC SQL INCLUDE ARCD7001 END-EXEC.
+           EXEC SQL INCLUDE COCD5303 END-EXEC.
+           EXEC SQL INCLUDE COCD5403 END-EXEC.
+           EXEC SQL INCLUDE COCD7100 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV9410.
+       COPY COCV9411.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY AQCW0005.
+       COPY VIAL1000.
+       COPY VIATW300.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT7001  PIC X(08) VALUE 'COVT7001'.
+           05 CON-COVT7100  PIC X(08) VALUE 'COVT7100'.
+           05 CON-ARVT7001  PIC X(08) VALUE 'ARVT7001'.
+           05 CON-COVT5303  PIC X(08) VALUE 'COVT5303'.
+           05 CON-COVT5403  PIC X(08) VALUE 'COVT5403'.
+           05 CON-COVT5101  PIC X(08) VALUE 'COVT5101'.
+           05 CON-APROVADAS PIC X(01) VALUE 'A'.
+           05 CON-F         PIC X(01) VALUE 'F'.
+           05 CON-T         PIC X(01) VALUE 'T'.
+           05 CON-S         PIC X(01) VALUE 'S'.
+           05 CON-D         PIC X(01) VALUE 'D'.
+           05 CON-SEP       PIC X(01) VALUE '-'.
+           05 CON-01        PIC X(02) VALUE '01'.
+           05 CON-02        PIC X(02) VALUE '02'.
+      **R  05 CON-03        PIC X(02) VALUE '03'.
+           05 CON-04        PIC X(02) VALUE '04'.
+      **R  05 CON-05        PIC X(02) VALUE '05'.
+           05 CON-06        PIC X(02) VALUE '06'.
+      **R  05 CON-07        PIC X(02) VALUE '07'.
+      **R  05 CON-08        PIC X(02) VALUE '08'.
+           05 CON-09        PIC X(02) VALUE '09'.
+      **R  05 CON-10        PIC X(02) VALUE '10'.
+           05 CON-11        PIC X(02) VALUE '11'.
+           05 CON-12        PIC X(02) VALUE '12'.
+      **R  05 CON-13        PIC X(02) VALUE '13'.
+      **R  05 CON-14        PIC X(02) VALUE '14'.
+      **R  05 CON-15        PIC X(02) VALUE '15'.
+      **R  05 CON-16        PIC X(02) VALUE '16'.
+      **R  05 CON-17        PIC X(02) VALUE '17'.
+      **R  05 CON-18        PIC X(02) VALUE '18'.
+      **R  05 CON-19        PIC X(02) VALUE '19'.
+      **R  05 CON-20        PIC X(02) VALUE '20'.
+      **R  05 CON-21        PIC X(02) VALUE '21'.
+      **R  05 CON-22        PIC X(02) VALUE '22'.
+      **R  05 CON-23        PIC X(02) VALUE '23'.
+      **R  05 CON-24        PIC X(02) VALUE '24'.
+      **R  05 CON-25        PIC X(02) VALUE '25'.
+      **R  05 CON-26        PIC X(02) VALUE '26'.
+      **R  05 CON-27        PIC X(02) VALUE '27'.
+      **R  05 CON-28        PIC X(02) VALUE '28'.
+      **R  05 CON-29        PIC X(02) VALUE '29'.
+      **R  05 CON-30        PIC X(02) VALUE '30'.
+           05 CON-31        PIC X(02) VALUE '31'.
+           05 CON-99        PIC X(02) VALUE '99'.
+
+       01  WS-VARIAVEIS.
+           05 WS-ULT-DIA-MES       PIC 9(02).
+           05 WS-SUM-NDIAS         PIC S9(03)V99 COMP-3 VALUE ZEROES.
+           05 WS-NUM-DIAS          PIC 9(02)V99.
+           05 WS-NUM-DIAS-ANO      PIC 9(03)V99.
+           05 WS-NUM-DIAS-APR      PIC 9(03)V99.
+           05 WS-NUM-DIAS-TOT      PIC 9(09)V99.
+           05 WS-NUM-DIAS-TOL      PIC 9(09)V99.
+           05 WS-NUM-DIAS-TOLA     PIC 9(09)V99.
+           05 WS-NUM-DIAS-TOLM     PIC 9(09)V99.
+           05 WS-X                 PIC 9(02) VALUE ZEROS.
+           05 WS-HORAS             PIC S9(8) COMP-3.
+           05 WS-QUO               PIC 9(04).
+           05 WS-RES               PIC 9(04).
+           05 WS-ZHORAS-9          PIC 9(02).
+           05 FILLER REDEFINES WS-ZHORAS-9.
+              10 WS-ZHORAS-X1      PIC X(01).
+              10 WS-ZHORAS-X2      PIC X(01).
+
+           05 WS-DTMESANO          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DTMESANO.
+              10 WS-DTMESANO-ANO   PIC X(04).
+              10 WS-DTMESANO-SEP1  PIC X(01).
+              10 WS-DTMESANO-MES   PIC X(02).
+              10 WS-DTMESANO-SEP2  PIC X(01).
+              10 WS-DTMESANO-DIA   PIC X(02).
+
+           05 WS-DATA-ULT          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DATA-ULT.
+              10 WS-DATA-ULT-ANO   PIC X(04).
+              10 WS-DATA-ULT-SEP1  PIC X(01).
+              10 WS-DATA-ULT-MES   PIC X(02).
+              10 WS-DATA-ULT-SEP2  PIC X(01).
+              10 WS-DATA-ULT-DIA   PIC X(02).
+
+           05 WS-DATA-INF          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DATA-INF.
+              10 WS-DATA-INF-ANO   PIC X(04).
+              10 WS-DATA-INF-SEP1  PIC X(01).
+              10 WS-DATA-INF-MES   PIC X(02).
+              10 WS-DATA-INF-SEP2  PIC X(01).
+              10 WS-DATA-INF-DIA   PIC X(02).
+
+           05 WS-DATA-SUP          PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DATA-SUP.
+              10 WS-DATA-SUP-ANO   PIC X(04).
+              10 WS-DATA-SUP-SEP1  PIC X(01).
+              10 WS-DATA-SUP-MES   PIC X(02).
+              10 WS-DATA-SUP-SEP2  PIC X(01).
+              10 WS-DATA-SUP-DIA   PIC X(02).
+
+           05 WS-TABELA-DIAS.
+              10 WS-DIAS           OCCURS 31 TIMES PIC X.
+              10 WS-DIAS-APR       OCCURS 31 TIMES PIC X.
+
+           05 WS-ANO-X             PIC X(04).
+           05 FILLER REDEFINES WS-ANO-X.
+              10 WS-ANO-9          PIC 9(04).
+
+           05 WS-DDATA-MIN         PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DDATA-MIN.
+              10 WS-DDATA-MIN-ANO      PIC X(04).
+              10 WS-DDATA-MIN-FILL1    PIC X(01).
+              10 WS-DDATA-MIN-MES      PIC X(02).
+              10 WS-DDATA-MIN-FILL2    PIC X(01).
+              10 WS-DDATA-MIN-DIA      PIC X(02).
+
+           05 WS-DDATA-MAX         PIC X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DDATA-MAX.
+              10 WS-DDATA-MAX-ANO      PIC X(04).
+              10 WS-DDATA-MAX-FILL1    PIC X(01).
+              10 WS-DDATA-MAX-MES      PIC X(02).
+              10 WS-DDATA-MAX-FILL2    PIC X(01).
+              10 WS-DDATA-MAX-DIA      PIC X(02).
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'COI94102'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+
+           EXEC SQL
+            DECLARE CURART01 CURSOR FOR
+            SELECT DDATA
+                 , CDIASEM
+                 , CTIPOFER
+            FROM ARVT7001
+            WHERE CTIPOFER  = :CON-T
+              AND DDATA    >= :WS-DDATA-MIN
+              AND DDATA    <= :WS-DDATA-MAX
+            ORDER BY DDATA
+           END-EXEC.
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI94102         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV9410-MSG.
+           MOVE COCV9410-ASE               TO COCV9411-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9410-ADE       TO COCV9411-ADE.
+
+      *--- LER COT53_PESSOAS com USER para obter o NTRABALHADOR
+      *
+           MOVE COCV9411-CUSERID       TO COCD5303-CUTILIZA.
+      *
+           EXEC SQL
+             SELECT NTRABALHADOR
+                  , GNOME
+                  , CEMPRESA
+               INTO :COCD5303-NTRABALHADOR
+                  , :COCD5303-GNOME
+                  , :COCD5303-CEMPRESA
+               FROM COVT5303_PESSOAS
+            WHERE CUTILIZA = :COCD5303-CUTILIZA
+            FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT5303               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+             IF DB2-OK
+                MOVE COCD5303-NTRABALHADOR TO COCV9410-CIDEMP
+                MOVE COCD5303-NTRABALHADOR TO COCV9411-CIDEMP
+             ELSE
+               IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO TO COCV9411-CANO-S
+                 MOVE COCK0001-CUTILIZA-NOTFND TO COCV9411-CANO-MSG
+                 MOVE COCK0002-CAPLIC TO COCV9411-CANO-CAPLIC
+               ELSE
+                 MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO TO COCV9411-CANO-S
+                 MOVE COCK0001-CUTILIZA-NOTFND TO COCV9411-CANO-MSG
+                 MOVE COCK0002-CAPLIC TO COCV9411-CANO-CAPLIC
+               END-IF
+             END-IF
+           END-IF.
+      *
+      *--- Ler COT54_EMPRESAS de modo a obter CPAIS
+      *
+           MOVE COCD5303-CEMPRESA      TO COCD5403-CEMPRESA.
+      *
+           EXEC SQL
+             SELECT CEMPRESA
+                  , CPAIS
+               INTO :COCD5403-CEMPRESA
+                  , :COCD5403-CPAIS
+               FROM COVT5403_EMPRESAS
+            WHERE CEMPRESA = :COCD5403-CEMPRESA
+            FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT5403               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+             IF DB2-OK
+                CONTINUE
+             ELSE
+               IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO TO COCV9411-CANO-S
+                 MOVE COCK0001-CUTILIZA-NOTFND TO COCV9411-CANO-MSG
+                 MOVE COCK0002-CAPLIC TO COCV9411-CANO-CAPLIC
+               ELSE
+                 MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO TO COCV9411-CANO-S
+                 MOVE COCK0001-CUTILIZA-NOTFND TO COCV9411-CANO-MSG
+                 MOVE COCK0002-CAPLIC TO COCV9411-CANO-CAPLIC
+               END-IF
+             END-IF
+           END-IF.
+
+      *--- Validar se o Periodo Time Report está aberto
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2060-VALIDA-PER
+                 THRU 2060-VALIDA-PER-EXIT
+           END-IF
+
+      *--- Validar se o Utilizador já integrou o Time Report para
+      *--- este Ano/Mês
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2080-VALIDA-TIMREPT
+                 THRU 2080-VALIDA-TIMREPT-EXIT
+           END-IF
+
+      *--- Obtém dados
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2099-PROC-PROGRAMA-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'COCV9410-ADE         '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCV9410-ADE             TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2060-VALIDA-PER
+      *--------------------------------------------------------------
+       2060-VALIDA-PER.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2060-VALIDA-PER ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *
+           MOVE COCV9410-CANO           TO COCD3401-ZANO.
+           MOVE COCV9410-CMES           TO COCD3401-ZMES.
+      *
+           EXEC SQL
+             SELECT CPERIODO
+                  , ZANO
+                  , ZMES
+                  , ZHORASU
+                  , CSITU
+               INTO :COCD3401-CPERIODO
+                  , :COCD3401-ZANO
+                  , :COCD3401-ZMES
+                  , :COCD3401-ZHORASU
+                  , :COCD3401-CSITU
+               FROM COVT3401_PERIODO
+               WHERE ZANO     =  :COCD3401-ZANO
+                 AND ZMES     =  :COCD3401-ZMES
+           END-EXEC.
+
+           MOVE COCK0002-COT34          TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF COCD3401-CSITU = CON-99
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV9411-CMES-S
+                    MOVE COCK0001-PERIODO-FECHADO
+                      TO COCV9411-CMES-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV9411-CMES-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+       2060-VALIDA-PER-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2080-VALIDA-TIMREPT
+      *--------------------------------------------------------------
+       2080-VALIDA-TIMREPT.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2080-VALIDA-TIMREPT' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *
+           MOVE COCD5303-NTRABALHADOR   TO COCD5101-CIDEMP.
+           MOVE COCV9410-CANO           TO COCD5101-DTMESANO(1:4).
+           MOVE CON-SEP                 TO COCD5101-DTMESANO(5:1).
+           MOVE COCV9410-CMES           TO COCD5101-DTMESANO(6:2).
+           MOVE CON-SEP                 TO COCD5101-DTMESANO(8:1).
+           MOVE CON-01                  TO COCD5101-DTMESANO(9:2).
+      *
+           EXEC SQL
+             SELECT CIDEMP
+                  , DTMESANO
+               INTO :COCD5101-CIDEMP
+                  , :COCD5101-DTMESANO
+               FROM COVT5101_TIMEREPT
+               WHERE CIDEMP   =  :COCD5101-CIDEMP
+                 AND DTMESANO =  :COCD5101-DTMESANO
+               FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE COCK0002-COT51          TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV9411-CMES-S
+                    MOVE COCK0001-TR-JA-INTEGR
+                      TO COCV9411-CMES-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV9411-CMES-CAPLIC
+              END-IF
+           END-IF.
+
+       2080-VALIDA-TIMREPT-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Limpa tabela dos dias
+           MOVE 1 TO WS-X.
+           PERFORM UNTIL WS-X > 31
+                   MOVE SPACES TO WS-DIAS(WS-X)
+                   MOVE SPACES TO WS-DIAS-APR(WS-X)
+                   ADD 1 TO WS-X
+           END-PERFORM.
+
+      *--- Obtém crédito de férias
+      *--- Obtém Total de dias de férias de todos os anos
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2121-CREDITOS
+                 THRU 2121-CREDITOS-EXIT
+           END-IF.
+
+      *--- Preenche campos acumulados dias ferias Ano e
+      *--- dias ferias Ano aprovados
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2122-ACUMULADOS
+                 THRU 2122-ACUMULADOS-EXIT
+      *          COMPUTE COCV9411-NUMDIASANO = COCV9411-NUMDIASANO -
+      *                                        WS-NUM-DIAS-TOL
+      *          COMPUTE COCV9411-NUMDIASAPR = COCV9411-NUMDIASAPR -
+      *                                        WS-NUM-DIAS-TOLA
+           END-IF.
+
+      *--- Preenche campos
+           MOVE COCV9410-CIDEMP
+             TO COCD7001-CIDEMP.
+           MOVE COCV9410-CANO
+             TO WS-DTMESANO-ANO.
+           MOVE COCV9410-CMES
+             TO WS-DTMESANO-MES.
+           MOVE CON-SEP
+             TO WS-DTMESANO-SEP1.
+           MOVE CON-SEP
+             TO WS-DTMESANO-SEP2.
+      *--- Ver se qual o ultimo dia do mês (para controlar a saída)
+           MOVE CON-01 TO WS-DTMESANO-DIA.
+           PERFORM 2180-VER-ULT-DIA
+              THRU 2180-VER-ULT-DIA-EXIT.
+
+      *--- Preenche a tabela dos dias
+           MOVE 1 TO WS-X.
+           MOVE ZEROS TO WS-NUM-DIAS.
+           PERFORM UNTIL WS-X > 31
+              MOVE WS-X           TO WS-DTMESANO-DIA
+              MOVE WS-DTMESANO    TO COCD7001-DFERIAS
+
+              MOVE COCD5403-CPAIS TO ARCD7001-CPAIS
+              MOVE WS-DTMESANO    TO ARCD7001-DDATA
+
+              INITIALIZE VIAL1000-AREA-COMUNICACAO
+              MOVE CON-99         TO VIAL1000-COD-PROCESSO
+              MOVE WS-DTMESANO    TO VIATW300-DATA10
+              PERFORM VIATP300-CONV-DATA108
+                 THRU VIATP300-CONV-DATA108-EXIT
+              MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1
+
+      *--- Ver registos já existentes
+              IF VIAL0002-SEM-ERROS
+                PERFORM 2110-OBTEM-FERIAS
+                   THRU 2110-OBTEM-FERIAS-EXIT
+              END-IF
+
+      *--- Ver Sábados e Domingos
+              IF VIAL0002-SEM-ERROS
+                PERFORM 2110-VALIDA-FDS
+                   THRU 2110-VALIDA-FDS-EXIT
+              END-IF
+
+      *--- Ver feriados
+              IF VIAL0002-SEM-ERROS
+                PERFORM 2110-VALIDA-FERIADOS
+                   THRU 2110-VALIDA-FERIADOS-EXIT
+              END-IF
+
+      *--- Controlo de saída de ciclo
+              ADD 1 TO WS-X
+              IF WS-X > WS-ULT-DIA-MES
+                 MOVE 32 TO WS-X
+              END-IF
+
+           END-PERFORM.
+
+      *--- Preenche écran com os dias
+           MOVE WS-DIAS(01) TO COCV9411-C01.
+           MOVE WS-DIAS(02) TO COCV9411-C02.
+           MOVE WS-DIAS(03) TO COCV9411-C03.
+           MOVE WS-DIAS(04) TO COCV9411-C04.
+           MOVE WS-DIAS(05) TO COCV9411-C05.
+           MOVE WS-DIAS(06) TO COCV9411-C06.
+           MOVE WS-DIAS(07) TO COCV9411-C07.
+           MOVE WS-DIAS(08) TO COCV9411-C08.
+           MOVE WS-DIAS(09) TO COCV9411-C09.
+           MOVE WS-DIAS(10) TO COCV9411-C10.
+           MOVE WS-DIAS(11) TO COCV9411-C11.
+           MOVE WS-DIAS(12) TO COCV9411-C12.
+           MOVE WS-DIAS(13) TO COCV9411-C13.
+           MOVE WS-DIAS(14) TO COCV9411-C14.
+           MOVE WS-DIAS(15) TO COCV9411-C15.
+           MOVE WS-DIAS(16) TO COCV9411-C16.
+           MOVE WS-DIAS(17) TO COCV9411-C17.
+           MOVE WS-DIAS(18) TO COCV9411-C18.
+           MOVE WS-DIAS(19) TO COCV9411-C19.
+           MOVE WS-DIAS(20) TO COCV9411-C20.
+           MOVE WS-DIAS(21) TO COCV9411-C21.
+           MOVE WS-DIAS(22) TO COCV9411-C22.
+           MOVE WS-DIAS(23) TO COCV9411-C23.
+           MOVE WS-DIAS(24) TO COCV9411-C24.
+           MOVE WS-DIAS(25) TO COCV9411-C25.
+           MOVE WS-DIAS(26) TO COCV9411-C26.
+           MOVE WS-DIAS(27) TO COCV9411-C27.
+           MOVE WS-DIAS(28) TO COCV9411-C28.
+           MOVE WS-DIAS(29) TO COCV9411-C29.
+           MOVE WS-DIAS(30) TO COCV9411-C30.
+           MOVE WS-DIAS(31) TO COCV9411-C31.
+
+           MOVE WS-DIAS-APR(01) TO COCV9411-A01.
+           MOVE WS-DIAS-APR(02) TO COCV9411-A02.
+           MOVE WS-DIAS-APR(03) TO COCV9411-A03.
+           MOVE WS-DIAS-APR(04) TO COCV9411-A04.
+           MOVE WS-DIAS-APR(05) TO COCV9411-A05.
+           MOVE WS-DIAS-APR(06) TO COCV9411-A06.
+           MOVE WS-DIAS-APR(07) TO COCV9411-A07.
+           MOVE WS-DIAS-APR(08) TO COCV9411-A08.
+           MOVE WS-DIAS-APR(09) TO COCV9411-A09.
+           MOVE WS-DIAS-APR(10) TO COCV9411-A10.
+           MOVE WS-DIAS-APR(11) TO COCV9411-A11.
+           MOVE WS-DIAS-APR(12) TO COCV9411-A12.
+           MOVE WS-DIAS-APR(13) TO COCV9411-A13.
+           MOVE WS-DIAS-APR(14) TO COCV9411-A14.
+           MOVE WS-DIAS-APR(15) TO COCV9411-A15.
+           MOVE WS-DIAS-APR(16) TO COCV9411-A16.
+           MOVE WS-DIAS-APR(17) TO COCV9411-A17.
+           MOVE WS-DIAS-APR(18) TO COCV9411-A18.
+           MOVE WS-DIAS-APR(19) TO COCV9411-A19.
+           MOVE WS-DIAS-APR(20) TO COCV9411-A20.
+           MOVE WS-DIAS-APR(21) TO COCV9411-A21.
+           MOVE WS-DIAS-APR(22) TO COCV9411-A22.
+           MOVE WS-DIAS-APR(23) TO COCV9411-A23.
+           MOVE WS-DIAS-APR(24) TO COCV9411-A24.
+           MOVE WS-DIAS-APR(25) TO COCV9411-A25.
+           MOVE WS-DIAS-APR(26) TO COCV9411-A26.
+           MOVE WS-DIAS-APR(27) TO COCV9411-A27.
+           MOVE WS-DIAS-APR(28) TO COCV9411-A28.
+           MOVE WS-DIAS-APR(29) TO COCV9411-A29.
+           MOVE WS-DIAS-APR(30) TO COCV9411-A30.
+           MOVE WS-DIAS-APR(31) TO COCV9411-A31.
+
+           MOVE WS-NUM-DIAS     TO COCV9411-NUMDIAS.
+      *    COMPUTE COCV9411-NUMDIAS = WS-NUM-DIAS - WS-NUM-DIAS-TOL.
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2180-VER-ULT-DIA
+      *--------------------------------------------------------------
+       2180-VER-ULT-DIA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2180-VER-ULT-DIA ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ZEROS TO WS-ULT-DIA-MES.
+
+           INITIALIZE VIAL1000-AREA-COMUNICACAO
+                                   REPLACING  NUMERIC BY ZEROES
+                                         ALPHANUMERIC BY SPACES.
+
+           MOVE '09'             TO VIAL1000-COD-PROCESSO.
+           MOVE WS-DTMESANO      TO AQCW0005-DTX10
+           PERFORM AQCP0005-CONV-DT10INDT8
+              THRU AQCP0005-CONV-DT10INDT8-EXIT
+           MOVE AQCW0005-DT98    TO VIAL1000-DAT-INPUT1
+
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           IF VIAL1000-SEM-ERROS
+              MOVE VIAL1000-DAT-RES-ED TO WS-DATA-ULT
+              MOVE WS-DATA-ULT-DIA     TO WS-ULT-DIA-MES
+           ELSE
+              MOVE VIAL1000-IND-ERROS TO VIAL0002-IND-ERROS
+              MOVE VIAL1000-COD-ERRO-GRAVE TO
+                                     VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2180-VER-ULT-DIA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2121-CREDITOS
+      *--------------------------------------------------------------
+       2121-CREDITOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2121-CREDITOS    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Obtém crédito de férias
+           MOVE COCV9410-CIDEMP   TO COCD7100-CIDEMP.
+           MOVE COCV9410-CANO     TO COCD7100-CANO.
+
+           EXEC SQL
+                SELECT IFNULL(SUM(NDIAS), 0)
+                 INTO
+                       :WS-SUM-NDIAS
+                 FROM COVT7100
+                 WHERE CIDEMP   = :COCD7100-CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7100
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 CONTINUE
+              ELSE
+                 MOVE ZEROS TO WS-SUM-NDIAS
+              END-IF
+           END-IF.
+
+      *--- Obtem todos os dias de férias de todos os anos
+           MOVE ZEROS             TO WS-NUM-DIAS-TOT.
+           MOVE COCV9410-CIDEMP   TO COCD7001-CIDEMP.
+
+           EXEC SQL
+                SELECT CIDEMP, IFNULL(SUM(ZHORAS), 0)
+                 INTO  :COCD7001-CIDEMP
+                    ,  :WS-HORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 GROUP BY CIDEMP
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NUM-DIAS-TOT = WS-HORAS / 8
+              END-IF
+           END-IF.
+
+      *--- Ver se existe algum dia de férias marcado numa tolerância.
+      *--- Se existir, não conta como férias, somando ao saldo.
+           MOVE ZEROS             TO WS-NUM-DIAS-TOL.
+           MOVE ZEROS             TO WS-NUM-DIAS-TOLA.
+           MOVE ZEROS             TO WS-NUM-DIAS-TOLM.
+
+           PERFORM 2125-VERIFICA-TOL
+              THRU 2125-VERIFICA-TOL-EXIT.
+
+      *--- Preenche campo saldo de férias
+           IF VIAL0002-SEM-ERROS
+      *      COMPUTE WS-NUM-DIAS-TOL = WS-NUM-DIAS-TOLA +
+      *                                WS-NUM-DIAS-TOLM
+      *
+      *      COMPUTE COCV9411-SALDOFER = COCD7100-NDIAS
+      *                                - WS-NUM-DIAS-TOT
+      *                                + WS-NUM-DIAS-TOL
+             COMPUTE COCV9411-SALDOFER = WS-SUM-NDIAS
+                                       - WS-NUM-DIAS-TOT
+           END-IF.
+
+       2121-CREDITOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2122-ACUMULADOS
+      *--------------------------------------------------------------
+       2122-ACUMULADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2122-ACUMULADOS  ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Preenche campos acumulados dias ferias Ano e
+      *--- dias ferias Ano aprovados
+           MOVE ZEROS             TO WS-NUM-DIAS-ANO.
+           MOVE ZEROS             TO WS-NUM-DIAS-APR.
+           MOVE COCV9410-CIDEMP   TO COCD7001-CIDEMP.
+           MOVE COCV9410-CANO     TO WS-DATA-INF-ANO.
+           MOVE CON-01            TO WS-DATA-INF-MES.
+           MOVE CON-01            TO WS-DATA-INF-DIA.
+           MOVE CON-SEP           TO WS-DATA-INF-SEP1.
+           MOVE CON-SEP           TO WS-DATA-INF-SEP2.
+           MOVE COCV9410-CANO     TO WS-DATA-SUP-ANO.
+           MOVE CON-12            TO WS-DATA-SUP-MES.
+           MOVE CON-31            TO WS-DATA-SUP-DIA.
+           MOVE CON-SEP           TO WS-DATA-SUP-SEP1.
+           MOVE CON-SEP           TO WS-DATA-SUP-SEP2.
+
+           EXEC SQL
+                SELECT CIDEMP, IFNULL(SUM(ZHORAS), 0)
+                 INTO  :COCD7001-CIDEMP
+                    ,  :WS-HORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 AND   DFERIAS >= :WS-DATA-INF
+                 AND   DFERIAS <= :WS-DATA-SUP
+                 GROUP BY CIDEMP
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NUM-DIAS-ANO = WS-HORAS / 8
+                 MOVE WS-NUM-DIAS-ANO TO COCV9411-NUMDIASANO
+              END-IF
+           END-IF.
+
+           EXEC SQL
+                SELECT CIDEMP, IFNULL(SUM(ZHORAS), 0)
+                 INTO  :COCD7001-CIDEMP
+                    ,  :WS-HORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 AND   DFERIAS >= :WS-DATA-INF
+                 AND   DFERIAS <= :WS-DATA-SUP
+                 AND   CSITU    = :CON-APROVADAS
+                 GROUP BY CIDEMP
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-NUM-DIAS-APR = WS-HORAS / 8
+                 MOVE WS-NUM-DIAS-APR TO COCV9411-NUMDIASAPR
+              END-IF
+           END-IF.
+
+       2122-ACUMULADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2125-VERIFICA-TOL
+      *--------------------------------------------------------------
+       2125-VERIFICA-TOL.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2125-VERIFICA-TOL' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2026-OPEN
+                 THRU 2026-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2027-FETCH
+                 THRU 2027-FETCH-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF DB2-OK
+                PERFORM 2028-CONTINUA
+                   THRU 2028-CONTINUA-EXIT
+           END-IF.
+
+           PERFORM 2029-CLOSE
+              THRU 2029-CLOSE-EXIT.
+
+       2125-VERIFICA-TOL-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2026-OPEN
+      *--------------------------------------------------------------
+       2026-OPEN.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2026-OPEN' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV9410-CANO       TO WS-DDATA-MIN-ANO.
+           MOVE CON-SEP             TO WS-DDATA-MIN-FILL1.
+           MOVE CON-01              TO WS-DDATA-MIN-MES.
+           MOVE CON-SEP             TO WS-DDATA-MIN-FILL2.
+           MOVE CON-01              TO WS-DDATA-MIN-DIA.
+
+           MOVE COCV9410-CANO       TO WS-DDATA-MAX-ANO.
+           MOVE CON-SEP             TO WS-DDATA-MAX-FILL1.
+           MOVE CON-12              TO WS-DDATA-MAX-MES.
+           MOVE CON-SEP             TO WS-DDATA-MAX-FILL2.
+           MOVE CON-31              TO WS-DDATA-MAX-DIA.
+
+           EXEC SQL
+             OPEN CURART01
+           END-EXEC.
+      *
+           MOVE CON-ARVT7001               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+       2026-OPEN-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2027-FETCH
+      *--------------------------------------------------------------
+       2027-FETCH.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2027-FETCH' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+              FETCH CURART01
+              INTO  :ARCD7001-DDATA
+                  , :ARCD7001-CDIASEM
+                  , :ARCD7001-CTIPOFER
+           END-EXEC.
+      *
+           MOVE CON-COVT7001               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+       2027-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2028-CONTINUA
+      *--------------------------------------------------------------
+       2028-CONTINUA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2028-CONTINUA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           PERFORM 2030-TRATA-OCCURS
+              THRU 2030-TRATA-OCCURS-EXIT
+             UNTIL NOT DB2-OK
+                OR NOT VIAL0002-SEM-ERROS.
+      *
+       2028-CONTINUA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2030-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2030-TRATA-OCCURS.
+      *
+           IF VIAL0001-DEBUG-SIM
+             MOVE '2030-TRATA-OCCURS'          TO VIAL0015-CALLER-ID
+             PERFORM VIAP0016-TRATA-DEBUG
+                THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Verifica se existe registo no COT70 para o mesmo dia da
+      *--- tolerancia que foi lida no ART70.
+           MOVE COCV9410-CIDEMP   TO COCD7001-CIDEMP.
+           MOVE ARCD7001-DDATA    TO COCD7001-DFERIAS.
+
+           EXEC SQL
+                SELECT CIDEMP
+                     , DFERIAS
+                     , CSITU
+                 INTO  :COCD7001-CIDEMP
+                    ,  :COCD7001-DFERIAS
+                    ,  :COCD7001-CSITU
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                   AND DFERIAS  = :COCD7001-DFERIAS
+                 FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF COCD7001-CSITU = CON-APROVADAS
+                   COMPUTE WS-NUM-DIAS-TOLA = WS-NUM-DIAS-TOLA + 1
+                 ELSE
+                   COMPUTE WS-NUM-DIAS-TOLM = WS-NUM-DIAS-TOLM + 1
+                 END-IF
+              END-IF
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+             PERFORM 2027-FETCH
+                THRU 2027-FETCH-EXIT
+           END-IF.
+      *
+       2030-TRATA-OCCURS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2029-CLOSE
+      *--------------------------------------------------------------
+       2029-CLOSE.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2029-CLOSE' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+               CLOSE CURART01
+           END-EXEC.
+      *
+       2029-CLOSE-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2110-OBTEM-FERIAS
+      *--------------------------------------------------------------
+       2110-OBTEM-FERIAS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-OBTEM-FERIAS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Ver registos já existentes
+              EXEC SQL
+                SELECT CIDEMP
+                     , DFERIAS
+                     , ZHORAS
+                     , CSITU
+                     , CUSERAPR
+                     , DDTAPR
+                     , CUSERID
+                     , HTIMEST
+                 INTO  :COCD7001-CIDEMP
+                     , :COCD7001-DFERIAS
+                     , :COCD7001-ZHORAS
+                     , :COCD7001-CSITU
+                     , :COCD7001-CUSERAPR
+                     , :COCD7001-DDTAPR
+                     , :COCD7001-CUSERID
+                     , :COCD7001-HTIMEST
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 AND   DFERIAS  = :COCD7001-DFERIAS
+              END-EXEC
+
+              MOVE CON-COVT7001
+                TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    MOVE COCD7001-ZHORAS    TO WS-ZHORAS-9
+                    MOVE WS-ZHORAS-X2       TO WS-DIAS(WS-X)
+                    MOVE COCD7001-CSITU     TO WS-DIAS-APR(WS-X)
+                    IF COCD7001-ZHORAS = 4
+                       COMPUTE WS-NUM-DIAS = WS-NUM-DIAS + 0.5
+                    END-IF
+                    IF COCD7001-ZHORAS = 8
+                       COMPUTE WS-NUM-DIAS = WS-NUM-DIAS + 1
+                    END-IF
+                 END-IF
+              END-IF.
+
+       2110-OBTEM-FERIAS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2110-VALIDA-FERIADOS
+      *--------------------------------------------------------------
+       2110-VALIDA-FERIADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-VALIDA-FERIADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Ver feriados
+              EXEC SQL
+                SELECT DDATA
+                     , CTIPOFER
+                 INTO  :ARCD7001-DDATA
+                    ,  :ARCD7001-CTIPOFER
+                 FROM ARVT7000
+                 WHERE CPAIS    = :ARCD7001-CPAIS
+                   AND DDATA    = :ARCD7001-DDATA
+              END-EXEC
+
+              MOVE CON-ARVT7001
+                TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    IF ARCD7001-CTIPOFER = CON-T
+                       MOVE CON-T   TO WS-DIAS(WS-X)
+                    ELSE
+                       MOVE CON-F   TO WS-DIAS(WS-X)
+                    END-IF
+                 END-IF
+              END-IF.
+
+       2110-VALIDA-FERIADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2110-VALIDA-FDS
+      *--------------------------------------------------------------
+       2110-VALIDA-FDS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-VALIDA-FDS' TO VIAL0015-CALLER-ID
+              MOVE 'WS-X                 '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-X                     TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+              PERFORM VIAP1000-ROTINA-DATAS
+                 THRU VIAP1000-EXIT
+
+              IF VIAL1000-DAT-RES-SEM = CON-S
+                 MOVE CON-S   TO WS-DIAS(WS-X)
+              END-IF
+
+              IF VIAL1000-DAT-RES-SEM = CON-D
+                 MOVE CON-D   TO WS-DIAS(WS-X)
+              END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-VALIDA-FDS' TO VIAL0015-CALLER-ID
+              MOVE 'WS-X                 '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-X                     TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-DIAS(WS-X)        '   TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-DIAS(WS-X)            TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+       2110-VALIDA-FDS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9411-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV9411-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV9411-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP1000.
+           COPY VIATP300.
+           COPY VIAP0016.
+           COPY AQCP0005.

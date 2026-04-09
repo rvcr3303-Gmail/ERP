@@ -1,0 +1,474 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI96204.
+      ******************************************************************
+      *     PROGRAMA COI96204.                                         *
+      *                                                                *
+      *     Criação de Contratos                                       *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI96204         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD7402 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+       01 WS-SQL-AUXILIARY.
+         05 IND-NULL                       PIC S9(04) BINARY.
+
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV9620.
+       COPY COCV9621.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL1000.
+       COPY VIATW300.
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAL0030.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ETCL0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY WACK0002.
+       COPY WACL0025.
+      *
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VAR.
+           05 WS-X            PIC 9(03) VALUE ZEROS.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT7402       PIC X(08) VALUE 'COVT7402'.
+           05 CON-PERC           PIC X(01) VALUE '%'.
+           05 CON-001            PIC 9(03) VALUE 001.
+           05 CON-21             PIC X(02) VALUE '21'.
+           05 CON-S              PIC X(01) VALUE 'S'.
+           05 CON-N              PIC X(01) VALUE 'N'.
+
+      *--------------------------------------------------------------
+      * PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'COI96204'.
+           05 WS-CONTRATO            PIC X(20).
+           05 FILLER REDEFINES WS-CONTRATO.
+              10 WS-CONTRATO-ZCUNICO PIC 9(10).
+              10 WS-CONTRATO-SEQ     PIC 9(03).
+              10 WS-CONTRATO-RESTO   PIC X(07).
+
+           05 WS-CONTRATO1           PIC X(11).
+           05 FILLER REDEFINES WS-CONTRATO1.
+              10 WS-CONTRATO1-ZCUNICO PIC 9(10).
+              10 WS-CONTRATO1-RESTO   PIC X(01).
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI96204         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+      *
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2000-PROC-PROGRAMA-EXIT.
+      *
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3000-FINAL-PROGRAMA-EXIT.
+      *
+       0000-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV9620-MSG.
+           MOVE COCV9620-ASE               TO COCV9621-ASE.
+      *
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV9620-ADE               TO COCV9621-ADE.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-VALIDACOES
+                 THRU 2200-VALIDACOES-EXIT
+           END-IF.
+      *
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9620-CCONTRATO = SPACES
+               PERFORM 2410-GERA-CONTR
+                  THRU 2410-GERA-CONTR-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2400-INSERE-DADOS
+                 THRU 2400-INSERE-DADOS-EXIT
+           END-IF.
+      *
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+       2200-VALIDACOES.
+      *--------------------------------------------------------------
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF    VIAL0002-SEM-ERROS
+           AND   COCV9620-CRENOV   = CON-N
+           AND   COCV9620-DDATINIU NOT = SPACES
+           AND   COCV9620-DDATINIU NOT = COCK0002-DATA-MIN
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9621-DDATINIU-S
+              MOVE COCK0001-CAMPO-INV     TO COCV9621-DDATINIU-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9621-DDATINIU-CAPLIC
+           END-IF.
+      *
+           IF    VIAL0002-SEM-ERROS
+           AND   COCV9620-CRENOV   = CON-S
+           AND ( COCV9620-DDATINIU = COCK0002-DATA-MIN
+           OR    COCV9620-DDATINIU = SPACES             )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9621-DDATINIU-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV9621-DDATINIU-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9621-DDATINIU-CAPLIC
+           END-IF.
+      *
+           IF    VIAL0002-SEM-ERROS
+           AND   COCV9620-CRENOV   = CON-S
+           AND   COCV9620-DDATINIU < COCV9620-DDATINI
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9621-DDATINIU-S
+              MOVE COCK0001-CAMPO-INV     TO COCV9621-DDATINIU-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9621-DDATINIU-CAPLIC
+           END-IF.
+      *
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9620-DDATFIM < COCV9620-DDATINI
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9621-DDATINI-S
+              MOVE COCK0001-INTER-INV     TO COCV9621-DDATINI-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9621-DDATINI-CAPLIC
+              MOVE COCK0002-STATUS-ACTIVO TO COCV9621-DDATFIM-S
+              MOVE COCK0001-INTER-INV     TO COCV9621-DDATFIM-MSG
+              MOVE COCK0002-CAPLIC        TO COCV9621-DDATFIM-CAPLIC
+           END-IF.
+      *
+       2200-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2410-GERA-CONTR
+      *--------------------------------------------------------------
+       2410-GERA-CONTR.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2410-GERA-CONTR ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE SPACES           TO WS-CONTRATO.
+           MOVE COCV9620-ZCUNICO TO WS-CONTRATO1-ZCUNICO.
+           MOVE CON-PERC         TO WS-CONTRATO1-RESTO.
+      *
+           EXEC SQL
+                 SELECT IFNULL(MAX(CCONTRATO), " ")
+                 INTO   :COCD7402-CCONTRATO
+                 FROM   COVT7402
+                 WHERE  CCONTRATO LIKE :WS-CONTRATO1
+           END-EXEC
+      *
+           MOVE CON-COVT7402
+             TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF COCD7402-CCONTRATO NOT = SPACES
+                    MOVE COCD7402-CCONTRATO TO WS-CONTRATO
+                    ADD 1                   TO WS-CONTRATO-SEQ
+                    MOVE WS-CONTRATO        TO COCV9620-CCONTRATO
+                 ELSE
+                    MOVE COCV9620-ZCUNICO   TO WS-CONTRATO-ZCUNICO
+                    MOVE CON-001            TO WS-CONTRATO-SEQ
+                    MOVE WS-CONTRATO        TO COCV9620-CCONTRATO
+                 END-IF
+              ELSE
+                 MOVE COCV9620-ZCUNICO   TO WS-CONTRATO-ZCUNICO
+                 MOVE CON-001            TO WS-CONTRATO-SEQ
+                 MOVE WS-CONTRATO        TO COCV9620-CCONTRATO
+              END-IF
+           END-IF.
+      *
+       2410-GERA-CONTR-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+       2400-INSERE-DADOS.
+      *--------------------------------------------------------------
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2400-INSERE-DADOS'  TO VIAL0015-CALLER-ID
+              MOVE 'COCV9620-CCONTRATO' TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCV9620-CCONTRATO  TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV9620-ZCUNICO'   TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCV9620-ZCUNICO    TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV9620-ZCUNICO           TO COCD7402-ZCUNICO     .
+           MOVE COCV9620-CCONTRATO         TO COCD7402-CCONTRATO   .
+           MOVE ZEROS                      TO COCD7402-ZSEQ        .
+           MOVE COCV9620-GREFCONT          TO COCD7402-GREFCONT    .
+           MOVE COCV9620-DDATINI           TO COCD7402-DDATINI     .
+           MOVE COCV9620-CPRAZO            TO COCD7402-CPRAZO      .
+           MOVE COCV9620-DDATFIM           TO COCD7402-DDATFIM     .
+           MOVE COCV9620-CRENOV            TO COCD7402-CRENOV      .
+           MOVE COCV9620-CTIPPER           TO COCD7402-CTIPPER     .
+           MOVE COCV9620-NDIASAVI          TO COCD7402-NDIASAVI    .
+           MOVE COCV9620-GOBSERV           TO COCD7402-GOBSERV     .
+           MOVE VIAL0001-CUTILIZA-I        TO COCD7402-CUSERID     .
+           MOVE COCV9620-DDATINIU          TO COCD7402-DDATINIU.
+           MOVE COCK0002-DATA-MIN          TO COCD7402-DDATFIMU.
+           MOVE COCK0002-DATA-MIN          TO COCD7402-DDATINIP.
+           MOVE COCK0002-DATA-MIN          TO COCD7402-DDATFIMP.
+      *
+      *--- Calculo das datas Ultima Renovação
+      *
+           IF VIAL0002-SEM-ERROS
+              IF  COCV9620-CRENOV = CON-S
+              AND COCV9620-CTIPPER NOT = SPACES
+                  PERFORM 2500-ULT-RENOV
+                     THRU 2500-ULT-RENOV-EXIT
+              END-IF
+           END-IF.
+      *
+      *--- Calculo das datas Próxima Renovação
+      *
+           IF VIAL0002-SEM-ERROS
+              IF  COCV9620-CRENOV = CON-S
+              AND COCV9620-CTIPPER NOT = SPACES
+                  PERFORM 2600-PRX-RENOV
+                     THRU 2600-PRX-RENOV-EXIT
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+
+           EXEC SQL
+                 INSERT INTO
+                COVT7402
+                (
+                   ZCUNICO
+                 , CCONTRATO
+                 , ZSEQ
+                 , GREFCONT
+                 , DDATINI
+                 , CPRAZO
+                 , DDATFIM
+                 , CRENOV
+                 , DDATINIU
+                 , DDATFIMU
+                 , CTIPPER
+                 , NDIASAVI
+                 , GOBSERV
+                 , CUSERID
+                 , HTIMEST
+                 , DDATINIP
+                 , DDATFIMP
+                )
+                VALUES (
+                       :COCD7402-ZCUNICO
+                     , :COCD7402-CCONTRATO
+                     , :COCD7402-ZSEQ
+                     , :COCD7402-GREFCONT
+                     , :COCD7402-DDATINI
+                     , :COCD7402-CPRAZO
+                     , :COCD7402-DDATFIM
+                     , :COCD7402-CRENOV
+                     , :COCD7402-DDATINIU
+                     , :COCD7402-DDATFIMU
+                     , :COCD7402-CTIPPER
+                     , :COCD7402-NDIASAVI
+                     , :COCD7402-GOBSERV
+                     , :COCD7402-CUSERID
+                     , CURRENT_TIMESTAMP
+                     , :COCD7402-DDATINIP
+                     , :COCD7402-DDATFIMP
+                )
+           END-EXEC
+      *
+              MOVE CON-COVT7402               TO VIAL0002-TABLE-NAME
+      *
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+      *
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-DUPREC
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV9621-CCONTRATO-S
+                    MOVE COCK0001-CCONTRATO-A-EXISTS
+                      TO COCV9621-CCONTRATO-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV9621-CCONTRATO-CAPLIC
+                    MOVE COCK0002-CAPLIC
+                      TO VIAL0002-CAPLIC-ERRO
+                 ELSE
+                    IF NOT DB2-OK
+                       MOVE VIAK0002-ABEND-DB2
+                         TO VIAL0002-IND-ERROS
+                       MOVE VIAK0001-ERRO-DB2
+                         TO VIAL0002-COD-ERRO-GRAVE
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+      *
+       2400-INSERE-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2500-ULT-RENOV
+      *--------------------------------------------------------------
+       2500-ULT-RENOV.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-ULT-RENOV     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-21                      TO VIAL1000-COD-PROCESSO.
+           MOVE COCV9620-CTIPPER            TO VIAL1000-COD-PRZ.
+           MOVE COCV9620-DDATINIU           TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8              TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+      *
+           IF VIAL1000-SEM-ERROS
+              MOVE COCV9620-DDATINIU        TO COCD7402-DDATINIU
+              MOVE VIAL1000-DAT-RES-ED      TO COCD7402-DDATFIMU
+              MOVE VIAL1000-DAT-RES-ED      TO COCV9620-DDATFIMU
+              MOVE VIAL1000-DAT-RES-ED      TO COCV9621-DDATFIMU
+           ELSE
+              MOVE VIAL1000-IND-ERROS       TO VIAL0002-IND-ERROS
+              MOVE VIAL1000-COD-ERRO-GRAVE  TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+      *
+       2500-ULT-RENOV-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2600-PRX-RENOV
+      *--------------------------------------------------------------
+       2600-PRX-RENOV.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2600-PRX-RENOV     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+      *
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-21                      TO VIAL1000-COD-PROCESSO.
+           MOVE COCV9620-CTIPPER            TO VIAL1000-COD-PRZ.
+           MOVE COCD7402-DDATFIMU           TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8              TO VIAL1000-DAT-INPUT1.
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+      *
+           IF VIAL1000-SEM-ERROS
+              MOVE VIATW300-DATA10          TO COCD7402-DDATINIP
+              MOVE VIAL1000-DAT-RES-ED      TO COCD7402-DDATFIMP
+           ELSE
+              MOVE VIAL1000-IND-ERROS       TO VIAL0002-IND-ERROS
+              MOVE VIAL1000-COD-ERRO-GRAVE  TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+      *
+       2600-PRX-RENOV-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE COCV9621-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV9621-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV9621-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+      *
+       3000-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+           COPY VIATP300.
+           COPY VIAP0016.
+           COPY VIAP1000.
