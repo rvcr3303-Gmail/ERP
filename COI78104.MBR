@@ -1,0 +1,1382 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI78104.
+      ******************************************************************
+      *     PROGRAMA COI78104.                                         *
+      *                                                                *
+      *     Invoices                                                   *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI78104         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD3605 END-EXEC.
+           EXEC SQL INCLUDE COCD5012 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+       01 WS-SQL-AUXILIARY.
+         05 IND-NULL                       PIC S9(04) BINARY.
+
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-NRETAMOUNT1               PIC S9(15)V9(02) COMP-3.
+           05 WS-NRETTAX1                  PIC S9(15)V9(02) COMP-3.
+           05 WS-NRETAMOUNT2               PIC S9(15)V9(02) COMP-3.
+           05 WS-NRETTAX2                  PIC S9(15)V9(02) COMP-3.
+           05 WS-NRETAMOUNT3               PIC S9(15)V9(02) COMP-3.
+           05 WS-NRETTAX3                  PIC S9(15)V9(02) COMP-3.
+           05 WS-NRETAMOUNT4               PIC S9(15)V9(02) COMP-3.
+           05 WS-NRETTAX4                  PIC S9(15)V9(02) COMP-3.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV7810.
+       COPY COCV7811.
+
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+
+       COPY ETCK0001.
+       COPY ETCK0002.
+       COPY COCL5005.
+       COPY ETCL0002.
+       COPY AQCW0005.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT3605 PIC X(08) VALUE 'COVT3605'.
+           05 CON-COVT5012 PIC X(08) VALUE 'COVT5012'.
+           05 CON-0        PIC X(01) VALUE '0'.
+
+      *--------------------------------------------------------------
+      * PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'COI78104'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI78104         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA'  TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-MENSAGEM-INPUT' TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0001-MENSAGEM-INPUT  TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV7810-MSG.
+           MOVE COCV7810-ASE               TO COCV7811-ASE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA'    TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV7810-ADE               TO COCV7811-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-VALIDACOES
+                 THRU 2199-VALIDACOES-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-INSERE-DADOS
+                 THRU 2299-INSERE-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES'       TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- VALIDA SE TODAS AS QUATRO OCORRENCIAS ESTAO VAZIAS
+           IF VIAL0002-SEM-ERROS
+              IF  ( COCV7810-DDATAEMISS1   EQUAL SPACES
+              OR    COCV7810-DDATAEMISS1   EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-DDATEDUE1     EQUAL SPACES
+              OR    COCV7810-DDATEDUE1     EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-CPRAZO1       EQUAL SPACES )
+              AND ( COCV7810-CTIPFAC1      EQUAL SPACES )
+              AND ( COCV7810-NTOTALAMOUNT1 EQUAL ZEROS )
+              AND ( COCV7810-CIMPOSTO1     EQUAL SPACES )
+              AND ( COCV7810-NTAXAMOUNT1   EQUAL ZEROS )
+              AND ( COCV7810-GDESCINVOICE1 EQUAL SPACES )
+              AND ( COCV7810-NOTAS1        EQUAL SPACES )
+              AND
+                  ( COCV7810-DDATAEMISS2   EQUAL SPACES
+              OR    COCV7810-DDATAEMISS2   EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-DDATEDUE2     EQUAL SPACES
+              OR    COCV7810-DDATEDUE2     EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-CPRAZO2       EQUAL SPACES )
+              AND ( COCV7810-CTIPFAC2      EQUAL SPACES )
+              AND ( COCV7810-NTOTALAMOUNT2 EQUAL ZEROS )
+              AND ( COCV7810-CIMPOSTO2     EQUAL SPACES )
+              AND ( COCV7810-NTAXAMOUNT2   EQUAL ZEROS )
+              AND ( COCV7810-GDESCINVOICE2 EQUAL SPACES )
+              AND ( COCV7810-NOTAS2        EQUAL SPACES )
+              AND
+                  ( COCV7810-DDATAEMISS3   EQUAL SPACES
+              OR    COCV7810-DDATAEMISS3   EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-DDATEDUE3     EQUAL SPACES
+              OR    COCV7810-DDATEDUE3     EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-CPRAZO3       EQUAL SPACES )
+              AND ( COCV7810-CTIPFAC3      EQUAL SPACES )
+              AND ( COCV7810-NTOTALAMOUNT3 EQUAL ZEROS )
+              AND ( COCV7810-CIMPOSTO3     EQUAL SPACES )
+              AND ( COCV7810-NTAXAMOUNT3   EQUAL ZEROS )
+              AND ( COCV7810-GDESCINVOICE3 EQUAL SPACES )
+              AND ( COCV7810-NOTAS3        EQUAL SPACES )
+              AND
+                  ( COCV7810-DDATAEMISS4   EQUAL SPACES
+              OR    COCV7810-DDATAEMISS4   EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-DDATEDUE4     EQUAL SPACES
+              OR    COCV7810-DDATEDUE4     EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-CPRAZO4       EQUAL SPACES )
+              AND ( COCV7810-CTIPFAC4      EQUAL SPACES )
+              AND ( COCV7810-NTOTALAMOUNT4 EQUAL ZEROS )
+              AND ( COCV7810-CIMPOSTO4     EQUAL SPACES )
+              AND ( COCV7810-NTAXAMOUNT4   EQUAL ZEROS )
+              AND ( COCV7810-GDESCINVOICE4 EQUAL SPACES )
+              AND ( COCV7810-NOTAS4        EQUAL SPACES )
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DUMMYFIELD-S
+                MOVE COCK0001-OC-VAZIAS     TO COCV7811-DUMMYFIELD-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DUMMYFIELD-CAPLIC
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2300-OBTEM-CEMPRESA
+                 THRU 2399-OBTEM-CEMPRESA-EXIT
+           END-IF.
+
+
+      *--- VALIDAR A PRIMEIRA OCORRENCIA
+      *--- Só valida se a ocorrencia tiver campos valorizados
+           IF VIAL0002-SEM-ERROS
+              IF  ( COCV7810-DDATAEMISS1   EQUAL SPACES
+              OR    COCV7810-DDATAEMISS1   EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-DDATEDUE1     EQUAL SPACES
+              OR    COCV7810-DDATEDUE1     EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-CPRAZO1       EQUAL SPACES )
+              AND ( COCV7810-CTIPFAC1      EQUAL SPACES )
+              AND ( COCV7810-NTOTALAMOUNT1 EQUAL ZEROS )
+              AND ( COCV7810-CIMPOSTO1     EQUAL SPACES )
+              AND ( COCV7810-NTAXAMOUNT1   EQUAL ZEROS )
+              AND ( COCV7810-GDESCINVOICE1 EQUAL SPACES )
+              AND ( COCV7810-NOTAS1        EQUAL SPACES )
+                    CONTINUE
+              ELSE
+                PERFORM 2500-VALIDA-OC1
+                   THRU 2500-VALIDA-OC1-EXIT
+              END-IF
+           END-IF.
+
+      *--- VALIDAR A SEGUNDA OCORRENCIA
+      *--- Só valida se a ocorrencia tiver campos valorizados
+           IF VIAL0002-SEM-ERROS
+              IF  ( COCV7810-DDATAEMISS2   EQUAL SPACES
+              OR    COCV7810-DDATAEMISS2   EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-DDATEDUE2     EQUAL SPACES
+              OR    COCV7810-DDATEDUE2     EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-CPRAZO2       EQUAL SPACES )
+              AND ( COCV7810-CTIPFAC2      EQUAL SPACES )
+              AND ( COCV7810-NTOTALAMOUNT2 EQUAL ZEROS )
+              AND ( COCV7810-CIMPOSTO2     EQUAL SPACES )
+              AND ( COCV7810-NTAXAMOUNT2   EQUAL ZEROS )
+              AND ( COCV7810-GDESCINVOICE2 EQUAL SPACES )
+              AND ( COCV7810-NOTAS2        EQUAL SPACES )
+                    CONTINUE
+              ELSE
+                PERFORM 2500-VALIDA-OC2
+                   THRU 2500-VALIDA-OC2-EXIT
+              END-IF
+           END-IF.
+
+      *--- VALIDAR A TERCEIRA OCORRENCIA
+      *--- Só valida se a ocorrencia tiver campos valorizados
+           IF VIAL0002-SEM-ERROS
+              IF  ( COCV7810-DDATAEMISS3   EQUAL SPACES
+              OR    COCV7810-DDATAEMISS3   EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-DDATEDUE3     EQUAL SPACES
+              OR    COCV7810-DDATEDUE3     EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-CPRAZO3       EQUAL SPACES )
+              AND ( COCV7810-CTIPFAC3      EQUAL SPACES )
+              AND ( COCV7810-NTOTALAMOUNT3 EQUAL ZEROS )
+              AND ( COCV7810-CIMPOSTO3     EQUAL SPACES )
+              AND ( COCV7810-NTAXAMOUNT3   EQUAL ZEROS )
+              AND ( COCV7810-GDESCINVOICE3 EQUAL SPACES )
+              AND ( COCV7810-NOTAS3        EQUAL SPACES )
+                    CONTINUE
+              ELSE
+                PERFORM 2500-VALIDA-OC3
+                   THRU 2500-VALIDA-OC3-EXIT
+              END-IF
+           END-IF.
+
+      *--- VALIDAR A QUARTA OCORRENCIA
+      *--- Só valida se a ocorrencia tiver campos valorizados
+           IF VIAL0002-SEM-ERROS
+              IF  ( COCV7810-DDATAEMISS4   EQUAL SPACES
+              OR    COCV7810-DDATAEMISS4   EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-DDATEDUE4     EQUAL SPACES
+              OR    COCV7810-DDATEDUE4     EQUAL COCK0002-DATA-MIN )
+              AND ( COCV7810-CPRAZO4       EQUAL SPACES )
+              AND ( COCV7810-CTIPFAC4      EQUAL SPACES )
+              AND ( COCV7810-NTOTALAMOUNT4 EQUAL ZEROS )
+              AND ( COCV7810-CIMPOSTO4     EQUAL SPACES )
+              AND ( COCV7810-NTAXAMOUNT4   EQUAL ZEROS )
+              AND ( COCV7810-GDESCINVOICE4 EQUAL SPACES )
+              AND ( COCV7810-NOTAS4        EQUAL SPACES )
+                    CONTINUE
+              ELSE
+                PERFORM 2500-VALIDA-OC4
+                   THRU 2500-VALIDA-OC4-EXIT
+              END-IF
+           END-IF.
+
+       2199-VALIDACOES-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                 2300-OBTEM-CEMPRESA
+      *--------------------------------------------------------------
+        2300-OBTEM-CEMPRESA.
+
+            IF VIAL0001-DEBUG-SIM
+               MOVE '2300-OBTEM-CEMPRESA' TO VIAL0015-CALLER-ID
+               PERFORM VIAP0016-TRATA-DEBUG
+                  THRU VIAP0016-TRATA-DEBUG-EXIT
+            END-IF.
+
+            MOVE COCV7810-NIDPROJECTO  TO COCD3605-NIDPROJECTO.
+            MOVE COCV7810-GCLIENTE     TO COCD3605-CLIENTE.
+
+            EXEC SQL
+                  SELECT  CEMPRESA, PAIS
+                    INTO :COCD3605-CEMPRESA, :COCD3605-PAIS
+                  FROM    COVT3605_PROJECTS
+                  WHERE   NIDPROJECTO = :COCD3605-NIDPROJECTO
+                    AND   CLIENTE     = :COCD3605-CLIENTE
+            END-EXEC.
+
+            MOVE CON-COVT3605 TO VIAL0002-TABLE-NAME.
+            PERFORM 9020-DB2CHECK
+               THRU 9029-DB2CHECK-EXIT.
+
+            IF VIAL0002-SEM-ERROS
+               IF NOT DB2-OK
+                  MOVE VIAK0002-ERROS-FUNCAO
+                    TO VIAL0002-IND-ERROS
+                  MOVE COCK0002-STATUS-ACTIVO
+                    TO COCV7811-NIDPROJECTO-S
+                  MOVE COCK0001-NIDPROJECTO-N-EXISTS
+                    TO COCV7811-NIDPROJECTO-MSG
+                  MOVE COCK0002-CAPLIC
+                    TO COCV7811-NIDPROJECTO-CAPLIC
+               END-IF
+            END-IF.
+
+
+       2399-OBTEM-CEMPRESA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *--- 2500-VALIDACOES PRIMEIRA OCORRENCIA
+      *--------------------------------------------------------------
+       2500-VALIDA-OC1.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-VALIDA-OC1' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Data de Prevista de Emissao
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-DDATAEMISS1 EQUAL SPACES
+             OR COCV7810-DDATAEMISS1 EQUAL COCK0002-DATA-MIN
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATAEMISS1-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-DDATAEMISS1-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATAEMISS1-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Data de Vencimento
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-DDATEDUE1   EQUAL SPACES
+             OR COCV7810-DDATEDUE1   EQUAL COCK0002-DATA-MIN
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATEDUE1-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-DDATEDUE1-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATEDUE1-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Data de Vencimento versus Data Prevista de Emissao
+           IF VIAL0002-SEM-ERROS
+             IF  COCV7810-DDATEDUE1 NOT EQUAL SPACES
+             AND COCV7810-DDATEDUE1 NOT EQUAL COCK0002-DATA-MIN
+             AND COCV7810-DDATEDUE1 < COCV7810-DDATAEMISS1
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATEDUE1-S
+                MOVE COCK0001-DTVEN-INV     TO COCV7811-DDATEDUE1-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATEDUE1-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Prazo Vencimento
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CPRAZO1     EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CPRAZO1-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CPRAZO1-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-CPRAZO1-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Tipo de Factura
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CTIPFAC1 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CTIPFAC1-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CTIPFAC1-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-CTIPFAC1-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valor Liquido
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-NTOTALAMOUNT1 EQUAL ZEROS
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                                     TO COCV7811-NTOTALAMOUNT1-S
+                MOVE COCK0001-CAMPO-OBRIGAT
+                                     TO COCV7811-NTOTALAMOUNT1-MSG
+                MOVE COCK0002-CAPLIC
+                                     TO COCV7811-NTOTALAMOUNT1-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Descrição da Factura
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-GDESCINVOICE1 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                                     TO COCV7811-GDESCINVOICE1-S
+                MOVE COCK0001-CAMPO-OBRIGAT
+                                     TO COCV7811-GDESCINVOICE1-MSG
+                MOVE COCK0002-CAPLIC
+                                     TO COCV7811-GDESCINVOICE1-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valores a positivo e negativo
+           IF VIAL0002-SEM-ERROS
+             IF  (COCV7810-NTOTALAMOUNT1 < ZEROS
+             AND  COCV7810-NTAXAMOUNT1   > ZEROS)
+             OR  (COCV7810-NTOTALAMOUNT1 > ZEROS
+             AND  COCV7810-NTAXAMOUNT1   < ZEROS)
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV7811-NTAXAMOUNT1-S
+               MOVE COCK0001-SINAL-ERRADO  TO COCV7811-NTAXAMOUNT1-MSG
+               MOVE COCK0002-CAPLIC
+                                        TO COCV7811-NTAXAMOUNT1-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valor Imposto versus Codigo Imposto
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CIMPOSTO1       EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CIMPOSTO1-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CIMPOSTO1-MSG
+                MOVE COCK0002-CAPLIC        TO COCV7811-CIMPOSTO1-CAPLIC
+             END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             INITIALIZE COCL5005-COMMAREA  REPLACING NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES
+
+             MOVE ZEROS                      TO COCL5005-NTOTALAMOUNT
+             MOVE SPACES                     TO COCL5005-CIMPOSTO
+             MOVE ZEROS                      TO COCL5005-NTAXAMOUNT
+             MOVE ZEROS                      TO COCL5005-NRETAMOUNT
+             MOVE ZEROS                      TO COCL5005-NRETTAX
+             MOVE ZEROS                      TO WS-NRETAMOUNT1
+             MOVE ZEROS                      TO WS-NRETTAX1
+             MOVE COCK0002-DATA-MIN          TO COCL5005-DDATAEMISS
+
+             MOVE COCV7810-NTOTALAMOUNT1 TO COCL5005-NTOTALAMOUNT
+             MOVE COCV7810-CIMPOSTO1     TO COCL5005-CIMPOSTO
+             MOVE COCV7810-CMOEDA        TO COCL5005-CMOEDA
+             MOVE COCD3605-PAIS          TO COCL5005-CPAIS
+             MOVE COCK0002-EVEN-RECEITA  TO COCL5005-CTIP-EVEN
+             MOVE COCD3605-CEMPRESA      TO COCL5005-CEMPRESA
+             MOVE COCD3605-NIDPROJECTO   TO COCL5005-NIDPROJECTO
+             MOVE ZEROES                 TO COCL5005-NIDINVOICE
+             MOVE SPACES                 TO COCL5005-GFORNECED
+
+             MOVE VIAL0001-DATA-PROCESSO-I TO COCL5005-DDATAEMISS
+
+             IF COCV7810-DDATAEMISS1 NOT = SPACES AND
+                COCV7810-DDATAEMISS1 NOT = COCK0002-DATA-MIN
+               MOVE COCV7810-DDATAEMISS1 TO COCL5005-DDATAEMISS
+             END-IF
+
+             PERFORM 2100-VALIDA-IMPOSTO
+                THRU 2100-VALIDA-IMPOSTO-EXIT
+
+             IF NOT ETCL0002-SEM-ERROS
+               MOVE ETCL0002-IND-ERROS     TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CIMPOSTO1-S
+               MOVE ETCL0002-NR-ERRO       TO COCV7811-CIMPOSTO1-MSG
+               MOVE ETCL0002-CAPLIC-ERRO   TO COCV7811-CIMPOSTO1-CAPLIC
+             ELSE
+               MOVE COCL5005-NTAXAMOUNT    TO COCV7810-NTAXAMOUNT1
+                                              COCV7811-NTAXAMOUNT1
+               MOVE COCL5005-NRETAMOUNT    TO WS-NRETAMOUNT1
+               MOVE COCL5005-NRETTAX       TO WS-NRETTAX1
+             END-IF
+
+           END-IF.
+
+       2500-VALIDA-OC1-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *--- 2500-VALIDACOES SEGUNDA OCORRENCIA
+      *--------------------------------------------------------------
+       2500-VALIDA-OC2.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-VALIDA-OC2' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Data Prevista de Emissao
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-DDATAEMISS2 EQUAL SPACES
+             OR COCV7810-DDATAEMISS2 EQUAL COCK0002-DATA-MIN
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATAEMISS2-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-DDATAEMISS2-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATAEMISS2-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Data de Vencimento
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-DDATEDUE2   EQUAL SPACES
+             OR COCV7810-DDATEDUE2   EQUAL COCK0002-DATA-MIN
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATEDUE2-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-DDATEDUE2-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATEDUE2-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Data de Vencimento versus Data Prevista de Emissao
+           IF VIAL0002-SEM-ERROS
+             IF  COCV7810-DDATEDUE2 NOT EQUAL SPACES
+             AND COCV7810-DDATEDUE2 NOT EQUAL COCK0002-DATA-MIN
+             AND COCV7810-DDATEDUE2 < COCV7810-DDATAEMISS2
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATEDUE2-S
+                MOVE COCK0001-DTVEN-INV     TO COCV7811-DDATEDUE2-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATEDUE2-CAPLIC
+             END-IF
+
+      *--- Prazo Vencimento
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CPRAZO2 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CPRAZO2-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CPRAZO2-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-CPRAZO2-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Tipo de Factura
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CTIPFAC2 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CTIPFAC2-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CTIPFAC2-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-CTIPFAC2-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valor Liquido
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-NTOTALAMOUNT2 EQUAL ZEROS
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                                     TO COCV7811-NTOTALAMOUNT2-S
+                MOVE COCK0001-CAMPO-OBRIGAT
+                                     TO COCV7811-NTOTALAMOUNT2-MSG
+                MOVE COCK0002-CAPLIC
+                                     TO COCV7811-NTOTALAMOUNT2-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Descrição da Factura
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-GDESCINVOICE2 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                                     TO COCV7811-GDESCINVOICE2-S
+                MOVE COCK0001-CAMPO-OBRIGAT
+                                     TO COCV7811-GDESCINVOICE2-MSG
+                MOVE COCK0002-CAPLIC
+                                     TO COCV7811-GDESCINVOICE2-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valores a positivo e negativo
+           IF VIAL0002-SEM-ERROS
+             IF  (COCV7810-NTOTALAMOUNT2 < ZEROS
+             AND  COCV7810-NTAXAMOUNT2   > ZEROS)
+             OR  (COCV7810-NTOTALAMOUNT2 > ZEROS
+             AND  COCV7810-NTAXAMOUNT2   < ZEROS)
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV7811-NTAXAMOUNT2-S
+               MOVE COCK0001-SINAL-ERRADO  TO COCV7811-NTAXAMOUNT2-MSG
+               MOVE COCK0002-CAPLIC
+                                        TO COCV7811-NTAXAMOUNT2-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valor Imposto versus Codigo Imposto
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CIMPOSTO2       EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CIMPOSTO2-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CIMPOSTO2-MSG
+                MOVE COCK0002-CAPLIC        TO COCV7811-CIMPOSTO2-CAPLIC
+             END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             INITIALIZE COCL5005-COMMAREA  REPLACING NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES
+
+             MOVE ZEROS                      TO COCL5005-NTOTALAMOUNT
+             MOVE SPACES                     TO COCL5005-CIMPOSTO
+             MOVE ZEROS                      TO COCL5005-NTAXAMOUNT
+             MOVE ZEROS                      TO COCL5005-NRETAMOUNT
+             MOVE ZEROS                      TO COCL5005-NRETTAX
+             MOVE ZEROS                      TO WS-NRETAMOUNT2
+             MOVE ZEROS                      TO WS-NRETTAX2
+             MOVE COCK0002-DATA-MIN          TO COCL5005-DDATAEMISS
+
+             MOVE COCV7810-NTOTALAMOUNT2 TO COCL5005-NTOTALAMOUNT
+             MOVE COCV7810-CIMPOSTO2     TO COCL5005-CIMPOSTO
+             MOVE COCV7810-CMOEDA        TO COCL5005-CMOEDA
+             MOVE COCD3605-PAIS          TO COCL5005-CPAIS
+             MOVE COCK0002-EVEN-RECEITA  TO COCL5005-CTIP-EVEN
+             MOVE COCD3605-CEMPRESA      TO COCL5005-CEMPRESA
+             MOVE COCD3605-NIDPROJECTO   TO COCL5005-NIDPROJECTO
+             MOVE ZEROES                 TO COCL5005-NIDINVOICE
+             MOVE SPACES                 TO COCL5005-GFORNECED
+
+             MOVE VIAL0001-DATA-PROCESSO-I TO COCL5005-DDATAEMISS
+
+             IF COCV7810-DDATAEMISS2 NOT = SPACES AND
+                COCV7810-DDATAEMISS2 NOT = COCK0002-DATA-MIN
+               MOVE COCV7810-DDATAEMISS2 TO COCL5005-DDATAEMISS
+             END-IF
+
+             PERFORM 2100-VALIDA-IMPOSTO
+                THRU 2100-VALIDA-IMPOSTO-EXIT
+
+             IF NOT ETCL0002-SEM-ERROS
+               MOVE ETCL0002-IND-ERROS     TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CIMPOSTO2-S
+               MOVE ETCL0002-NR-ERRO       TO COCV7811-CIMPOSTO2-MSG
+               MOVE ETCL0002-CAPLIC-ERRO   TO COCV7811-CIMPOSTO2-CAPLIC
+             ELSE
+               MOVE COCL5005-NTAXAMOUNT    TO COCV7810-NTAXAMOUNT2
+                                              COCV7811-NTAXAMOUNT2
+               MOVE COCL5005-NRETAMOUNT    TO WS-NRETAMOUNT2
+               MOVE COCL5005-NRETTAX       TO WS-NRETTAX2
+             END-IF
+
+           END-IF.
+
+       2500-VALIDA-OC2-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *--- 2500-VALIDACOES TERCEIRA OCORRENCIA
+      *--------------------------------------------------------------
+       2500-VALIDA-OC3.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-VALIDA-OC3' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Data Prevista de Emissao
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-DDATAEMISS3 EQUAL SPACES
+             OR COCV7810-DDATAEMISS3 EQUAL COCK0002-DATA-MIN
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATAEMISS3-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-DDATAEMISS3-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATAEMISS3-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Data de Vencimento
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-DDATEDUE3   EQUAL SPACES
+             OR COCV7810-DDATEDUE3   EQUAL COCK0002-DATA-MIN
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATEDUE3-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-DDATEDUE3-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATEDUE3-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Data de Vencimento versus Data Prevista de Emissao
+           IF VIAL0002-SEM-ERROS
+             IF  COCV7810-DDATEDUE3 NOT EQUAL SPACES
+             AND COCV7810-DDATEDUE3 NOT EQUAL COCK0002-DATA-MIN
+             AND COCV7810-DDATEDUE3 < COCV7810-DDATAEMISS3
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATEDUE3-S
+                MOVE COCK0001-DTVEN-INV     TO COCV7811-DDATEDUE3-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATEDUE3-CAPLIC
+             END-IF
+
+      *--- Prazo Vencimento
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CPRAZO3 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CPRAZO3-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CPRAZO3-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-CPRAZO3-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Tipo de Factura
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CTIPFAC3 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CTIPFAC3-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CTIPFAC3-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-CTIPFAC3-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valor Liquido
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-NTOTALAMOUNT3 EQUAL ZEROS
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                                     TO COCV7811-NTOTALAMOUNT3-S
+                MOVE COCK0001-CAMPO-OBRIGAT
+                                     TO COCV7811-NTOTALAMOUNT3-MSG
+                MOVE COCK0002-CAPLIC
+                                     TO COCV7811-NTOTALAMOUNT3-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Descrição da Factura
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-GDESCINVOICE3 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                                     TO COCV7811-GDESCINVOICE3-S
+                MOVE COCK0001-CAMPO-OBRIGAT
+                                     TO COCV7811-GDESCINVOICE3-MSG
+                MOVE COCK0002-CAPLIC
+                                     TO COCV7811-GDESCINVOICE3-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valores a positivo e negativo
+           IF VIAL0002-SEM-ERROS
+             IF  (COCV7810-NTOTALAMOUNT3 < ZEROS
+             AND  COCV7810-NTAXAMOUNT3   > ZEROS)
+             OR  (COCV7810-NTOTALAMOUNT3 > ZEROS
+             AND  COCV7810-NTAXAMOUNT3   < ZEROS)
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV7811-NTAXAMOUNT3-S
+               MOVE COCK0001-SINAL-ERRADO  TO COCV7811-NTAXAMOUNT3-MSG
+               MOVE COCK0002-CAPLIC
+                                        TO COCV7811-NTAXAMOUNT3-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valor Imposto versus Codigo Imposto
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CIMPOSTO3       EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CIMPOSTO3-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CIMPOSTO3-MSG
+                MOVE COCK0002-CAPLIC        TO COCV7811-CIMPOSTO3-CAPLIC
+             END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             INITIALIZE COCL5005-COMMAREA  REPLACING NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES
+
+             MOVE ZEROS                      TO COCL5005-NTOTALAMOUNT
+             MOVE SPACES                     TO COCL5005-CIMPOSTO
+             MOVE ZEROS                      TO COCL5005-NTAXAMOUNT
+             MOVE ZEROS                      TO COCL5005-NRETAMOUNT
+             MOVE ZEROS                      TO COCL5005-NRETTAX
+             MOVE ZEROS                      TO WS-NRETAMOUNT3
+             MOVE ZEROS                      TO WS-NRETTAX3
+             MOVE COCK0002-DATA-MIN          TO COCL5005-DDATAEMISS
+
+             MOVE COCV7810-NTOTALAMOUNT3 TO COCL5005-NTOTALAMOUNT
+             MOVE COCV7810-CIMPOSTO3     TO COCL5005-CIMPOSTO
+             MOVE COCV7810-CMOEDA        TO COCL5005-CMOEDA
+             MOVE COCD3605-PAIS          TO COCL5005-CPAIS
+             MOVE COCK0002-EVEN-RECEITA  TO COCL5005-CTIP-EVEN
+             MOVE COCD3605-CEMPRESA      TO COCL5005-CEMPRESA
+             MOVE COCD3605-NIDPROJECTO   TO COCL5005-NIDPROJECTO
+             MOVE ZEROES                 TO COCL5005-NIDINVOICE
+             MOVE SPACES                 TO COCL5005-GFORNECED
+
+             MOVE VIAL0001-DATA-PROCESSO-I TO COCL5005-DDATAEMISS
+
+             IF COCV7810-DDATAEMISS3 NOT = SPACES AND
+                COCV7810-DDATAEMISS3 NOT = COCK0002-DATA-MIN
+               MOVE COCV7810-DDATAEMISS3 TO COCL5005-DDATAEMISS
+             END-IF
+
+             PERFORM 2100-VALIDA-IMPOSTO
+                THRU 2100-VALIDA-IMPOSTO-EXIT
+
+             IF NOT ETCL0002-SEM-ERROS
+               MOVE ETCL0002-IND-ERROS     TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CIMPOSTO3-S
+               MOVE ETCL0002-NR-ERRO       TO COCV7811-CIMPOSTO3-MSG
+               MOVE ETCL0002-CAPLIC-ERRO   TO COCV7811-CIMPOSTO3-CAPLIC
+             ELSE
+               MOVE COCL5005-NTAXAMOUNT    TO COCV7810-NTAXAMOUNT3
+                                              COCV7811-NTAXAMOUNT3
+               MOVE COCL5005-NRETAMOUNT    TO WS-NRETAMOUNT3
+               MOVE COCL5005-NRETTAX       TO WS-NRETTAX3
+             END-IF
+
+           END-IF.
+
+       2500-VALIDA-OC3-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *--- 2500-VALIDACOES QUARTA OCORRENCIA
+      *--------------------------------------------------------------
+       2500-VALIDA-OC4.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-VALIDA-OC4' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Data de Prevista de Emissao
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-DDATAEMISS4 EQUAL SPACES
+             OR COCV7810-DDATAEMISS4 EQUAL COCK0002-DATA-MIN
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATAEMISS4-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-DDATAEMISS4-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATAEMISS4-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Data de Vencimento
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-DDATEDUE4   EQUAL SPACES
+             OR COCV7810-DDATEDUE4   EQUAL COCK0002-DATA-MIN
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATEDUE4-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-DDATEDUE4-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATEDUE4-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Data de Vencimento versus Data Prevista de Emissao
+           IF VIAL0002-SEM-ERROS
+             IF  COCV7810-DDATEDUE4 NOT EQUAL SPACES
+             AND COCV7810-DDATEDUE4 NOT EQUAL COCK0002-DATA-MIN
+             AND COCV7810-DDATEDUE4 < COCV7810-DDATAEMISS4
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-DDATEDUE4-S
+                MOVE COCK0001-DTVEN-INV     TO COCV7811-DDATEDUE4-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-DDATEDUE4-CAPLIC
+             END-IF
+
+      *--- Prazo Vencimento
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CPRAZO4 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CPRAZO4-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CPRAZO4-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-CPRAZO4-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Tipo de Factura
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CTIPFAC4 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CTIPFAC4-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CTIPFAC4-MSG
+                MOVE COCK0002-CAPLIC     TO COCV7811-CTIPFAC4-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valor Liquido
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-NTOTALAMOUNT4 EQUAL ZEROS
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                                     TO COCV7811-NTOTALAMOUNT4-S
+                MOVE COCK0001-CAMPO-OBRIGAT
+                                     TO COCV7811-NTOTALAMOUNT4-MSG
+                MOVE COCK0002-CAPLIC
+                                     TO COCV7811-NTOTALAMOUNT4-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Descrição da Factura
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-GDESCINVOICE4 EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                                     TO COCV7811-GDESCINVOICE4-S
+                MOVE COCK0001-CAMPO-OBRIGAT
+                                     TO COCV7811-GDESCINVOICE4-MSG
+                MOVE COCK0002-CAPLIC
+                                     TO COCV7811-GDESCINVOICE4-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valores a positivo e negativo
+           IF VIAL0002-SEM-ERROS
+             IF  (COCV7810-NTOTALAMOUNT4 < ZEROS
+             AND  COCV7810-NTAXAMOUNT4   > ZEROS)
+             OR  (COCV7810-NTOTALAMOUNT4 > ZEROS
+             AND  COCV7810-NTAXAMOUNT4   < ZEROS)
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV7811-NTAXAMOUNT4-S
+               MOVE COCK0001-SINAL-ERRADO  TO COCV7811-NTAXAMOUNT4-MSG
+               MOVE COCK0002-CAPLIC
+                                        TO COCV7811-NTAXAMOUNT4-CAPLIC
+             END-IF
+           END-IF.
+
+      *--- Valor Imposto versus Codigo Imposto
+           IF VIAL0002-SEM-ERROS
+             IF COCV7810-CIMPOSTO4       EQUAL SPACES
+                MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CIMPOSTO4-S
+                MOVE COCK0001-CAMPO-OBRIGAT TO COCV7811-CIMPOSTO4-MSG
+                MOVE COCK0002-CAPLIC        TO COCV7811-CIMPOSTO4-CAPLIC
+             END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             INITIALIZE COCL5005-COMMAREA  REPLACING NUMERIC BY ZEROES
+                                                ALPHANUMERIC BY SPACES
+
+             MOVE ZEROS                      TO COCL5005-NTOTALAMOUNT
+             MOVE SPACES                     TO COCL5005-CIMPOSTO
+             MOVE ZEROS                      TO COCL5005-NTAXAMOUNT
+             MOVE ZEROS                      TO COCL5005-NRETAMOUNT
+             MOVE ZEROS                      TO COCL5005-NRETTAX
+             MOVE ZEROS                      TO WS-NRETAMOUNT4
+             MOVE ZEROS                      TO WS-NRETTAX4
+             MOVE COCK0002-DATA-MIN          TO COCL5005-DDATAEMISS
+
+             MOVE COCV7810-NTOTALAMOUNT4 TO COCL5005-NTOTALAMOUNT
+             MOVE COCV7810-CIMPOSTO4     TO COCL5005-CIMPOSTO
+             MOVE COCV7810-CMOEDA        TO COCL5005-CMOEDA
+             MOVE COCD3605-PAIS          TO COCL5005-CPAIS
+             MOVE COCK0002-EVEN-RECEITA  TO COCL5005-CTIP-EVEN
+             MOVE COCD3605-CEMPRESA      TO COCL5005-CEMPRESA
+             MOVE COCD3605-NIDPROJECTO   TO COCL5005-NIDPROJECTO
+             MOVE ZEROES                 TO COCL5005-NIDINVOICE
+             MOVE SPACES                 TO COCL5005-GFORNECED
+
+             MOVE VIAL0001-DATA-PROCESSO-I TO COCL5005-DDATAEMISS
+
+             IF COCV7810-DDATAEMISS4 NOT = SPACES AND
+                COCV7810-DDATAEMISS4 NOT = COCK0002-DATA-MIN
+               MOVE COCV7810-DDATAEMISS4 TO COCL5005-DDATAEMISS
+             END-IF
+
+             PERFORM 2100-VALIDA-IMPOSTO
+                THRU 2100-VALIDA-IMPOSTO-EXIT
+
+             IF NOT ETCL0002-SEM-ERROS
+               MOVE ETCL0002-IND-ERROS     TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV7811-CIMPOSTO4-S
+               MOVE ETCL0002-NR-ERRO       TO COCV7811-CIMPOSTO4-MSG
+               MOVE ETCL0002-CAPLIC-ERRO   TO COCV7811-CIMPOSTO4-CAPLIC
+             ELSE
+               MOVE COCL5005-NTAXAMOUNT    TO COCV7810-NTAXAMOUNT4
+                                              COCV7811-NTAXAMOUNT4
+               MOVE COCL5005-NRETAMOUNT    TO WS-NRETAMOUNT4
+               MOVE COCL5005-NRETTAX       TO WS-NRETTAX4
+             END-IF
+
+           END-IF.
+
+       2500-VALIDA-OC4-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *--- 2100-VALIDA-IMPOSTO
+      *--------------------------------------------------------------
+       2100-VALIDA-IMPOSTO.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDA-IMPOSTO'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE ETCL0002-COMMAREA  REPLACING NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES
+
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES
+
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT
+
+
+           PERFORM COCP5005-CALL-ROTINA
+              THRU COCP5005-CALL-ROTINA-EXIT
+
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDA-IMPOSTO-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'RESULT-I'         TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCL5005-RESULT-I TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'RESULT-F'         TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCL5005-RESULT-F TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCL5005-CPAIS'      TO VIAL0015-CAMPO-NM(3)
+              MOVE  COCL5005-CPAIS       TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2100-VALIDA-IMPOSTO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2200-INSERE-DADOS
+      *--------------------------------------------------------------
+       2200-INSERE-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-INSERE-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *-------------------------------------*
+      *--- ESCREVE A PRIMEIRA OCORRENCIA ---*
+      *-------------------------------------*
+           IF  VIAL0002-SEM-ERROS
+           AND COCV7810-NTOTALAMOUNT1 NOT EQUAL ZEROS
+      *--- OBTEM A PROXIMA SEQUENCIA DO PROJECTO
+               PERFORM 2600-BUSCA-SEQ
+                  THRU 2600-BUSCA-SEQ-EXIT
+               MOVE COCV7810-NIDPROJECTO      TO COCD5012-NIDPROJECTO
+               MOVE COCV7810-GCLIENTE         TO COCD5012-GCLIENTE
+               MOVE VIAL0001-DATA-PROCESSO-I  TO COCD5012-DDATAINSER
+               MOVE COCV7810-DDATAEMISS1      TO COCD5012-DDATAEMISS
+               MOVE COCK0002-DATA-MIN         TO COCD5012-DDATAEMIS2
+               MOVE COCV7810-DDATEDUE1        TO COCD5012-DDATEDUE
+               MOVE COCV7810-CPRAZO1          TO COCD5012-CPRAZO
+               MOVE COCV7810-NTOTALAMOUNT1    TO COCD5012-NTOTALAMOUNT
+               MOVE COCV7810-NTAXAMOUNT1      TO COCD5012-NTAXAMOUNT
+               MOVE WS-NRETAMOUNT1            TO COCD5012-NTOTRET
+               MOVE WS-NRETTAX1               TO COCD5012-NTAXRET
+               MOVE COCV7810-GDESCINVOICE1    TO COCD5012-GDESCINVOICE
+               MOVE CON-0                     TO COCD5012-CSTATUS
+               MOVE VIAL0001-CUTILIZA-I       TO COCD5012-CUSERID
+               MOVE SPACES                    TO COCD5012-GREFINV
+               MOVE COCK0002-DATA-MIN         TO COCD5012-DPAG
+               MOVE COCV7810-CMOEDA           TO COCD5012-CMOEDA
+               MOVE COCV7810-CIMPOSTO1        TO COCD5012-CIMPOSTO
+               MOVE COCV7810-NOTAS1           TO COCD5012-NOTAS
+               MOVE COCV7810-CTIPFAC1         TO COCD5012-CTIPFAC
+               MOVE COCD3605-CEMPRESA         TO COCD5012-CEMPRESA
+               COMPUTE COCV7811-NVALTOT1  = COCV7810-NTOTALAMOUNT1
+                                          + COCV7810-NTAXAMOUNT1
+               IF COCV7810-NTOTALAMOUNT1 < 0
+                  MOVE COCK0002-NOTA-CREDITO   TO COCD5012-CTIPDOC
+               ELSE
+                  MOVE COCK0002-FACTURA        TO COCD5012-CTIPDOC
+               END-IF
+      *--- ESCREVE A PRIMEIRA OCORRENCIA
+               PERFORM 2700-INSERT
+                  THRU 2700-INSERT-EXIT
+           END-IF.
+
+      *------------------------------------*
+      *--- ESCREVE A SEGUNDA OCORRENCIA ---*
+      *------------------------------------*
+           IF  VIAL0002-SEM-ERROS
+           AND COCV7810-NTOTALAMOUNT2 NOT EQUAL ZEROS
+      *--- OBTEM A PROXIMA SEQUENCIA DO PROJECTO
+               PERFORM 2600-BUSCA-SEQ
+                  THRU 2600-BUSCA-SEQ-EXIT
+               MOVE COCV7810-NIDPROJECTO      TO COCD5012-NIDPROJECTO
+               MOVE COCV7810-GCLIENTE         TO COCD5012-GCLIENTE
+               MOVE VIAL0001-DATA-PROCESSO-I  TO COCD5012-DDATAINSER
+               MOVE COCV7810-DDATAEMISS2      TO COCD5012-DDATAEMISS
+               MOVE COCK0002-DATA-MIN         TO COCD5012-DDATAEMIS2
+               MOVE COCV7810-DDATEDUE2        TO COCD5012-DDATEDUE
+               MOVE COCV7810-CPRAZO2          TO COCD5012-CPRAZO
+               MOVE COCV7810-NTOTALAMOUNT2    TO COCD5012-NTOTALAMOUNT
+               MOVE COCV7810-NTAXAMOUNT2      TO COCD5012-NTAXAMOUNT
+               MOVE WS-NRETAMOUNT2            TO COCD5012-NTOTRET
+               MOVE WS-NRETTAX2               TO COCD5012-NTAXRET
+               MOVE COCV7810-GDESCINVOICE2    TO COCD5012-GDESCINVOICE
+               MOVE CON-0                     TO COCD5012-CSTATUS
+               MOVE VIAL0001-CUTILIZA-I       TO COCD5012-CUSERID
+               MOVE SPACES                    TO COCD5012-GREFINV
+               MOVE COCK0002-DATA-MIN         TO COCD5012-DPAG
+               MOVE COCV7810-CMOEDA           TO COCD5012-CMOEDA
+               MOVE COCV7810-CIMPOSTO2        TO COCD5012-CIMPOSTO
+               MOVE COCV7810-NOTAS2           TO COCD5012-NOTAS
+               MOVE COCV7810-CTIPFAC2         TO COCD5012-CTIPFAC
+               MOVE COCD3605-CEMPRESA         TO COCD5012-CEMPRESA
+               COMPUTE COCV7811-NVALTOT2  = COCV7810-NTOTALAMOUNT2
+                                          + COCV7810-NTAXAMOUNT2
+               IF COCV7810-NTOTALAMOUNT2 < 0
+                  MOVE COCK0002-NOTA-CREDITO   TO COCD5012-CTIPDOC
+               ELSE
+                  MOVE COCK0002-FACTURA        TO COCD5012-CTIPDOC
+               END-IF
+      *--- ESCREVE A PRIMEIRA OCORRENCIA
+               PERFORM 2700-INSERT
+                  THRU 2700-INSERT-EXIT
+           END-IF.
+
+      *-------------------------------------*
+      *--- ESCREVE A TERCEIRA OCORRENCIA ---*
+      *-------------------------------------*
+           IF  VIAL0002-SEM-ERROS
+           AND COCV7810-NTOTALAMOUNT3 NOT EQUAL ZEROS
+      *--- OBTEM A PROXIMA SEQUENCIA DO PROJECTO
+               PERFORM 2600-BUSCA-SEQ
+                  THRU 2600-BUSCA-SEQ-EXIT
+               MOVE COCV7810-NIDPROJECTO      TO COCD5012-NIDPROJECTO
+               MOVE COCV7810-GCLIENTE         TO COCD5012-GCLIENTE
+               MOVE VIAL0001-DATA-PROCESSO-I  TO COCD5012-DDATAINSER
+               MOVE COCV7810-DDATAEMISS3      TO COCD5012-DDATAEMISS
+               MOVE COCK0002-DATA-MIN         TO COCD5012-DDATAEMIS2
+               MOVE COCV7810-DDATEDUE3        TO COCD5012-DDATEDUE
+               MOVE COCV7810-CPRAZO3          TO COCD5012-CPRAZO
+               MOVE COCV7810-NTOTALAMOUNT3    TO COCD5012-NTOTALAMOUNT
+               MOVE COCV7810-NTAXAMOUNT3      TO COCD5012-NTAXAMOUNT
+               MOVE WS-NRETAMOUNT3            TO COCD5012-NTOTRET
+               MOVE WS-NRETTAX3               TO COCD5012-NTAXRET
+               MOVE COCV7810-GDESCINVOICE3    TO COCD5012-GDESCINVOICE
+               MOVE CON-0                     TO COCD5012-CSTATUS
+               MOVE VIAL0001-CUTILIZA-I       TO COCD5012-CUSERID
+               MOVE SPACES                    TO COCD5012-GREFINV
+               MOVE COCK0002-DATA-MIN         TO COCD5012-DPAG
+               MOVE COCV7810-CMOEDA           TO COCD5012-CMOEDA
+               MOVE COCV7810-CIMPOSTO3        TO COCD5012-CIMPOSTO
+               MOVE COCV7810-NOTAS3           TO COCD5012-NOTAS
+               MOVE COCV7810-CTIPFAC3         TO COCD5012-CTIPFAC
+               MOVE COCD3605-CEMPRESA         TO COCD5012-CEMPRESA
+               COMPUTE COCV7811-NVALTOT3  = COCV7810-NTOTALAMOUNT3
+                                          + COCV7810-NTAXAMOUNT3
+               IF COCV7810-NTOTALAMOUNT3 < 0
+                  MOVE COCK0002-NOTA-CREDITO   TO COCD5012-CTIPDOC
+               ELSE
+                  MOVE COCK0002-FACTURA        TO COCD5012-CTIPDOC
+               END-IF
+      *--- ESCREVE A PRIMEIRA OCORRENCIA
+               PERFORM 2700-INSERT
+                  THRU 2700-INSERT-EXIT
+           END-IF.
+
+      *-----------------------------------*
+      *--- ESCREVE A QUARTA OCORRENCIA ---*
+      *-----------------------------------*
+           IF  VIAL0002-SEM-ERROS
+           AND COCV7810-NTOTALAMOUNT4 NOT EQUAL ZEROS
+      *--- OBTEM A PROXIMA SEQUENCIA DO PROJECTO
+               PERFORM 2600-BUSCA-SEQ
+                  THRU 2600-BUSCA-SEQ-EXIT
+               MOVE COCV7810-NIDPROJECTO      TO COCD5012-NIDPROJECTO
+               MOVE COCV7810-GCLIENTE         TO COCD5012-GCLIENTE
+               MOVE VIAL0001-DATA-PROCESSO-I  TO COCD5012-DDATAINSER
+               MOVE COCV7810-DDATAEMISS4      TO COCD5012-DDATAEMISS
+               MOVE COCK0002-DATA-MIN         TO COCD5012-DDATAEMIS2
+               MOVE COCV7810-DDATEDUE4        TO COCD5012-DDATEDUE
+               MOVE COCV7810-CPRAZO4          TO COCD5012-CPRAZO
+               MOVE COCV7810-NTOTALAMOUNT4    TO COCD5012-NTOTALAMOUNT
+               MOVE COCV7810-NTAXAMOUNT4      TO COCD5012-NTAXAMOUNT
+               MOVE WS-NRETAMOUNT4            TO COCD5012-NTOTRET
+               MOVE WS-NRETTAX4               TO COCD5012-NTAXRET
+               MOVE COCV7810-GDESCINVOICE4    TO COCD5012-GDESCINVOICE
+               MOVE CON-0                     TO COCD5012-CSTATUS
+               MOVE VIAL0001-CUTILIZA-I       TO COCD5012-CUSERID
+               MOVE SPACES                    TO COCD5012-GREFINV
+               MOVE COCK0002-DATA-MIN         TO COCD5012-DPAG
+               MOVE COCV7810-CMOEDA           TO COCD5012-CMOEDA
+               MOVE COCV7810-CIMPOSTO4        TO COCD5012-CIMPOSTO
+               MOVE COCV7810-NOTAS4           TO COCD5012-NOTAS
+               MOVE COCV7810-CTIPFAC4         TO COCD5012-CTIPFAC
+               MOVE COCD3605-CEMPRESA         TO COCD5012-CEMPRESA
+               COMPUTE COCV7811-NVALTOT4  = COCV7810-NTOTALAMOUNT4
+                                          + COCV7810-NTAXAMOUNT4
+               IF COCV7810-NTOTALAMOUNT4 < 0
+                  MOVE COCK0002-NOTA-CREDITO   TO COCD5012-CTIPDOC
+               ELSE
+                  MOVE COCK0002-FACTURA        TO COCD5012-CTIPDOC
+               END-IF
+      *--- ESCREVE A PRIMEIRA OCORRENCIA
+               PERFORM 2700-INSERT
+                  THRU 2700-INSERT-EXIT
+           END-IF.
+
+
+       2299-INSERE-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      * ESCREVE FACTURA
+      *--------------------------------------------------------------
+       2700-INSERT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2700-INSERT      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+
+              EXEC SQL
+                   INSERT INTO COVT5012_INVOICES
+                   (
+                      NIDINVOICE
+                    , NIDPROJECTO
+                    , GCLIENTE
+                    , DDATAINSER
+                    , DDATAEMISS
+                    , DDATAEMIS2
+                    , DDATEDUE
+                    , CPRAZO
+                    , NTOTALAMOUNT
+                    , NTAXAMOUNT
+                    , GDESCINVOICE
+                    , CSTATUS
+                    , CUSERID
+                    , HTIMEST
+                    , GREFINV
+                    , DPAG
+                    , CTIPDOC
+                    , CMOEDA
+                    , CIMPOSTO
+                    , NOTAS
+                    , CTIPFAC
+                    , NTOTRET
+                    , NTAXRET
+                    , CEMPRESA
+                   )
+                   VALUES (
+                          :COCD5012-NIDINVOICE
+                        , :COCD5012-NIDPROJECTO
+                        , :COCD5012-GCLIENTE
+                        , :COCD5012-DDATAINSER
+                        , :COCD5012-DDATAEMISS
+                        , :COCD5012-DDATAEMIS2
+                        , :COCD5012-DDATEDUE
+                        , :COCD5012-CPRAZO
+                        , :COCD5012-NTOTALAMOUNT
+                        , :COCD5012-NTAXAMOUNT
+                        , :COCD5012-GDESCINVOICE
+                        , :COCD5012-CSTATUS
+                        , :COCD5012-CUSERID
+                        ,  CURRENT TIMESTAMP
+                        , :COCD5012-GREFINV
+                        , :COCD5012-DPAG
+                        , :COCD5012-CTIPDOC
+                        , :COCD5012-CMOEDA
+                        , :COCD5012-CIMPOSTO
+                        , :COCD5012-NOTAS
+                        , :COCD5012-CTIPFAC
+                        , :COCD5012-NTOTRET
+                        , :COCD5012-NTAXRET
+                        , :COCD5012-CEMPRESA
+                   )
+              END-EXEC
+
+              MOVE CON-COVT5012               TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-DUPREC
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                      MOVE COCK0002-STATUS-ACTIVO
+                        TO COCV7811-NIDPROJECTO-S
+                      MOVE COCK0001-NIDPROJECTO-A-EXISTS
+                        TO COCV7811-NIDPROJECTO-MSG
+                      MOVE COCK0002-CAPLIC
+                        TO COCV7811-NIDPROJECTO-CAPLIC
+                 ELSE
+                    IF NOT DB2-OK
+                       MOVE VIAK0002-ABEND-DB2
+                         TO VIAL0002-IND-ERROS
+                       MOVE VIAK0001-ERRO-DB2
+                         TO VIAL0002-COD-ERRO-GRAVE
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+       2700-INSERT-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      * BUSCA A PROXIMA SEQUENCIA DO PROJECTO
+      *--------------------------------------------------------------
+       2600-BUSCA-SEQ.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2600-BUSCA-SEQ   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV7810-NIDPROJECTO  TO COCD5012-NIDPROJECTO.
+
+           EXEC SQL
+                SELECT  IFNULL(MAX(NIDINVOICE), 0) + 1
+                  INTO :COCD5012-NIDINVOICE
+                  FROM  COVT5012_INVOICES
+                 WHERE  NIDPROJECTO = :COCD5012-NIDPROJECTO
+           END-EXEC.
+
+           MOVE CON-COVT5012  TO VIAL0002-TABLE-NAME.
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              CONTINUE
+           ELSE
+              MOVE 1                       TO COCD5012-NIDINVOICE
+           END-IF.
+
+       2600-BUSCA-SEQ-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV7811-MSG         TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV7811-LENGTH      TO VIAL0001-LENGTH-MSG.
+           MOVE COCV7811-NR-CAMPOS   TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES               TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+           COPY VIAP0016.
+           COPY COCP5005.
+           COPY ETCP0002.
+           COPY AQCP0005.

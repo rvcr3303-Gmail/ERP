@@ -1,0 +1,341 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI85102.
+      ******************************************************************
+      *     PROGRAMA COI85102.                                         *
+      *                                                                *
+      *     Pagamento de Despesas                                      *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI85102         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD6702 END-EXEC.
+           EXEC SQL INCLUDE COCD3600 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV8510.
+       COPY COCV8511.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT6702 PIC X(08) VALUE 'COVT6702'.
+           05 CON-COVT3600 PIC X(08) VALUE 'COVT3600'.
+      *--- Status da Despesa
+           05 CON-01       PIC X(02) VALUE '01'.
+           05 CON-02       PIC X(02) VALUE '02'.
+           05 CON-03       PIC X(02) VALUE '03'.
+           05 CON-04       PIC X(02) VALUE '04'.
+
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'COI85102'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI85102         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA'    TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT      TO COCV8510-MSG.
+           MOVE COCV8510-ASE                 TO COCV8511-ASE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV8510-ADE       TO COCV8511-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2150-VALIDA
+                 THRU 2150-VALIDA-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2160-OBTEM-DADOS
+                 THRU 2160-OBTEM-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      * Obtem dados modificação
+      *--------------------------------------------------------------
+       2160-OBTEM-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2160-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV8510-NIDPROJECTO  TO COCD6702-NIDPROJECTO.
+      *    MOVE COCV8510-REFINVOICE   TO COCD6702-GREFINV.
+**AF  *    MOVE COCV8510-GREFINV      TO COCD6702-GREFINV.
+**AF       MOVE COCV8510-NIDINVOICE   TO COCD6702-NIDINVOICE.
+           MOVE COCV8510-GCLIENTE     TO COCD6702-GCLIENTE.
+
+           EXEC SQL
+                SELECT
+                       NIDINVOICE
+                     , NIDPROJECTO
+                     , GCLIENTE
+                     , DDATAINSER
+                     , DDATAEMISS
+                     , DDATAEMIS2
+                     , DDATEDUE
+                     , CPRAZO
+                     , NTOTALAMOUNT
+                     , NTAXAMOUNT
+                     , GDESCINVOICE
+                     , CSTATUS
+                     , CUSERID
+                     , HTIMEST
+                     , GREFINV
+                     , DPAG
+                     , CTIPDOC
+                     , CMOEDA
+                     , CIMPOSTO
+                     , NOTAS
+                     , NTOTPAG
+                     , NTAXPAG
+                     , NTOTRET
+                     , NTAXRET
+                     , PROJDSP
+                 INTO
+                       :COCD6702-NIDINVOICE
+                     , :COCD6702-NIDPROJECTO
+                     , :COCD6702-GCLIENTE
+                     , :COCD6702-DDATAINSER
+                     , :COCD6702-DDATAEMISS
+                     , :COCD6702-DDATAEMIS2
+                     , :COCD6702-DDATEDUE
+                     , :COCD6702-CPRAZO
+                     , :COCD6702-NTOTALAMOUNT
+                     , :COCD6702-NTAXAMOUNT
+                     , :COCD6702-GDESCINVOICE
+                     , :COCD6702-CSTATUS
+                     , :COCD6702-CUSERID
+                     , :COCD6702-HTIMEST
+                     , :COCD6702-GREFINV
+                     , :COCD6702-DPAG
+                     , :COCD6702-CTIPDOC
+                     , :COCD6702-CMOEDA
+                     , :COCD6702-CIMPOSTO
+                     , :COCD6702-NOTAS
+                     , :COCD6702-NTOTPAG
+                     , :COCD6702-NTAXPAG
+                     , :COCD6702-NTOTRET
+                     , :COCD6702-NTAXRET
+                     , :COCD6702-PROJDSP
+                  FROM  COVT6702_EXPENSES
+                 WHERE  NIDPROJECTO = :COCD6702-NIDPROJECTO
+**AF  *            AND  GREFINV     = :COCD6702-GREFINV
+**AF               AND  NIDINVOICE  = :COCD6702-NIDINVOICE
+                   AND  GCLIENTE    = :COCD6702-GCLIENTE
+           END-EXEC.
+
+           MOVE CON-COVT6702  TO VIAL0002-TABLE-NAME.
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF COCD6702-CSTATUS = CON-02
+                    CONTINUE
+                 ELSE
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+      *               TO COCV8511-REFINVOICE-S
+                      TO COCV8511-NIDINVOICE-S
+
+                    EVALUATE COCD6702-CSTATUS
+                        WHEN CON-01
+                             MOVE COCK0001-STATUS-ORC
+      *                        TO COCV8511-REFINVOICE-MSG
+                               TO COCV8511-NIDINVOICE-MSG
+                        WHEN CON-03
+                             MOVE COCK0001-STATUS-PAG
+      *                        TO COCV8511-REFINVOICE-MSG
+                               TO COCV8511-NIDINVOICE-MSG
+                        WHEN CON-04
+                             MOVE COCK0001-STATUS-ANU
+      *                        TO COCV8511-REFINVOICE-MSG
+                               TO COCV8511-NIDINVOICE-MSG
+                        WHEN OTHER
+                             MOVE COCK0001-STATUS-DSP-INV
+      *                        TO COCV8511-REFINVOICE-MSG
+                               TO COCV8511-NIDINVOICE-MSG
+
+                       MOVE COCK0002-CAPLIC
+      *                  TO COCV8511-REFINVOICE-CAPLIC
+                         TO COCV8511-NIDINVOICE-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE COCD6702-NIDINVOICE    TO COCV8511-NIDINVOICE
+                 MOVE COCD6702-NIDPROJECTO   TO COCV8511-NIDPROJECTO
+                 MOVE COCD6702-GCLIENTE      TO COCV8511-GCLIENTE
+                 MOVE COCD6702-DDATAINSER    TO COCV8511-DDATAINSER
+                 MOVE COCD6702-DDATAEMISS    TO COCV8511-DDATAEMISS
+                 MOVE COCD6702-DDATAEMIS2    TO COCV8511-DDATAEMIS2
+                 MOVE COCD6702-DDATEDUE      TO COCV8511-DDATEDUE
+                 MOVE COCD6702-CPRAZO        TO COCV8511-CPRAZO
+                 MOVE COCD6702-NTOTALAMOUNT  TO COCV8511-NTOTALAMOUNT
+                 MOVE COCD6702-NTAXAMOUNT    TO COCV8511-NTAXAMOUNT
+                 MOVE COCD6702-GDESCINVOICE  TO COCV8511-GDESCINVOICE
+                 MOVE COCD6702-CSTATUS       TO COCV8511-CSTATUS
+      *          MOVE COCD6702-GREFINV       TO COCV8511-REFINVOICE
+                 MOVE COCD6702-GREFINV       TO COCV8511-GREFINV
+                 MOVE COCD6702-DPAG          TO COCV8511-DDATEPAG
+                 MOVE COCD6702-CMOEDA        TO COCV8511-CMOEDA
+                 MOVE COCD6702-CIMPOSTO      TO COCV8511-CIMPOSTO
+                 MOVE COCD6702-NOTAS         TO COCV8511-NOTAS
+      **R        MOVE COCD6702-NTOTPAG       TO COCV8511-NVALREC
+      **R        MOVE COCD6702-NTAXPAG       TO COCV8511-NTAXREC
+                 MOVE ZEROES                 TO COCV8511-NVALREC
+                 MOVE ZEROES                 TO COCV8511-NTAXREC
+                 MOVE COCD6702-PROJDSP       TO COCV8511-NIDPROJECTODSP
+                 COMPUTE COCV8511-NVALTOT = COCD6702-NTOTALAMOUNT +
+                                            COCD6702-NTAXAMOUNT
+
+              ELSE
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO
+      *            TO COCV8511-REFINVOICE-S
+                   TO COCV8511-NIDINVOICE-S
+                 MOVE COCK0001-REFDSP-N-EXISTS
+      *            TO COCV8511-REFINVOICE-MSG
+                   TO COCV8511-NIDINVOICE-MSG
+                 MOVE COCK0002-CAPLIC
+      *            TO COCV8511-REFINVOICE-CAPLIC
+                   TO COCV8511-NIDINVOICE-CAPLIC
+              END-IF
+           END-IF.
+
+       2160-OBTEM-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      * Validação
+      *--------------------------------------------------------------
+       2150-VALIDA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2150-VALIDA     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+**AF  * Passa a pesquisar por sequencia e nao referencia
+**AF  *    IF VIAL0002-SEM-ERROS
+**AF  *       IF COCV8510-REFINVOICE = SPACES
+**AF  *       IF COCV8510-GREFINV = SPACES
+**AF  *          MOVE VIAK0002-ERROS-FUNCAO
+**AF  *            TO VIAL0002-IND-ERROS
+**AF  *          MOVE COCK0002-STATUS-ACTIVO
+**AF  *            TO COCV8511-REFINVOICE-S
+**AF  *            TO COCV8511-NIDINVOICE-S
+**AF  *          MOVE COCK0001-REFDSP-N-EXISTS
+**AF  *            TO COCV8511-REFINVOICE-MSG
+**AF  *            TO COCV8511-NIDINVOICE-MSG
+**AF  *          MOVE COCK0002-CAPLIC
+**AF  *            TO COCV8511-REFINVOICE-CAPLIC
+**AF  *            TO COCV8511-NIDINVOICE-CAPLIC
+**AF  *       END-IF
+**AF  *    END-IF.
+
+       2150-VALIDA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              MOVE 'COCV8511-GDESCINVOICE'   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCV8511-GDESCINVOICE    TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV8511-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV8511-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV8511-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

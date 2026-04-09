@@ -1,0 +1,731 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI77900.
+      ******************************************************************
+      *     PROGRAMA COI77900.                                         *
+      *                                                                *
+      *     Oportunidades por trimestre                                *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI77900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD0606 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV7790.
+       COPY COCV7791.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY ETCL0002.
+       COPY AQCW0005.
+       COPY ARCL0039.
+
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CONSOLIDAR              PIC X(01) VALUE SPACES.
+              88 SW-CONSOLID-S                     VALUE 'S'.
+              88 SW-CONSOLID-N                     VALUE 'N'.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT0606 PIC X(08) VALUE 'COVT0606'.
+           05 CON-TRIMESTRES-DESC.
+              10 FILLER                 PIC  X(11)  VALUE '1 TRIMESTRE'.
+              10 FILLER                 PIC  X(11)  VALUE '2 TRIMESTRE'.
+              10 FILLER                 PIC  X(11)  VALUE '3 TRIMESTRE'.
+              10 FILLER                 PIC  X(11)  VALUE '4 TRIMESTRE'.
+           05 CON-TRIMESTRE             REDEFINES
+              CON-TRIMESTRES-DESC       OCCURS  4  TIMES
+                                        PIC  X(11).
+
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-PAIS                      PIC X(03) VALUE SPACES.
+           05 WS-PAIS-NUM                  PIC X(03) VALUE SPACES.
+           05 WS-PAIS-ALFA                 PIC X(03) VALUE SPACES.
+           05 WS-MOEDA                     PIC X(03) VALUE SPACES.
+
+           05 WS-DOPER-REGIST.
+              10 WS-DOPER-ANO-REGIST          PIC  9(04).
+              10 WS-DOPER-F1-REGIST           PIC  X(01).
+              10 WS-DOPER-MES-REGIST          PIC  9(02).
+              10 WS-DOPER-F2-REGIST           PIC  X(01).
+              10 WS-DOPER-DIA-REGIST          PIC  9(02).
+
+           05 WS-DOPER-GANHAS.
+              10 WS-DOPER-ANO-GANHAS          PIC  9(04).
+              10 WS-DOPER-F1-GANHAS           PIC  X(01).
+              10 WS-DOPER-MES-GANHAS          PIC  9(02).
+              10 WS-DOPER-F2-GANHAS           PIC  X(01).
+              10 WS-DOPER-DIA-GANHAS          PIC  9(02).
+
+           05 WS-DOPER-PERDIDAS.
+              10 WS-DOPER-ANO-PERDIDAS          PIC  9(04).
+              10 WS-DOPER-F1-PERDIDAS           PIC  X(01).
+              10 WS-DOPER-MES-PERDIDAS          PIC  9(02).
+              10 WS-DOPER-F2-PERDIDAS           PIC  X(01).
+              10 WS-DOPER-DIA-PERDIDAS          PIC  9(02).
+
+           05 WS-CMOEDA-MIN                 PIC  X(03).
+           05 WS-CMOEDA-MAX                 PIC  X(03).
+
+           05 WS-CPAIS-MIN                 PIC  X(03).
+           05 WS-CPAIS-MAX                 PIC  X(03).
+
+           05 WS-DOPER-MIN                 PIC  X(10).
+           05 WS-DOPERACAO-MIN.
+              10 WS-DOPER-MIN-ANO          PIC  X(04).
+              10 WS-DOPER-MIN-F1           PIC  X(01).
+              10 WS-DOPER-MIN-MES          PIC  X(02).
+              10 WS-DOPER-MIN-F2           PIC  X(01).
+              10 WS-DOPER-MIN-DIA          PIC  X(02).
+
+           05 WS-DOPER-MAX                 PIC  X(10).
+           05 WS-DOPERACAO-MAX.
+              10 WS-DOPER-MAX-ANO          PIC  9(04).
+              10 WS-DOPER-MAX-F1           PIC  X(01).
+              10 WS-DOPER-MAX-MES          PIC  9(02).
+              10 WS-DOPER-MAX-F2           PIC  X(01).
+              10 WS-DOPER-MAX-DIA          PIC  9(02).
+
+           05 WS-REGISTADAS  OCCURS 12 TIMES
+                                     PIC S9(17)V99 VALUE ZEROES.
+           05 WS-GANHAS  OCCURS 12 TIMES
+                                     PIC S9(17)V99 VALUE ZEROES.
+           05 WS-PERDIDAS  OCCURS 12 TIMES
+                                     PIC S9(17)V99 VALUE ZEROES.
+
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'COI77900'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+       01  WS-CURSOR-VARS.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+           EXEC SQL
+                DECLARE CUR06 CURSOR FOR
+                 SELECT COPPORTUNITY
+                      , CPROJECT
+                      , CENTITY
+                      , CPAIS
+                      , CCONTACT1
+                      , CCONTACT2
+                      , CCONTACT3
+                      , GDESC
+                      , NVALOR
+                      , CMOEDA
+                      , NPROB
+                      , TOPPORTUNITY
+                      , DOPPORTUNITY
+                      , DTENV
+                      , CSITUACAO
+                      , CUSERID
+                      , HTIMEST
+                      , MCTRVLR
+                      , DCONCL
+                      , DREGISTO
+                 FROM COVT0606_OPPORTUNITIES
+                 WHERE ((DREGISTO >= :WS-DOPER-MIN
+                   AND   DREGISTO <= :WS-DOPER-MAX) OR
+
+                       (DCONCL   >= :WS-DOPER-MIN
+                   AND  DCONCL   <= :WS-DOPER-MAX))
+
+                   AND CPAIS    >= :WS-CPAIS-MIN
+                   AND CPAIS    <= :WS-CPAIS-MAX
+                   AND CMOEDA   >= :WS-CMOEDA-MIN
+                   AND CMOEDA   <= :WS-CMOEDA-MAX
+           END-EXEC.
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI77900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3199-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV7790-MSG.
+           MOVE COCV7790-ASE               TO COCV7791-ASE.
+           MOVE COCV7790-ADE               TO COCV7791-ADE.
+           MOVE COCV7790-AANO              TO COCV7791-AANO.
+           MOVE COCV7790-XDESCAANO         TO COCV7791-XDESCAANO.
+
+           MOVE ZEROES                     TO COCV7791-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL COCV7791-PAGINA-CHEIA.
+
+           MOVE ZEROES                     TO COCV7791-INDICE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+
+           ADD 1                           TO COCV7791-INDICE.
+
+           IF COCV7791-INDICE < 5
+              MOVE CON-TRIMESTRE(COCV7791-INDICE)
+                TO COCV7791-D-TRIM(COCV7791-INDICE)
+           ELSE
+              MOVE SPACES
+                TO COCV7791-D-TRIM(COCV7791-INDICE)
+           END-IF
+
+           MOVE ZEROES TO COCV7791-D-RECEITA(COCV7791-INDICE)
+                          COCV7791-D-RECEBIM(COCV7791-INDICE)
+                          COCV7791-D-VENCIDA(COCV7791-INDICE).
+
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      * DOWNLOAD EXCEL
+           MOVE COCV7790-NOMEFXLS          TO COCV7791-NOMEFXLS.
+           MOVE COCV7790-NMAXLIST          TO COCV7791-NMAXLIST.
+           MOVE COCV7790-EXCELTMP          TO COCV7791-EXCELTMP.
+
+           MOVE COCV7790-NOMEFXLS          TO COCV7791-NOMEFXLS  .
+           MOVE COCV7790-NMAXLIST          TO COCV7791-NMAXLIST  .
+           MOVE COCV7790-EXCELTMP          TO COCV7791-EXCELTMP  .
+           MOVE COCV7790-CPAIS             TO COCV7791-CPAIS     .
+           MOVE COCV7790-XDESCCPAIS        TO COCV7791-XDESCCPAIS.
+           MOVE COCV7790-AANO              TO COCV7791-AANO      .
+           MOVE COCV7790-XDESCAANO         TO COCV7791-XDESCAANO .
+           MOVE COCV7790-CMOEDA            TO COCV7791-CMOEDA    .
+           MOVE COCV7790-XDESCCMOEDA       TO COCV7791-XDESCCMOEDA.
+
+           PERFORM 2010-VALIDACOES
+              THRU 2010-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2050-OPEN-06
+                 THRU 2050-OPEN-06-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             PERFORM 2060-FETCH-06
+                THRU 2060-FETCH-06-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             PERFORM 2040-CONTINUA-06
+                THRU 2040-CONTINUA-06-EXIT
+                  UNTIL NOT DB2-OK
+                     OR COCV7791-PAGINA-CHEIA
+                     OR NOT VIAL0002-SEM-ERROS
+
+             PERFORM 2200-FORMATA-LINHA
+                THRU 2200-FORMATA-LINHA-EXIT
+
+             IF COCV7791-D-RECEITA(1) = ZEROS AND
+                COCV7791-D-RECEITA(2) = ZEROS AND
+                COCV7791-D-RECEITA(3) = ZEROS AND
+                COCV7791-D-RECEITA(4) = ZEROS AND
+                COCV7791-D-RECEBIM(1) = ZEROS AND
+                COCV7791-D-RECEBIM(2) = ZEROS AND
+                COCV7791-D-RECEBIM(3) = ZEROS AND
+                COCV7791-D-RECEBIM(4) = ZEROS AND
+                COCV7791-D-VENCIDA(1) = ZEROS AND
+                COCV7791-D-VENCIDA(2) = ZEROS AND
+                COCV7791-D-VENCIDA(3) = ZEROS AND
+                COCV7791-D-VENCIDA(4) = ZEROS
+                COMPUTE COCV7791-DIMINUI-LENGTH EQUAL
+                        COCV7791-INDICE-INVERSO *
+                        COCV7791-LENGTH-OCCUR
+                COMPUTE COCV7791-LENGTH EQUAL COCV7791-LENGTH
+                      - COCV7791-DIMINUI-LENGTH
+
+                MOVE VIAK0002-ERROS-FUNCAO   TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO  TO COCV7791-CPAIS-S
+                MOVE COCK0002-CAPLIC         TO COCV7791-CPAIS-CAPLIC
+                MOVE COCK0001-SEM-RESULTADOS TO COCV7791-CPAIS-MSG
+              END-IF
+            END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2090-CLOSE-06
+                 THRU 2090-CLOSE-06-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2010-VALIDACOES' TO VIAL0015-CALLER-ID
+              MOVE 'COCV7790-CPAIS '       TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCV7790-CPAIS         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV7790-CMOEDA'       TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCV7790-CMOEDA        TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCV7790-AANO  '       TO VIAL0015-CAMPO-NM(3)
+              MOVE  COCV7790-AANO          TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF COCV7790-CPAIS EQUAL SPACES
+               MOVE SPACES TO      WS-CPAIS-MIN
+               MOVE 'ZZZ'  TO      WS-CPAIS-MAX
+             ELSE
+               MOVE COCV7790-CPAIS             TO COCD0606-CPAIS
+                                                  WS-CPAIS-MIN
+                                                  WS-CPAIS-MAX
+             END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              IF COCV7790-AANO EQUAL SPACES
+                 MOVE VIAK0002-ERROS-FUNCAO    TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO   TO COCV7791-AANO-S
+                 MOVE COCK0001-CAMPO-OBRIGAT   TO COCV7791-AANO-MSG
+                 MOVE COCK0002-CAPLIC          TO COCV7791-AANO-CAPLIC
+              ELSE
+                 MOVE COCV7790-AANO            TO WS-DOPER-MIN-ANO
+                 MOVE '-'                      TO WS-DOPER-MIN-F1
+                 MOVE '01'                     TO WS-DOPER-MIN-MES
+                 MOVE '-'                      TO WS-DOPER-MIN-F2
+                 MOVE '01'                     TO WS-DOPER-MIN-DIA
+                 MOVE WS-DOPERACAO-MIN         TO WS-DOPER-MIN
+                 MOVE COCV7790-AANO            TO WS-DOPER-MAX-ANO
+                 MOVE '-'                      TO WS-DOPER-MAX-F1
+                 MOVE '12'                     TO WS-DOPER-MAX-MES
+                 MOVE '-'                      TO WS-DOPER-MAX-F2
+                 MOVE '31'                     TO WS-DOPER-MAX-DIA
+                 MOVE WS-DOPERACAO-MAX         TO WS-DOPER-MAX
+              END-IF
+           END-IF.
+
+           SET SW-CONSOLID-N               TO TRUE
+           IF  VIAL0002-SEM-ERROS
+             IF COCV7790-CMOEDA EQUAL SPACES
+               MOVE VIAL0001-CMOEDA            TO COCV7790-CMOEDA
+               MOVE SPACES                     TO WS-CMOEDA-MIN
+               MOVE 'ZZZ'                      TO WS-CMOEDA-MAX
+               SET SW-CONSOLID-S               TO TRUE
+             ELSE
+               MOVE COCV7790-CMOEDA            TO WS-CMOEDA-MIN
+                                                  WS-CMOEDA-MAX
+             END-IF
+           END-IF.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2010-VALIDACOES-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'WS-DOPER-MIN   '       TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-DOPER-MIN           TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-DOPER-MAX   '       TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-DOPER-MAX           TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'WS-CPAIS-MIN   '       TO VIAL0015-CAMPO-NM(3)
+              MOVE  WS-CPAIS-MIN           TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'WS-CPAIS-MAX   '       TO VIAL0015-CAMPO-NM(4)
+              MOVE  WS-CPAIS-MAX           TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'WS-CMOEDA-MIN  '       TO VIAL0015-CAMPO-NM(5)
+              MOVE  WS-CMOEDA-MIN          TO VIAL0015-CAMPO-VLR(5)
+              MOVE 'WS-CMOEDA-MAX  '       TO VIAL0015-CAMPO-NM(6)
+              MOVE  WS-CMOEDA-MAX          TO VIAL0015-CAMPO-VLR(6)
+              MOVE 'COCV7790-CPAIS '       TO VIAL0015-CAMPO-NM(7)
+              MOVE  COCV7790-CPAIS         TO VIAL0015-CAMPO-VLR(7)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2010-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   CONTINUA CUR06
+      *--------------------------------------------------------------
+       2040-CONTINUA-06.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2040-CONTINUA-06' TO VIAL0015-CALLER-ID
+      *       PERFORM VIAP0016-TRATA-DEBUG
+      *          THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ZEROES                     TO COCV7791-INDICE.
+
+           PERFORM 2080-TRATA-OCCURS
+              THRU 2080-TRATA-OCCURS-EXIT
+
+           IF VIAL0002-SEM-ERROS
+             PERFORM 2060-FETCH-06
+                THRU 2060-FETCH-06-EXIT
+           END-IF.
+
+       2040-CONTINUA-06-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   OPEN CUR06
+      *--------------------------------------------------------------
+       2050-OPEN-06.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2050-OPEN-06'          TO VIAL0015-CALLER-ID
+              MOVE 'COCD0606-CPAIS '       TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCD0606-CPAIS         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-CMOEDA-MIN  '       TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-CMOEDA-MIN          TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'WS-CMOEDA-MAX  '       TO VIAL0015-CAMPO-NM(3)
+              MOVE  WS-CMOEDA-MAX          TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'WS-DOPER-MIN     '     TO VIAL0015-CAMPO-NM(4)
+              MOVE  WS-DOPER-MIN           TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'WS-DOPER-MAX     '     TO VIAL0015-CAMPO-NM(5)
+              MOVE  WS-DOPER-MAX           TO VIAL0015-CAMPO-VLR(5)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+               OPEN CUR06
+           END-EXEC
+
+           MOVE CON-COVT0606               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2050-OPEN-06-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   FETCH CUR06
+      *--------------------------------------------------------------
+       2060-FETCH-06.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2060-FETCH-06' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+              FETCH CUR06
+               INTO
+                    :COCD0606-COPPORTUNITY
+                  , :COCD0606-CPROJECT
+                  , :COCD0606-CENTITY
+                  , :COCD0606-CPAIS
+                  , :COCD0606-CCONTACT1
+                  , :COCD0606-CCONTACT2
+                  , :COCD0606-CCONTACT3
+                  , :COCD0606-GDESC
+                  , :COCD0606-NVALOR
+                  , :COCD0606-CMOEDA
+                  , :COCD0606-NPROB
+                  , :COCD0606-TOPPORTUNITY
+                  , :COCD0606-DOPPORTUNITY
+                  , :COCD0606-DTENV
+                  , :COCD0606-CSITUACAO
+                  , :COCD0606-CUSERID
+                  , :COCD0606-HTIMEST
+                  , :COCD0606-MCTRVLR
+                  , :COCD0606-DCONCL
+                  , :COCD0606-DREGISTO
+           END-EXEC
+
+           MOVE CON-COVT0606               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2060-FETCH-06-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   TRATA OCORRENCIAS
+      *--------------------------------------------------------------
+       2080-TRATA-OCCURS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2080-TRATA-OCCURS'     TO VIAL0015-CALLER-ID
+              MOVE 'COCD0606-DTENV       ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCD0606-DTENV         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-DOPER-MES-PERDIDAS' TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-DOPER-MES-PERDIDAS  TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'SW-CONSOLIDAR        ' TO VIAL0015-CAMPO-NM(3)
+              MOVE  SW-CONSOLIDAR          TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'COCD0606-CSITUACAO   ' TO VIAL0015-CAMPO-NM(4)
+              MOVE  COCD0606-CSITUACAO     TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'COCD0606-MCTRVLR     ' TO VIAL0015-CAMPO-NM(5)
+              MOVE  COCD0606-MCTRVLR       TO VIAL0015-CAMPO-VLR(5)
+              MOVE 'COCD0606-COPPORTUNITY' TO VIAL0015-CAMPO-NM(6)
+              MOVE  COCD0606-COPPORTUNITY  TO VIAL0015-CAMPO-VLR(6)
+              MOVE 'COCD0606-DTENV       ' TO VIAL0015-CAMPO-NM(7)
+              MOVE  COCD0606-DTENV         TO VIAL0015-CAMPO-VLR(7)
+              MOVE 'WS-DOPER-MIN-ANO     ' TO VIAL0015-CAMPO-NM(8)
+              MOVE  WS-DOPER-MIN-ANO       TO VIAL0015-CAMPO-VLR(8)
+              MOVE 'WS-DOPER-MAX-ANO     ' TO VIAL0015-CAMPO-NM(9)
+              MOVE  WS-DOPER-MAX-ANO       TO VIAL0015-CAMPO-VLR(9)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD0606-DREGISTO          TO WS-DOPER-REGIST.
+           MOVE COCD0606-DCONCL            TO WS-DOPER-GANHAS.
+           MOVE COCD0606-DCONCL            TO WS-DOPER-PERDIDAS.
+
+      **R  IF COCD0606-CSITUACAO   = COCK0002-CSITU-LEAD OR
+      **R     COCD0606-CSITUACAO   = COCK0002-CSITU-ENVIADA
+             IF (WS-DOPER-ANO-REGIST GREATER WS-DOPER-MIN-ANO OR
+                 WS-DOPER-ANO-REGIST EQUAL   WS-DOPER-MIN-ANO) AND
+                (WS-DOPER-ANO-REGIST LESS    WS-DOPER-MAX-ANO OR
+                 WS-DOPER-ANO-REGIST EQUAL   WS-DOPER-MAX-ANO)
+               IF SW-CONSOLID-S
+                 COMPUTE WS-REGISTADAS(WS-DOPER-MES-REGIST) =
+                         WS-REGISTADAS(WS-DOPER-MES-REGIST) +
+                         COCD0606-MCTRVLR
+               ELSE
+                 COMPUTE WS-REGISTADAS(WS-DOPER-MES-REGIST) =
+                         WS-REGISTADAS(WS-DOPER-MES-REGIST) +
+                         COCD0606-NVALOR
+               END-IF
+             END-IF.
+      **R  END-IF.
+
+           IF COCD0606-CSITUACAO   = COCK0002-CSITU-PERDIDA
+             IF (WS-DOPER-ANO-PERDIDAS GREATER WS-DOPER-MIN-ANO OR
+                 WS-DOPER-ANO-PERDIDAS EQUAL   WS-DOPER-MIN-ANO) AND
+                (WS-DOPER-ANO-PERDIDAS LESS    WS-DOPER-MAX-ANO OR
+                 WS-DOPER-ANO-PERDIDAS EQUAL   WS-DOPER-MAX-ANO)
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'ANO SELECT       '     TO VIAL0015-CALLER-ID
+              MOVE 'WS-DOPER-PERDIDAS    ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-DOPER-PERDIDAS      TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF
+
+               IF SW-CONSOLID-S
+                  COMPUTE WS-PERDIDAS(WS-DOPER-MES-PERDIDAS) =
+                          WS-PERDIDAS(WS-DOPER-MES-PERDIDAS) +
+                          COCD0606-MCTRVLR
+               ELSE
+                  COMPUTE WS-PERDIDAS(WS-DOPER-MES-PERDIDAS) =
+                          WS-PERDIDAS(WS-DOPER-MES-PERDIDAS) +
+                          COCD0606-NVALOR
+               END-IF
+             END-IF
+           END-IF.
+
+           IF COCD0606-CSITUACAO   = COCK0002-CSITU-GANHA
+             IF (WS-DOPER-ANO-GANHAS   GREATER WS-DOPER-MIN-ANO OR
+                 WS-DOPER-ANO-GANHAS   EQUAL   WS-DOPER-MIN-ANO) AND
+                (WS-DOPER-ANO-GANHAS   LESS    WS-DOPER-MAX-ANO OR
+                 WS-DOPER-ANO-GANHAS   EQUAL   WS-DOPER-MAX-ANO)
+               IF SW-CONSOLID-S
+                  COMPUTE WS-GANHAS(WS-DOPER-MES-GANHAS) =
+                          WS-GANHAS(WS-DOPER-MES-GANHAS) +
+                          COCD0606-MCTRVLR
+               ELSE
+                  COMPUTE WS-GANHAS(WS-DOPER-MES-GANHAS) =
+                          WS-GANHAS(WS-DOPER-MES-GANHAS) +
+                          COCD0606-NVALOR
+               END-IF
+             END-IF
+           END-IF.
+
+       2080-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   CLOSE CUR06
+      *--------------------------------------------------------------
+       2090-CLOSE-06.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2080-CLOSE-50' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+               CLOSE CUR06
+           END-EXEC.
+
+       2090-CLOSE-06-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   FORMATA LINHA
+      *--------------------------------------------------------------
+       2200-FORMATA-LINHA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-FORMATA-LINHA    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE 4                        TO COCV7791-INDICE.
+
+           IF NOT COCV7791-PAGINA-CHEIA
+              COMPUTE COCV7791-INDICE-INVERSO EQUAL
+                   COCV7791-INDICE-INVERSO - COCV7791-INDICE
+              COMPUTE COCV7791-DIMINUI-LENGTH EQUAL
+                   COCV7791-INDICE-INVERSO * COCV7791-LENGTH-OCCUR
+              COMPUTE COCV7791-LENGTH EQUAL COCV7791-LENGTH -
+                   COCV7791-DIMINUI-LENGTH
+              SET VIAL0002-FIM-CONSULTA TO TRUE
+           END-IF.
+
+           COMPUTE COCV7791-D-RECEITA(1) = WS-REGISTADAS(01) +
+                                           WS-REGISTADAS(02) +
+                                           WS-REGISTADAS(03).
+           COMPUTE COCV7791-D-RECEITA(2) = WS-REGISTADAS(04) +
+                                           WS-REGISTADAS(05) +
+                                           WS-REGISTADAS(06).
+           COMPUTE COCV7791-D-RECEITA(3) = WS-REGISTADAS(07) +
+                                           WS-REGISTADAS(08) +
+                                           WS-REGISTADAS(09).
+           COMPUTE COCV7791-D-RECEITA(4) = WS-REGISTADAS(10) +
+                                           WS-REGISTADAS(11) +
+                                           WS-REGISTADAS(12).
+           COMPUTE COCV7791-D-RECEBIM(1) = WS-GANHAS(01) +
+                                           WS-GANHAS(02) +
+                                           WS-GANHAS(03).
+           COMPUTE COCV7791-D-RECEBIM(2) = WS-GANHAS(04) +
+                                           WS-GANHAS(05) +
+                                           WS-GANHAS(06).
+           COMPUTE COCV7791-D-RECEBIM(3) = WS-GANHAS(07) +
+                                           WS-GANHAS(08) +
+                                           WS-GANHAS(09).
+           COMPUTE COCV7791-D-RECEBIM(4) = WS-GANHAS(10) +
+                                           WS-GANHAS(11) +
+                                           WS-GANHAS(12).
+           COMPUTE COCV7791-D-VENCIDA(1) = WS-PERDIDAS(01) +
+                                           WS-PERDIDAS(02) +
+                                           WS-PERDIDAS(03).
+           COMPUTE COCV7791-D-VENCIDA(2) = WS-PERDIDAS(04) +
+                                           WS-PERDIDAS(05) +
+                                           WS-PERDIDAS(06).
+           COMPUTE COCV7791-D-VENCIDA(3) = WS-PERDIDAS(07) +
+                                           WS-PERDIDAS(08) +
+                                           WS-PERDIDAS(09).
+           COMPUTE COCV7791-D-VENCIDA(4) = WS-PERDIDAS(10) +
+                                           WS-PERDIDAS(11) +
+                                           WS-PERDIDAS(12).
+
+       2200-FORMATA-LINHA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF COCV7790-NMAXLIST EQUAL ZEROES
+              MOVE VIAL0001-CAPLIC         TO ARCL0039-CAPLIC
+              MOVE VIAL0001-COPCAO         TO ARCL0039-COPCAO
+              PERFORM ARCR0039-NMAXLIST
+                 THRU ARCR0039-NMAXLIST-EXIT
+
+              IF VIAL0002-ABEND-DB2
+                 MOVE VIAL0002-TABLE-NAME  TO VIAL0002-TABLE-NAME
+                 MOVE VIAL0002-SQLCA       TO VIAL0002-SQLCA
+              END-IF
+
+              MOVE ARCL0039-NMAXLIST       TO COCV7791-NMAXLIST
+           ELSE
+              MOVE COCV7790-NMAXLIST       TO COCV7791-NMAXLIST
+           END-IF.
+
+           MOVE COCV7791-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV7791-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV7791-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE COCV7791-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3199-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
+           COPY ARCR0039.
+           COPY AQCP0005.

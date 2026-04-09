@@ -1,0 +1,508 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI93104.
+      ******************************************************************
+      *     PROGRAMA COI93104.                                         *
+      *                                                                *
+      *     Inserção de Movimentos Bancários                           *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI93104         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD6800 END-EXEC.
+           EXEC SQL INCLUDE COCD6900 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+       01 WS-SQL-AUXILIARY.
+         05 IND-NULL                       PIC S9(04) BINARY.
+
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV9310.
+       COPY COCV9311.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT6800 PIC X(08) VALUE 'COVT6800'.
+           05 CON-COVT6900 PIC X(08) VALUE 'COVT6900'.
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-NSALDOINI        PIC S9(17)V9(2) COMP-3.
+           05 WS-NSALDOACT        PIC S9(17)V9(2) COMP-3.
+           05 WS-NINTMOV          PIC 9(15) VALUE ZEROS.
+      *--------------------------------------------------------------
+      * PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'COI93104'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI93104         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV9310-MSG.
+           MOVE COCV9310-ASE               TO COCV9311-ASE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9310-ADE               TO COCV9311-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-VALIDACOES
+                 THRU 2299-VALIDACOES-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2260-UPDATE-CONTAS
+                 THRU 2260-UPDATE-CONTAS-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2300-INSERE-DADOS
+                 THRU 2399-INSERE-DADOS-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2500-UPDATE-SALDO
+                 THRU 2500-UPDATE-SALDO-EXIT
+           END-IF.
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2200-VALIDACOES
+      *--------------------------------------------------------------
+       2200-VALIDACOES.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF COCV9310-CTIPOMOV EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE COCK0002-CAPLIC        TO COCV9311-CTIPOMOV-CAPLIC
+               MOVE COCK0002-STATUS-ACTIVO TO COCV9311-CTIPOMOV-S
+               MOVE COCK0001-CAMPO-OBRIGAT TO COCV9311-CTIPOMOV-MSG
+             END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF COCV9310-DDATMOV EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO    TO VIAL0002-IND-ERROS
+               MOVE COCK0002-CAPLIC          TO COCV9311-DDATMOV-CAPLIC
+               MOVE COCK0002-STATUS-ACTIVO   TO COCV9311-DDATMOV-S
+               MOVE COCK0001-CAMPO-OBRIGAT   TO COCV9311-DDATMOV-MSG
+              END-IF
+            END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF COCV9310-DDATVAL EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO    TO VIAL0002-IND-ERROS
+               MOVE COCK0002-CAPLIC          TO COCV9311-DDATVAL-CAPLIC
+               MOVE COCK0002-STATUS-ACTIVO   TO COCV9311-DDATVAL-S
+               MOVE COCK0001-CAMPO-OBRIGAT   TO COCV9311-DDATVAL-MSG
+              END-IF
+            END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9310-GREFMOV EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV9311-GREFMOV-S
+               MOVE COCK0001-CAMPO-OBRIGAT TO COCV9311-GREFMOV-MSG
+               MOVE COCK0002-CAPLIC        TO COCV9311-GREFMOV-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV9310-NVALORMOV EQUAL ZEROS
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV9311-NVALORMOV-S
+               MOVE COCK0001-CAMPO-OBRIGAT TO COCV9311-NVALORMOV-MSG
+               MOVE COCK0002-CAPLIC        TO COCV9311-NVALORMOV-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+               PERFORM 2250-TABELA-CONTAS
+                  THRU 2250-TABELA-CONTAS-EXIT
+           END-IF.
+
+       2299-VALIDACOES-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2250-TABELA-CONTAS
+      *-------------------------------------------------------------
+       2250-TABELA-CONTAS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2250-TABELA-CONTAS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9310-CIBAN        TO COCD6800-CIBAN.
+
+           EXEC SQL
+                 SELECT
+                       CIBAN
+                     , CSWIFT
+                     , CCONTA
+                     , GDESC
+                     , NINTCNT
+                     , NINTMOV
+                     , NSALDOINI
+                     , CMOEDA
+                     , NSALDOACT
+                 INTO
+                       :COCD6800-CIBAN
+                     , :COCD6800-CSWIFT
+                     , :COCD6800-CCONTA
+                     , :COCD6800-GDESC
+                     , :COCD6800-NINTCNT
+                     , :COCD6800-NINTMOV
+                     , :COCD6800-NSALDOINI
+                     , :COCD6800-CMOEDA
+                     , :COCD6800-NSALDOACT
+                  FROM  COVT6800
+                 WHERE  CIBAN = :COCD6800-CIBAN
+           END-EXEC
+
+           MOVE CON-COVT6800 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE COCK0002-STATUS-ACTIVO
+                   TO COCV9311-CIBAN-S
+                 MOVE COCK0001-CIBAN-N-EXISTS
+                   TO COCV9311-CIBAN-MSG
+                 MOVE COCK0002-CAPLIC
+                   TO COCV9311-CIBAN-CAPLIC
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE COCD6800-NSALDOACT TO WS-NSALDOINI
+              END-IF
+           END-IF.
+
+       2250-TABELA-CONTAS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2260-UPDATE-CONTAS
+      *-------------------------------------------------------------
+       2260-UPDATE-CONTAS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2260-UPDATE-CONTAS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9310-CIBAN        TO COCD6800-CIBAN.
+           ADD  1                     TO COCD6800-NINTMOV.
+           MOVE COCD6800-NINTMOV      TO WS-NINTMOV.
+
+           EXEC SQL
+             UPDATE COVT6800
+                SET
+                    NINTMOV = :COCD6800-NINTMOV
+              WHERE
+                    CIBAN = :COCD6800-CIBAN
+           END-EXEC.
+
+           MOVE CON-COVT6800 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV9311-CIBAN-S
+                    MOVE COCK0001-CIBAN-N-EXISTS
+                      TO COCV9311-CIBAN-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV9311-CIBAN-CAPLIC
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2260-UPDATE-CONTAS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2300-INSERE-DADOS.
+      *-------------------------------------------------------------
+       2300-INSERE-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2300-INSERE-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9310-NINTCNT         TO COCD6900-NINTCNT.
+           MOVE WS-NINTMOV               TO COCD6900-NINTMOV.
+           MOVE COCV9310-CTIPOMOV        TO COCD6900-CTIPOMOV.
+           MOVE COCV9310-DDATMOV         TO COCD6900-DDATMOV.
+           MOVE COCV9310-GREFMOV         TO COCD6900-GREFMOV.
+           MOVE COCV9310-DDATVAL         TO COCD6900-DDATVAL.
+           MOVE COCV9310-GDESC           TO COCD6900-GDESC.
+           MOVE COCV9310-NVALORMOV       TO COCD6900-NVALORMOV.
+
+           COMPUTE COCD6900-NSALDAPM = WS-NSALDOINI +
+                                       COCD6900-NVALORMOV.
+           MOVE COCD6900-NSALDAPM        TO COCV9311-NSALDAPM.
+           MOVE COCD6900-NSALDAPM        TO WS-NSALDOACT.
+
+           MOVE COCK0002-NAO             TO COCD6900-CRECON.
+           MOVE SPACES                   TO COCD6900-CCHAVREC.
+           MOVE VIAL0001-CUTILIZA-I      TO COCD6900-CUSERID.
+
+           IF VIAL0002-SEM-ERROS
+
+           EXEC SQL
+                INSERT INTO COVT6900
+                (
+                   NINTCNT
+                 , NINTMOV
+                 , CTIPOMOV
+                 , DDATMOV
+                 , GREFMOV
+                 , DDATVAL
+                 , GDESC
+                 , NVALORMOV
+                 , NSALDAPM
+                 , CRECON
+                 , CCHAVREC
+                 , CUSERID
+                 , HTIMEST
+                )
+                VALUES (
+                       :COCD6900-NINTCNT
+                     , :COCD6900-NINTMOV
+                     , :COCD6900-CTIPOMOV
+                     , :COCD6900-DDATMOV
+                     , :COCD6900-GREFMOV
+                     , :COCD6900-DDATVAL
+                     , :COCD6900-GDESC
+                     , :COCD6900-NVALORMOV
+                     , :COCD6900-NSALDAPM
+                     , :COCD6900-CRECON
+                     , :COCD6900-CCHAVREC
+                     , :COCD6900-CUSERID
+                     , CURRENT TIMESTAMP
+                )
+           END-EXEC
+
+              MOVE CON-COVT6900 TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-DUPREC
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                      MOVE COCK0002-STATUS-ACTIVO
+                        TO COCV9311-CIBAN-S
+                      MOVE COCK0001-CIBAN-EXISTS
+                        TO COCV9311-CIBAN-MSG
+                      MOVE COCK0002-CAPLIC
+                        TO COCV9311-CIBAN-CAPLIC
+                 ELSE
+                    IF NOT DB2-OK
+                       MOVE VIAK0002-ABEND-DB2
+                         TO VIAL0002-IND-ERROS
+                       MOVE VIAK0001-ERRO-DB2
+                         TO VIAL0002-COD-ERRO-GRAVE
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+       2399-INSERE-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2500-UPDATE-SALDO
+      *-------------------------------------------------------------
+       2500-UPDATE-SALDO.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-UPDATE-SALDO ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9310-CIBAN        TO COCD6800-CIBAN.
+           MOVE WS-NSALDOACT          TO COCD6800-NSALDOACT.
+
+           EXEC SQL
+             UPDATE COVT6800
+                SET
+                    NSALDOACT = :COCD6800-NSALDOACT
+              WHERE
+                    CIBAN = :COCD6800-CIBAN
+           END-EXEC.
+
+           MOVE CON-COVT6800 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV9311-CIBAN-S
+                    MOVE COCK0001-CIBAN-N-EXISTS
+                      TO COCV9311-CIBAN-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV9311-CIBAN-CAPLIC
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2500-UPDATE-SALDO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV9311-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV9311-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV9311-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+           COPY VIAP0016.

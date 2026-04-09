@@ -1,0 +1,451 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI87103.
+      ******************************************************************
+      *     PROGRAMA COI87103.
+      *
+      *      Manutenção de Contas
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI87103         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV8710.
+       COPY COCV8711.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY TGCL1000.
+       COPY TGCL2000.
+       COPY TGCK0002.
+      *
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME  PIC X(08) VALUE 'COI87103'.
+           05 CON-CTABELA-MOEDA    PIC X(05) VALUE 'AR041'.
+           05 CON-CTABELA-PAIS     PIC X(05) VALUE 'AR047'.
+           05 CON-CTABELA-BACTIVE  PIC X(05) VALUE 'CO152'.
+           05 CON-CTABELA-CLIENTE  PIC X(05) VALUE 'CO510'.
+           05 CON-CTABELA-RESPONS  PIC X(05) VALUE 'CO507'.
+           05 CON-CTABELA-LNEGOC   PIC X(05) VALUE 'CO702'.
+           05 CON-CTABELA-TNEGOC   PIC X(05) VALUE 'CO703'.
+           05 CON-CTABELA-CEMPRESA PIC X(05) VALUE 'CO502'.
+           05 CON-CTABELA-TFACTURA PIC X(05) VALUE 'CO004'.
+           05 CON-CTABELA-CREVPG   PIC X(05) VALUE 'CO851'.
+
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-CTABELA                   PIC X(05) VALUE SPACES.
+           05 WS-CCOD                      PIC X(40) VALUE SPACES.
+           05 WS-C2COD                     PIC X(40) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI87103         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+           IF VIAL0001-DEBUG-SIM
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV8710-MSG.
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV8711-MSG.
+      *    MOVE VIAL0001-MENSAGEM-OUTPUT   TO COCV8711-MSG.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+           IF VIAL0001-DEBUG-SIM
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-VAL-CAMPOS
+                 THRU 2100-VAL-CAMPOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-VAL-CAMPOS
+      *--------------------------------------------------------------
+       2100-VAL-CAMPOS.
+
+           MOVE '2100-VAL-CAMPOS' TO VIAL0015-CALLER-ID
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'COCV8710-TPPFAT' TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCV8710-TPPFAT  TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV8710-XDESCTPPFAT'   TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCV8710-XDESCTPPFAT    TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS AND COCV8710-BACTIVE NOT EQUAL SPACES
+              MOVE CON-CTABELA-BACTIVE
+                TO WS-CTABELA
+              MOVE COCV8710-BACTIVE
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S      TO COCV8711-BACTIVE-S
+                 MOVE TGCL2000-CCOD-CAPLIC TO COCV8711-BACTIVE-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG    TO COCV8711-BACTIVE-MSG
+                 MOVE TGCL2000-GDESC       TO COCV8711-XDESCBACTIVE
+              ELSE
+                 MOVE TGCL2000-GDESC       TO COCV8710-XDESCBACTIVE
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS AND COCV8710-TPPFAT NOT EQUAL SPACES
+              MOVE CON-CTABELA-TFACTURA
+                TO WS-CTABELA
+              MOVE COCV8710-TPPFAT
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S      TO COCV8711-TPPFAT-S
+                 MOVE TGCL2000-CCOD-CAPLIC TO COCV8711-TPPFAT-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG    TO COCV8711-TPPFAT-MSG
+                 MOVE TGCL2000-GDESC       TO COCV8711-XDESCTPPFAT
+              ELSE
+                 MOVE TGCL2000-GDESC       TO COCV8710-XDESCTPPFAT
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS AND COCV8710-PAIS NOT EQUAL SPACES
+              MOVE CON-CTABELA-PAIS
+                TO WS-CTABELA
+              MOVE COCV8710-PAIS
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S      TO COCV8711-PAIS-S
+                 MOVE TGCL2000-CCOD-CAPLIC TO COCV8711-PAIS-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG    TO COCV8711-PAIS-MSG
+                 MOVE TGCL2000-GDESC       TO COCV8711-XDESCPAIS
+              ELSE
+                 MOVE TGCL2000-GDESC       TO COCV8710-XDESCPAIS
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS AND COCV8710-CMOEDA NOT EQUAL SPACES
+              MOVE CON-CTABELA-MOEDA
+                TO WS-CTABELA
+              MOVE COCV8710-CMOEDA
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S      TO COCV8711-CMOEDA-S
+                 MOVE TGCL2000-CCOD-CAPLIC TO COCV8711-CMOEDA-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG    TO COCV8711-CMOEDA-MSG
+                 MOVE TGCL2000-GDESC       TO COCV8711-XDESCCMOEDA
+              ELSE
+                 MOVE TGCL2000-GDESC       TO COCV8710-XDESCCMOEDA
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS AND COCV8710-LINHANEG NOT EQUAL SPACES
+              MOVE CON-CTABELA-LNEGOC
+                TO WS-CTABELA
+              MOVE COCV8710-LINHANEG
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S      TO COCV8711-LINHANEG-S
+                 MOVE TGCL2000-CCOD-CAPLIC TO COCV8711-LINHANEG-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG    TO COCV8711-LINHANEG-MSG
+                 MOVE TGCL2000-GDESC       TO COCV8711-XDESCLINHANEG
+              ELSE
+                 MOVE TGCL2000-GDESC       TO COCV8710-XDESCLINHANEG
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS AND COCV8710-TIPONEG NOT EQUAL SPACES
+              MOVE CON-CTABELA-TNEGOC      TO WS-CTABELA
+              MOVE COCV8710-TIPONEG        TO WS-CCOD
+              MOVE COCV8710-LINHANEG       TO WS-C2COD
+
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S      TO COCV8711-TIPONEG-S
+                 MOVE TGCL2000-CCOD-CAPLIC TO COCV8711-TIPONEG-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG    TO COCV8711-TIPONEG-MSG
+                 MOVE TGCL2000-GDESC       TO COCV8711-XDESCTIPONEG
+              ELSE
+                 MOVE TGCL2000-GDESC       TO COCV8710-XDESCTIPONEG
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS AND COCV8710-CLIENTE NOT EQUAL SPACES
+              MOVE CON-CTABELA-CLIENTE
+                TO WS-CTABELA
+              MOVE COCV8710-CLIENTE
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2300-VAL-TAB-OUTRA
+                 THRU 2300-VAL-TAB-OUTRA-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL1000-CCOD-S      TO COCV8711-CLIENTE-S
+                 MOVE TGCL1000-CCOD-CAPLIC TO COCV8711-CLIENTE-CAPLIC
+                 MOVE TGCL1000-CCOD-MSG    TO COCV8711-CLIENTE-MSG
+                 MOVE TGCL1000-GDESC       TO COCV8711-XDESCCLIENTE
+              ELSE
+                 MOVE TGCL1000-GDESC       TO COCV8710-XDESCCLIENTE
+              END-IF
+           END-IF.
+      *
+      *    IF VIAL0002-SEM-ERROS AND COCV8710-CEMPRESA NOT EQUAL SPACES
+      *       MOVE CON-CTABELA-CEMPRESA
+      *         TO WS-CTABELA
+      *       MOVE COCV8710-CEMPRESA
+      *         TO WS-CCOD
+      *       MOVE SPACES
+      *         TO WS-C2COD
+      *       PERFORM 2300-VAL-TAB-OUTRA
+      *          THRU 2300-VAL-TAB-OUTRA-EXIT
+      *       IF NOT VIAL0002-SEM-ERROS
+      *          MOVE TGCL1000-CCOD-S      TO COCV8711-CEMPRESA-S
+      *          MOVE TGCL1000-CCOD-CAPLIC TO COCV8711-CEMPRESA-CAPLIC
+      *          MOVE TGCL1000-CCOD-MSG    TO COCV8711-CEMPRESA-MSG
+      *          MOVE TGCL1000-GDESC       TO COCV8711-XDESCCEMPRESA
+      *       ELSE
+      *          MOVE TGCL1000-GDESC       TO COCV8710-XDESCCEMPRESA
+      *       END-IF
+      *    END-IF.
+      *
+           MOVE '2100-VAL-CAMPOS-EXIT' TO VIAL0015-CALLER-ID
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'VIAL0002-IND-ERROS   '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0002-IND-ERROS      TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV8710-RESPONS     '  TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCV8710-RESPONS        TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCV8710-RESPONS-MSG'   TO VIAL0015-CAMPO-NM(3)
+              MOVE  COCV8710-RESPONS-MSG    TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS AND COCV8710-RESPONS NOT EQUAL SPACES
+              MOVE CON-CTABELA-RESPONS
+                TO WS-CTABELA
+              MOVE COCV8710-RESPONS
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2300-VAL-TAB-OUTRA
+                 THRU 2300-VAL-TAB-OUTRA-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL1000-CCOD-S      TO COCV8711-RESPONS-S
+                 MOVE TGCL1000-CCOD-CAPLIC TO COCV8711-RESPONS-CAPLIC
+                 MOVE TGCL1000-CCOD-MSG    TO COCV8711-RESPONS-MSG
+                 MOVE TGCL1000-GDESC       TO COCV8711-XDESCRESPONS
+              ELSE
+                 MOVE TGCL1000-GDESC       TO COCV8710-XDESCRESPONS
+              END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS AND COCV8710-CREVPG NOT EQUAL SPACES
+              MOVE CON-CTABELA-CREVPG
+                TO WS-CTABELA
+              MOVE COCV8710-CREVPG
+                TO WS-CCOD
+              MOVE SPACES
+                TO WS-C2COD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S      TO COCV8711-CREVPG-S
+                 MOVE TGCL2000-CCOD-CAPLIC TO COCV8711-CREVPG-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG    TO COCV8711-CREVPG-MSG
+                 MOVE TGCL2000-GDESC       TO COCV8711-XDESCCREVPG
+              ELSE
+                 MOVE TGCL2000-GDESC       TO COCV8710-XDESCCREVPG
+              END-IF
+           END-IF.
+
+
+           MOVE '2100-VAL-CAMPOS-EXIT' TO VIAL0015-CALLER-ID
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'VIAL0002-IND-ERROS   '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0002-IND-ERROS      TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV8710-RESPONS     '  TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCV8710-RESPONS        TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'COCV8710-RESPONS-MSG'   TO VIAL0015-CAMPO-NM(3)
+              MOVE  COCV8710-RESPONS-MSG    TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2100-VAL-CAMPOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-VAL-TAB-ART05
+      *--------------------------------------------------------------
+       2200-VAL-TAB-ART05.
+
+           MOVE '2200-VAL-TAB-ART05' TO VIAL0015-CALLER-ID
+
+           INITIALIZE TGCL2000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL2000-CTABELA
+           MOVE WS-CCOD                   TO TGCL2000-CCOD
+           MOVE WS-C2COD                  TO TGCL2000-C2COD
+
+           PERFORM CALL-TGCP2000
+              THRU CALL-TGCP2000-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-VAL-TAB-ART05-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'TGCL2000-CTABELA    '    TO VIAL0015-CAMPO-NM(1)
+              MOVE  TGCL2000-CTABELA         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'TGCL2000-CCOD       '    TO VIAL0015-CAMPO-NM(2)
+              MOVE  TGCL2000-CCOD            TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'TGCL2000-C2COD      '    TO VIAL0015-CAMPO-NM(3)
+              MOVE  TGCL2000-C2COD           TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'TGCL2000-GDESC      '    TO VIAL0015-CAMPO-NM(4)
+              MOVE  TGCL2000-GDESC           TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'VIAL0002-IND-ERROS  '    TO VIAL0015-CAMPO-NM(5)
+              MOVE  VIAL0002-IND-ERROS       TO VIAL0015-CAMPO-VLR(5)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2200-VAL-TAB-ART05-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2300-VAL-TAB-OUTRA
+      *--------------------------------------------------------------
+       2300-VAL-TAB-OUTRA.
+
+           MOVE '2300-VAL-TAB-OUTRA' TO VIAL0015-CALLER-ID
+
+           INITIALIZE TGCL1000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL1000-CTABELA
+           MOVE WS-CCOD                   TO TGCL1000-CCOD
+           MOVE WS-C2COD                  TO TGCL1000-C2COD
+		
+           PERFORM CALL-TGCP1000
+              THRU CALL-TGCP1000-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'TGCL1000-CTABELA    '    TO VIAL0015-CAMPO-NM(1)
+              MOVE  TGCL1000-CTABELA         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'TGCL1000-CCOD       '    TO VIAL0015-CAMPO-NM(2)
+              MOVE  TGCL1000-CCOD            TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'TGCL1000-C2COD      '    TO VIAL0015-CAMPO-NM(3)
+              MOVE  TGCL1000-C2COD           TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'TGCL1000-GDESC      '    TO VIAL0015-CAMPO-NM(4)
+              MOVE  TGCL1000-GDESC           TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'VIAL0002-IND-ERROS  '    TO VIAL0015-CAMPO-NM(5)
+              MOVE  VIAL0002-IND-ERROS       TO VIAL0015-CAMPO-VLR(5)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2300-VAL-TAB-OUTRA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              MOVE 'TGCL2000-CTABELA    '    TO VIAL0015-CAMPO-NM(1)
+              MOVE  TGCL2000-CTABELA         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0002-IND-ERROS'     TO VIAL0015-CAMPO-NM(2)
+              MOVE  VIAL0002-IND-ERROS      TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV8711-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV8710-MSG               TO VIAL0001-MENSAGEM-INPUT.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
+           COPY TGCP1000.
+           COPY TGCP2000.
