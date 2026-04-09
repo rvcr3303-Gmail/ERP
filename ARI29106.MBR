@@ -1,0 +1,281 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI29106.
+      ******************************************************************
+      *     PROGRAMA ARI29106.                                         *
+      *                                                                *
+      *     Informação Perfis                                          *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI29106         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD2000 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV2910.
+       COPY ARCV2911.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+CDT    COPY TGCL1000.
+CDT    COPY TGCL2000.
+CDT    COPY TGCK0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT2002 PIC X(08) VALUE 'ARVT2002'.
+           05 WS-PROGNAME  PIC X(08) VALUE 'ARI29106'.
+CDT        05 CON-CTABELA-INDPERFM  PIC X(05) VALUE 'AR060'.
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+CDT    01  WS-VARIAVEIS.
+           05 WS-CTABELA                   PIC X(05) VALUE SPACES.
+CDT        05 WS-CCOD                      PIC X(40) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI29106         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV2910-MSG.
+      *    MOVE ARCV2910-ASE               TO ARCV2911-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           MOVE ARCV2910-ADE               TO ARCV2911-ADE.
+
+CDT   *    PERFORM 2100-VAL-CAMPOS
+CDT   *       THRU 2100-VAL-CAMPOS-EXIT
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-VALIDACOES
+                 THRU 2199-VALIDACOES-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-MODIFICA-DADOS
+                 THRU 2299-MODIFICA-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+
+      * Se feitas alterações ao indicador de perfil e ao perfil master
+      * dá erro
+
+           IF ARCV2910-INDPERFM NOT EQUAL ARCV2911-INDPERFM
+           AND ARCV2910-CPERFILM NOT EQUAL ARCV2911-CPERFILM
+              MOVE VIAK0002-ERROS-FUNCAO   TO VIAL0002-IND-ERROS
+              MOVE ARCK0002-STATUS-ACTIVO  TO ARCV2911-CPERFIL-S
+              MOVE ARCK0001-OPER-N-PERMITIDA
+                                           TO ARCV2911-CPERFIL-MSG
+              MOVE ARCK0002-CAPLIC-AR      TO ARCV2911-CPERFIL-CAPLIC
+           ELSE
+              MOVE ARCV2910-ASE            TO ARCV2911-ASE
+           END-IF.
+
+      * SE O PERFIL NOVO NAO E MASTER ENTAO O CAMPO DO CPERFILM E OBRIGATORIO
+
+           IF ARCV2910-INDPERFM  EQUAL ARCK0002-N-PERFIL-MASTER
+              IF ARCV2910-CPERFILM  EQUAL SPACES
+                 MOVE VIAK0002-ERROS-FUNCAO TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                                           TO ARCV2911-CPERFILM-S
+                 MOVE ARCK0001-CPERFILM-OBRIGAT
+                                           TO ARCV2911-CPERFILM-MSG
+              END-IF
+           END-IF.
+
+      * SE O NOVO PERFIL JA É ELE MASTER, ENTAO O CPERFILM NAO TEM QUE SER
+      * PREENCHIDO
+
+           IF ARCV2910-INDPERFM NOT EQUAL ARCK0002-N-PERFIL-MASTER
+              IF ARCV2910-CPERFILM NOT EQUAL SPACES
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                  TO ARCV2911-CPERFILM-S
+                 MOVE ARCK0001-CPERFIL-JA-E-MASTER
+                  TO ARCV2911-CPERFILM-MSG
+              END-IF
+           END-IF.
+
+       2199-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-MODIFICA-DADOS
+      *--------------------------------------------------------------
+       2200-MODIFICA-DADOS.
+
+           MOVE ARCV2910-CPERFIL           TO ARCD2000-CPERFIL
+           MOVE ARCV2910-GDESCRICAO        TO ARCD2000-GDESCRICAO
+           MOVE VIAL0001-CUTILIZA-I        TO ARCD2000-CUSERID
+
+           EXEC SQL
+                UPDATE
+                ARVT2002_INFPERFIL
+                SET
+                    GDESCRICAO = :ARCD2000-GDESCRICAO
+                  , CUSERID = :ARCD2000-CUSERID
+                  , HTIMEST = CURRENT TIMESTAMP
+                WHERE
+                    CPERFIL = :ARCD2000-CPERFIL
+           END-EXEC
+
+           MOVE CON-ARVT2002               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV2911-CPERFIL-S
+                 MOVE ARCK0001-CPERFIL-N-EXISTS
+                   TO ARCV2911-CPERFIL-MSG
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2299-MODIFICA-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2100-VAL-CAMPOS.
+      *--------------------------------------------------------------
+       2100-VAL-CAMPOS.
+
+           IF VIAL0002-SEM-ERROS AND ARCV2910-INDPERFM NOT EQUAL SPACES
+              MOVE CON-CTABELA-INDPERFM         TO WS-CTABELA
+              MOVE ARCV2910-INDPERFM            TO WS-CCOD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S       TO ARCV2911-INDPERFM-S
+                 MOVE TGCL2000-CCOD-CAPLIC  TO ARCV2911-INDPERFM-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG     TO ARCV2911-INDPERFM-MSG
+                 MOVE TGCL2000-GDESC        TO ARCV2911-XDESCINDPERFM
+              ELSE
+                 MOVE TGCL2000-GDESC        TO ARCV2910-XDESCINDPERFM
+              END-IF
+           END-IF.
+      *
+
+       2100-VAL-CAMPOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2200-VAL-TAB-ART05
+      *--------------------------------------------------------------
+       2200-VAL-TAB-ART05.
+
+           INITIALIZE TGCL2000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL2000-CTABELA
+           MOVE WS-CCOD                   TO TGCL2000-CCOD
+
+           PERFORM CALL-TGCP2000
+              THRU CALL-TGCP2000-EXIT.
+
+      *    IF VIAL0001-DEBUG-SIM
+      *       MOVE '2200-VAL-TAB-ART05-EXIT' TO VIAL0015-CALLER-ID
+      *       MOVE 'TGCL2000-CCOD       '    TO VIAL0015-CAMPO-NM(1)
+      *       MOVE  TGCL2000-CCOD            TO VIAL0015-CAMPO-VLR(1)
+      *       MOVE 'TGCL2000-GDESC      '    TO VIAL0015-CAMPO-NM(2)
+      *       MOVE  TGCL2000-GDESC           TO VIAL0015-CAMPO-VLR(2)
+      *       MOVE 'VIAL0002-IND-ERROS  '    TO VIAL0015-CAMPO-NM(3)
+      *       MOVE  VIAL0002-IND-ERROS       TO VIAL0015-CAMPO-VLR(3)
+      *       PERFORM VIAP0016-TRATA-DEBUG
+      *          THRU VIAP0016-TRATA-DEBUG-EXIT
+      *    END-IF.
+
+       2200-VAL-TAB-ART05-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV2911-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV2911-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV2911-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+CDT        COPY TGCP1000.
+CDT        COPY TGCP2000.

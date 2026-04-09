@@ -1,0 +1,506 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI33900.
+      ******************************************************************
+      *     PROGRAMA ARI33900.                                         *
+      *                                                                *
+      *     Browse Parametros gerais
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI33900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD2200 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV3390.
+       COPY ARCV3391.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY TGCL1000.
+       COPY TGCL2000.
+       COPY TGCK0002.
+      *
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-CAPLIC-MAX              PIC X(02) VALUE SPACES.
+           05 WS-CAPLIC-MIN              PIC X(02) VALUE SPACES.
+           05 WS-CPARAM-MAX              PIC X(10) VALUE SPACES.
+           05 WS-CPARAM-MIN              PIC X(10) VALUE SPACES.
+           05 WS-CTABELA                   PIC X(05) VALUE SPACES.
+           05 WS-CCOD                      PIC X(40) VALUE SPACES.
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT2200 PIC X(08) VALUE 'ARVT2200'.
+           05 WS-PROGNAME  PIC X(08) VALUE 'ARI33900'.
+           05 CON-CTABELA-CAPLIC  PIC X(05) VALUE 'AR013'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+      *
+       01  WS-CURSOR-VARS.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+           EXEC SQL
+                DECLARE CURART01 CURSOR FOR
+                 SELECT
+                       CPARAM
+                     , CAPLIC
+                     , GDESC
+                     , GVALOR1
+                     , GVALOR2
+                     , GVALOR3
+                     , CUSERID
+                     , HTIMEST
+                 FROM ARVT2200_PARAM
+                 WHERE
+                     ( CAPLIC  > :ARCD2200-CAPLIC
+                   OR (CAPLIC  = :ARCD2200-CAPLIC
+                   AND CPARAM >= :ARCD2200-CPARAM))
+                   AND CAPLIC <= :WS-CAPLIC-MAX
+                   AND CAPLIC >= :WS-CAPLIC-MIN
+                   AND CPARAM <= :WS-CPARAM-MAX
+                   AND CPARAM >= :WS-CPARAM-MIN
+                 ORDER BY
+                       CAPLIC
+                     , CPARAM
+           END-EXEC
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI33900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV3390-MSG.
+           MOVE ARCV3390-ASE               TO ARCV3391-ASE.
+      *
+           MOVE ZEROES                     TO ARCV3391-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL ARCV3391-PAGINA-CHEIA.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+      *
+           ADD 1                       TO ARCV3391-INDICE.
+           MOVE SPACES
+             TO ARCV3391-D-CAPLIC(ARCV3391-INDICE)
+           MOVE SPACES
+             TO ARCV3391-D-CPARAM(ARCV3391-INDICE)
+           MOVE SPACES
+             TO ARCV3391-D-GDESC(ARCV3391-INDICE)
+           MOVE SPACES
+             TO ARCV3391-D-GVALOR1(ARCV3391-INDICE)
+           MOVE SPACES
+             TO ARCV3391-D-GVALOR2(ARCV3391-INDICE)
+           MOVE SPACES
+             TO ARCV3391-D-GVALOR3(ARCV3391-INDICE)
+      *
+           .
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV3390-CAPLIC
+             TO ARCV3391-CAPLIC
+           MOVE ARCV3390-CPARAM
+             TO ARCV3391-CPARAM
+      *
+           PERFORM 2010-VALIDACOES
+              THRU 2019-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-VAL-CAMPOS
+                 THRU 2100-VAL-CAMPOS-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE ARCV3391-DIMINUI-LENGTH EQUAL
+                         ARCV3391-INDICE-INVERSO * ARCV3391-LENGTH-OCCUR
+                    COMPUTE ARCV3391-LENGTH EQUAL ARCV3391-LENGTH
+                         - ARCV3391-DIMINUI-LENGTH
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV3391-CPARAM-S
+                    MOVE ARCK0001-PARAM-N-EXISTS
+                      TO ARCV3391-CPARAM-MSG
+                 END-IF
+              END-IF
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2010-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+
+           CONTINUE.
+
+       2019-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+
+           MOVE ARCV3390-CPARAM-PAG        TO ARCD2200-CPARAM.
+           IF ARCV3390-CPARAM     EQUAL SPACES
+              MOVE '9999999999'            TO WS-CPARAM-MAX
+              MOVE LOW-VALUES              TO WS-CPARAM-MIN
+           ELSE
+              MOVE ARCV3390-CPARAM         TO WS-CPARAM-MAX
+                                              WS-CPARAM-MIN
+           END-IF.
+
+           MOVE ARCV3390-CAPLIC-PAG        TO ARCD2200-CAPLIC.
+           IF ARCV3390-CAPLIC     EQUAL SPACES
+              MOVE '99'                    TO WS-CAPLIC-MAX
+              MOVE LOW-VALUES              TO WS-CAPLIC-MIN
+           ELSE
+              MOVE ARCV3390-CAPLIC         TO WS-CAPLIC-MAX
+                                              WS-CAPLIC-MIN
+           END-IF.
+
+           SET SW-CURSOR-NONE TO TRUE
+
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2020-OPEN'             TO VIAL0015-CALLER-ID
+              MOVE 'ARCD2200-CAPLIC  '     TO VIAL0015-CAMPO-NM (1)
+              MOVE  ARCD2200-CAPLIC        TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ARCV3390-CAPLIC-PAG'   TO VIAL0015-CAMPO-NM (2)
+              MOVE  ARCV3390-CAPLIC-PAG    TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'WS-CAPLIC-MAX    '     TO VIAL0015-CAMPO-NM (3)
+              MOVE  WS-CAPLIC-MAX          TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'WS-CAPLIC-MIN    '     TO VIAL0015-CAMPO-NM (4)
+              MOVE  WS-CAPLIC-MIN          TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'ARCD2200-CPARAM  '     TO VIAL0015-CAMPO-NM (5)
+              MOVE  ARCD2200-CPARAM        TO VIAL0015-CAMPO-VLR(5)
+              MOVE 'ARCV3390-CPARAM-PAG'   TO VIAL0015-CAMPO-NM (6)
+              MOVE  ARCV3390-CPARAM-PAG    TO VIAL0015-CAMPO-VLR(6)
+              MOVE 'WS-CPARAM-MAX    '     TO VIAL0015-CAMPO-NM (7)
+              MOVE  WS-CPARAM-MAX          TO VIAL0015-CAMPO-VLR(7)
+              MOVE 'WS-CPARAM-MIN    '     TO VIAL0015-CAMPO-NM (8)
+              MOVE  WS-CPARAM-MIN          TO VIAL0015-CAMPO-VLR(8)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF SW-CURSOR-NONE
+              SET SW-CURSOR-1 TO TRUE
+           END-IF
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        OPEN CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+           MOVE CON-ARVT2200               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2030-FETCH' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                       FETCH CURART01
+                       INTO
+                           :ARCD2200-CPARAM
+                         , :ARCD2200-CAPLIC
+                         , :ARCD2200-GDESC
+                         , :ARCD2200-GVALOR1
+                         , :ARCD2200-GVALOR2
+                         , :ARCD2200-GVALOR3
+                         , :ARCD2200-CUSERID
+                         , :ARCD2200-HTIMEST
+                    END-EXEC
+
+
+           END-EVALUATE.
+
+           MOVE CON-ARVT2200               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2040-CONTINUA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ZEROES                     TO ARCV3391-INDICE.
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR ARCV3391-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT ARCV3391-PAGINA-CHEIA
+                    COMPUTE ARCV3391-INDICE-INVERSO EQUAL
+                         ARCV3391-INDICE-INVERSO - ARCV3391-INDICE
+                    COMPUTE ARCV3391-DIMINUI-LENGTH EQUAL
+                         ARCV3391-INDICE-INVERSO * ARCV3391-LENGTH-OCCUR
+                    COMPUTE ARCV3391-LENGTH EQUAL ARCV3391-LENGTH -
+                         ARCV3391-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2050-TRATA-OCCURS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           ADD 1                       TO ARCV3391-INDICE.
+           MOVE ARCD2200-CAPLIC
+             TO ARCV3391-D-CAPLIC(ARCV3391-INDICE).
+           MOVE ARCD2200-CPARAM
+             TO ARCV3391-D-CPARAM(ARCV3391-INDICE).
+           MOVE ARCD2200-GDESC
+             TO ARCV3391-D-GDESC(ARCV3391-INDICE).
+           MOVE ARCD2200-GVALOR1
+             TO ARCV3391-D-GVALOR1(ARCV3391-INDICE).
+           MOVE ARCD2200-GVALOR2
+             TO ARCV3391-D-GVALOR2(ARCV3391-INDICE).
+           MOVE ARCD2200-GVALOR3
+             TO ARCV3391-D-GVALOR3(ARCV3391-INDICE).
+      *
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+      *
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2070-CLOSE' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        CLOSE CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2100-VAL-CAMPOS
+      *--------------------------------------------------------------
+       2100-VAL-CAMPOS.
+      *
+           IF VIAL0002-SEM-ERROS AND ARCV3390-CAPLIC NOT EQUAL SPACES
+              MOVE CON-CTABELA-CAPLIC         TO WS-CTABELA
+              MOVE ARCV3390-CAPLIC            TO WS-CCOD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S       TO ARCV3391-CAPLIC-S
+                 MOVE TGCL2000-CCOD-CAPLIC  TO ARCV3391-CAPLIC-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG     TO ARCV3391-CAPLIC-MSG
+                 MOVE TGCL2000-GDESC        TO ARCV3391-XDESCCAPLIC
+              ELSE
+                 MOVE TGCL2000-GDESC        TO ARCV3390-XDESCCAPLIC
+              END-IF
+           END-IF.
+      *
+
+       2100-VAL-CAMPOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2200-VAL-TAB-ART05
+      *--------------------------------------------------------------
+       2200-VAL-TAB-ART05.
+      *
+           INITIALIZE TGCL2000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL2000-CTABELA
+           MOVE WS-CCOD                   TO TGCL2000-CCOD
+
+           PERFORM CALL-TGCP2000
+              THRU CALL-TGCP2000-EXIT.
+
+      *    IF VIAL0001-DEBUG-SIM
+      *       MOVE '2200-VAL-TAB-ART05-EXIT' TO VIAL0015-CALLER-ID
+      *       MOVE 'TGCL2000-CCOD       '    TO VIAL0015-CAMPO-NM(1)
+      *       MOVE  TGCL2000-CCOD            TO VIAL0015-CAMPO-VLR(1)
+      *       MOVE 'TGCL2000-GDESC      '    TO VIAL0015-CAMPO-NM(2)
+      *       MOVE  TGCL2000-GDESC           TO VIAL0015-CAMPO-VLR(2)
+      *       MOVE 'VIAL0002-IND-ERROS  '    TO VIAL0015-CAMPO-NM(3)
+      *       MOVE  VIAL0002-IND-ERROS       TO VIAL0015-CAMPO-VLR(3)
+      *       PERFORM VIAP0016-TRATA-DEBUG
+      *          THRU VIAP0016-TRATA-DEBUG-EXIT
+      *    END-IF.
+
+       2200-VAL-TAB-ART05-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV3391-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV3391-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV3391-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ARCV3391-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
+           COPY TGCP1000.
+           COPY TGCP2000.
+

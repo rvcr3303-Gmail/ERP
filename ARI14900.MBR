@@ -1,0 +1,468 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI14900.
+      ******************************************************************
+      *     PROGRAMA ARI14900.                                         *
+      *                                                                *
+      *     Browse Codes Tables
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI14900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD0500 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV1490.
+       COPY ARCV1491.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+      *
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT0500 PIC X(08) VALUE 'ARVT0500'.
+           05 CON-99999    PIC X(05) VALUE '99999'.
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'ARI14900'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+      *
+       01  WS-CURSOR-VARS.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+            05 WS-CTABELA-MIN PIC X(05).
+            05 WS-CTABELA-MAX PIC X(05).
+            05 WS-CCOD-MIN PIC X(50).
+            05 WS-CCOD-MAX PIC X(50).
+            05 WS-C2COD-MIN PIC X(50).
+            05 WS-C2COD-MAX PIC X(50).
+            05 WS-CLINGUA-MIN PIC X(10).
+            05 WS-CLINGUA-MAX PIC X(10).
+           EXEC SQL
+                DECLARE CURART01 CURSOR FOR
+                 SELECT
+                       CTABELA
+                     , CCOD
+                     , C2COD
+                     , CLINGUA
+                     , GDESC
+                     , CUSERID
+                     , HTIMEST
+                 FROM ARVT0500_CODESTABLE
+                 WHERE
+                    CTABELA >= :WS-CTABELA-MIN
+                     AND CTABELA <= :WS-CTABELA-MAX
+                     AND UCASE(CCOD) >= :WS-CCOD-MIN
+                     AND UCASE(CCOD) <= :WS-CCOD-MAX
+                     AND UCASE(C2COD) >= :WS-C2COD-MIN
+                     AND UCASE(C2COD) <= :WS-C2COD-MAX
+                     AND CLINGUA >= :WS-CLINGUA-MIN
+                     AND CLINGUA <= :WS-CLINGUA-MAX
+      *              AND CTABELA <> :CON-99999
+                     AND (CTABELA > :ARCD0500-CTABELA
+                     OR (CTABELA = :ARCD0500-CTABELA
+                     AND UCASE(CCOD) > :ARCD0500-CCOD)
+                     OR (CTABELA = :ARCD0500-CTABELA
+                     AND UCASE(CCOD) = :ARCD0500-CCOD
+                     AND UCASE(C2COD) > :ARCD0500-C2COD)
+                     OR (CTABELA = :ARCD0500-CTABELA
+                     AND UCASE(CCOD) = :ARCD0500-CCOD
+                     AND UCASE(C2COD) = :ARCD0500-C2COD
+                     AND CLINGUA >= :ARCD0500-CLINGUA))
+                 ORDER BY
+                       CTABELA
+                     , CCOD
+                     , C2COD
+                     , CLINGUA
+           END-EXEC.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI14900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV1490-MSG.
+           MOVE ARCV1490-ASE               TO ARCV1491-ASE.
+      *
+           MOVE ZEROES                     TO ARCV1491-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL ARCV1491-PAGINA-CHEIA.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+      *
+           ADD 1                       TO ARCV1491-INDICE.
+           MOVE SPACES
+             TO ARCV1491-D-CTABELA(ARCV1491-INDICE)
+           MOVE SPACES
+             TO ARCV1491-D-CCOD(ARCV1491-INDICE)
+           MOVE SPACES
+             TO ARCV1491-D-C2COD(ARCV1491-INDICE)
+           MOVE SPACES
+             TO ARCV1491-D-CLINGUA(ARCV1491-INDICE)
+           MOVE SPACES
+             TO ARCV1491-D-GDESC(ARCV1491-INDICE)
+      *
+           .
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-D_VIA_PG-BIBLI'    TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-ORIGEM'        TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0001-ORIGEM         TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV1490-CTABELA-PAG
+             TO ARCV1491-CTABELA-PAG
+           MOVE ARCV1490-CCOD-PAG
+             TO ARCV1491-CCOD-PAG
+           MOVE ARCV1490-C2COD-PAG
+             TO ARCV1491-C2COD-PAG
+           MOVE ARCV1490-CLINGUA-PAG
+             TO ARCV1491-CLINGUA-PAG
+           MOVE ARCV1490-CTABELA
+             TO ARCV1491-CTABELA
+      *    MOVE ARCV1490-XDESCCTABELA
+      *      TO ARCV1491-XDESCCTABELA
+           MOVE ARCV1490-CCOD
+             TO ARCV1491-CCOD
+           MOVE ARCV1490-C2COD
+             TO ARCV1491-C2COD
+           MOVE ARCV1490-CLINGUA
+             TO ARCV1491-CLINGUA
+      *
+           PERFORM 2010-VALIDACOES
+              THRU 2019-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE ARCV1491-DIMINUI-LENGTH EQUAL
+                         ARCV1491-INDICE-INVERSO * ARCV1491-LENGTH-OCCUR
+                    COMPUTE ARCV1491-LENGTH EQUAL ARCV1491-LENGTH
+                         - ARCV1491-DIMINUI-LENGTH
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1491-CTABELA-S
+                    MOVE ARCK0001-CTABELA-N-EXISTS
+                      TO ARCV1491-CTABELA-MSG
+                 END-IF
+              END-IF
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+      *
+           CONTINUE.
+
+       2019-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2020-OPEN'              TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-ORIGEM'        TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0001-ORIGEM         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ARCV1490-CTABELA      ' TO VIAL0015-CAMPO-NM (2)
+              MOVE  ARCV1490-CTABELA        TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'ARCV1490-CCOD         ' TO VIAL0015-CAMPO-NM (3)
+              MOVE  ARCV1490-CCOD           TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'ARCV1490-C2COD        ' TO VIAL0015-CAMPO-NM (4)
+              MOVE  ARCV1490-C2COD          TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'ARCV1490-CLINGUA      ' TO VIAL0015-CAMPO-NM (5)
+              MOVE  ARCV1490-CLINGUA        TO VIAL0015-CAMPO-VLR(5)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV1490-CTABELA-PAG        TO ARCD0500-CTABELA
+           MOVE FUNCTION UPPER-CASE(ARCV1490-CCOD-PAG)
+                                            TO ARCD0500-CCOD
+           MOVE FUNCTION UPPER-CASE(ARCV1490-C2COD-PAG)
+                                            TO ARCD0500-C2COD
+           MOVE ARCV1490-CLINGUA-PAG        TO ARCD0500-CLINGUA
+
+           IF ARCV1490-CTABELA EQUAL SPACES
+              MOVE SPACES           TO WS-CTABELA-MIN
+              MOVE ALL '9'          TO WS-CTABELA-MAX
+           ELSE
+              MOVE ARCV1490-CTABELA TO WS-CTABELA-MIN
+                                       WS-CTABELA-MAX
+           END-IF.
+           IF ARCV1490-CCOD EQUAL SPACES
+              MOVE SPACES           TO WS-CCOD-MIN
+              MOVE ALL '9'          TO WS-CCOD-MAX
+           ELSE
+JR1601* SE CCOD PREENCHIDO É PARA LISTAR AS CODESTABLES CENTRAIS
+JR1601* APRESENTAM-SE TODOS OS REGISTOS >= CCOD
+              IF VIAL0001-ORIGEM EQUAL VIAK0002-VIACODTAB
+                 MOVE FUNCTION UPPER-CASE(ARCV1490-CCOD)
+                                       TO WS-CCOD-MIN
+                 MOVE ALL '9'          TO WS-CCOD-MAX
+              ELSE
+                 MOVE FUNCTION UPPER-CASE(ARCV1490-CCOD)
+                                       TO WS-CCOD-MIN
+                                          WS-CCOD-MAX
+              END-IF
+           END-IF.
+
+JR1601*  PARA LISTAR AS CODESTABLES CENTRAIS NO POP-UP
+JR1601*  C2COD  TÊM DE SER FILTRO PARA EVITAR DUPLICADOS
+           IF VIAL0001-ORIGEM EQUAL VIAK0002-VIACODTAB
+              MOVE FUNCTION UPPER-CASE(ARCV1490-C2COD)
+                                    TO WS-C2COD-MIN
+                                       WS-C2COD-MAX
+           ELSE
+              IF ARCV1490-C2COD EQUAL SPACES
+                 MOVE SPACES           TO WS-C2COD-MIN
+                 MOVE ALL '9'          TO WS-C2COD-MAX
+              ELSE
+                 MOVE FUNCTION UPPER-CASE(ARCV1490-C2COD)
+                                       TO WS-C2COD-MIN
+                                          WS-C2COD-MAX
+              END-IF
+           END-IF.
+           IF ARCV1490-CLINGUA EQUAL SPACES
+              MOVE SPACES           TO WS-CLINGUA-MIN
+              MOVE ALL '9'          TO WS-CLINGUA-MAX
+           ELSE
+              MOVE ARCV1490-CLINGUA TO WS-CLINGUA-MIN
+                                       WS-CLINGUA-MAX
+           END-IF.
+
+           SET SW-CURSOR-NONE TO TRUE
+
+           IF SW-CURSOR-NONE
+              SET SW-CURSOR-1 TO TRUE
+           END-IF
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        OPEN CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+           MOVE CON-ARVT0500               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+      *
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                       FETCH CURART01
+                       INTO
+                           :ARCD0500-CTABELA
+                         , :ARCD0500-CCOD
+                         , :ARCD0500-C2COD
+                         , :ARCD0500-CLINGUA
+                         , :ARCD0500-GDESC
+                         , :ARCD0500-CUSERID
+                         , :ARCD0500-HTIMEST
+                    END-EXEC
+
+
+           END-EVALUATE.
+
+           MOVE CON-ARVT0500               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+      *
+           MOVE ZEROES                     TO ARCV1491-INDICE.
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR ARCV1491-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT ARCV1491-PAGINA-CHEIA
+                    COMPUTE ARCV1491-INDICE-INVERSO EQUAL
+                         ARCV1491-INDICE-INVERSO - ARCV1491-INDICE
+                    COMPUTE ARCV1491-DIMINUI-LENGTH EQUAL
+                         ARCV1491-INDICE-INVERSO * ARCV1491-LENGTH-OCCUR
+                    COMPUTE ARCV1491-LENGTH EQUAL ARCV1491-LENGTH -
+                         ARCV1491-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2050-TRATA-OCCURS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           ADD 1                       TO ARCV1491-INDICE.
+           MOVE ARCD0500-CTABELA
+             TO ARCV1491-D-CTABELA(ARCV1491-INDICE).
+           MOVE ARCD0500-CCOD
+             TO ARCV1491-D-CCOD(ARCV1491-INDICE).
+           MOVE ARCD0500-C2COD
+             TO ARCV1491-D-C2COD(ARCV1491-INDICE).
+           MOVE ARCD0500-CLINGUA
+             TO ARCV1491-D-CLINGUA(ARCV1491-INDICE).
+           MOVE ARCD0500-GDESC
+             TO ARCV1491-D-GDESC(ARCV1491-INDICE).
+      *
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+      *
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2070-CLOSE' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        CLOSE CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           MOVE ARCV1491-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV1491-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV1491-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ARCV1491-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

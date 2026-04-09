@@ -1,0 +1,367 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI31900.
+      ******************************************************************
+      *     PROGRAMA ARI31900.                                         *
+      *                                                                *
+      *     Browse CCT
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI31900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAD0100 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV3190.
+       COPY ARCV3191.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+      *
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-VIAT0100 PIC X(08) VALUE 'VIAT0100'.
+           05 WS-PROGNAME  PIC X(08) VALUE 'ARI31900'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+      *
+       01  WS-CURSOR-VARS.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+           EXEC SQL
+                DECLARE CURART01 CURSOR FOR
+                 SELECT
+                       CAPLIC
+                     , COPCAO
+                     , NPROGRAM
+                     , IDEBUG
+                     , APLICEXT
+                     , IPROCINEXT
+                     , PRGINEXT
+                     , IPROCFIMEXT
+                     , PRGFIMEXT
+                 FROM VIAT0100_BFCT
+                 WHERE
+                    CAPLIC > :VIAD0100-CAPLIC
+                     OR (CAPLIC = :VIAD0100-CAPLIC
+                     AND COPCAO >= :VIAD0100-COPCAO)
+                 ORDER BY
+                       CAPLIC
+                     , COPCAO
+           END-EXEC
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI31900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV3190-MSG.
+           MOVE ARCV3190-ASE               TO ARCV3191-ASE.
+      *
+           MOVE ZEROES                     TO ARCV3191-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL ARCV3191-PAGINA-CHEIA.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+      *
+           ADD 1                       TO ARCV3191-INDICE.
+           MOVE SPACES
+             TO ARCV3191-D-CAPLIC(ARCV3191-INDICE)
+           MOVE SPACES
+             TO ARCV3191-D-COPCAO(ARCV3191-INDICE)
+           MOVE SPACES
+             TO ARCV3191-D-NPROGRAM(ARCV3191-INDICE)
+           MOVE SPACES
+             TO ARCV3191-D-IDEBUG(ARCV3191-INDICE)
+           MOVE SPACES
+             TO ARCV3191-D-APLICEXT(ARCV3191-INDICE)
+           MOVE SPACES
+             TO ARCV3191-D-IPROCINEXT(ARCV3191-INDICE)
+           MOVE SPACES
+             TO ARCV3191-D-PRGINEXT(ARCV3191-INDICE)
+           MOVE SPACES
+             TO ARCV3191-D-IPROCFIMEXT(ARCV3191-INDICE)
+           MOVE SPACES
+             TO ARCV3191-D-PRGFIMEXT(ARCV3191-INDICE)
+           .
+      *
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           MOVE ARCV3190-CAPLIC-PAG
+             TO ARCV3191-CAPLIC-PAG
+           MOVE ARCV3190-COPCAO-PAG
+             TO ARCV3191-COPCAO-PAG
+           MOVE ARCV3190-CAPLIC
+             TO ARCV3191-CAPLIC
+           MOVE ARCV3190-COPCAO
+             TO ARCV3191-COPCAO
+      *
+           PERFORM 2010-VALIDACOES
+              THRU 2019-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE ARCV3191-DIMINUI-LENGTH EQUAL
+                         ARCV3191-INDICE-INVERSO * ARCV3191-LENGTH-OCCUR
+                    COMPUTE ARCV3191-LENGTH EQUAL ARCV3191-LENGTH
+                         - ARCV3191-DIMINUI-LENGTH
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV3191-CAPLIC-S
+                    MOVE ARCK0001-CAPLIC-N-EXISTS
+                      TO ARCV3191-CAPLIC-MSG
+                 END-IF
+              END-IF
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+
+           CONTINUE.
+
+       2019-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+
+           IF ARCV3190-CAPLIC-PAG EQUAL SPACES
+              MOVE ARCV3190-CAPLIC         TO ARCV3190-CAPLIC-PAG
+           END-IF
+
+           IF ARCV3190-COPCAO-PAG EQUAL SPACES
+              MOVE ARCV3190-COPCAO         TO ARCV3190-COPCAO-PAG
+           END-IF
+
+           MOVE ARCV3190-CAPLIC-PAG
+             TO VIAD0100-CAPLIC
+           MOVE ARCV3190-COPCAO-PAG
+             TO VIAD0100-COPCAO
+
+           SET SW-CURSOR-NONE TO TRUE
+
+           IF SW-CURSOR-NONE
+              SET SW-CURSOR-1 TO TRUE
+           END-IF
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        OPEN CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+           MOVE CON-VIAT0100               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                       FETCH CURART01
+                       INTO
+                           :VIAD0100-CAPLIC
+                         , :VIAD0100-COPCAO
+                         , :VIAD0100-NPROGRAM
+                         , :VIAD0100-IDEBUG
+                         , :VIAD0100-APLICEXT
+                         , :VIAD0100-IPROCINEXT
+                         , :VIAD0100-PRGINEXT
+                         , :VIAD0100-IPROCFIMEXT
+                         , :VIAD0100-PRGFIMEXT
+                    END-EXEC
+           END-EVALUATE.
+
+           MOVE CON-VIAT0100               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+
+           MOVE ZEROES                     TO ARCV3191-INDICE.
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR ARCV3191-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT ARCV3191-PAGINA-CHEIA
+                    COMPUTE ARCV3191-INDICE-INVERSO EQUAL
+                         ARCV3191-INDICE-INVERSO - ARCV3191-INDICE
+                    COMPUTE ARCV3191-DIMINUI-LENGTH EQUAL
+                         ARCV3191-INDICE-INVERSO * ARCV3191-LENGTH-OCCUR
+                    COMPUTE ARCV3191-LENGTH EQUAL ARCV3191-LENGTH -
+                         ARCV3191-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+      *
+           ADD 1                       TO ARCV3191-INDICE.
+           MOVE VIAD0100-CAPLIC
+             TO ARCV3191-D-CAPLIC(ARCV3191-INDICE).
+           MOVE VIAD0100-COPCAO
+             TO ARCV3191-D-COPCAO(ARCV3191-INDICE).
+           MOVE VIAD0100-NPROGRAM
+             TO ARCV3191-D-NPROGRAM(ARCV3191-INDICE).
+           MOVE VIAD0100-IDEBUG
+             TO ARCV3191-D-IDEBUG(ARCV3191-INDICE).
+           MOVE VIAD0100-APLICEXT
+             TO ARCV3191-D-APLICEXT(ARCV3191-INDICE).
+           MOVE VIAD0100-IPROCINEXT
+             TO ARCV3191-D-IPROCINEXT(ARCV3191-INDICE).
+           MOVE VIAD0100-PRGINEXT
+             TO ARCV3191-D-PRGINEXT(ARCV3191-INDICE).
+           MOVE VIAD0100-IPROCFIMEXT
+             TO ARCV3191-D-IPROCFIMEXT(ARCV3191-INDICE).
+           MOVE VIAD0100-PRGFIMEXT
+             TO ARCV3191-D-PRGFIMEXT(ARCV3191-INDICE).
+      *
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+      *
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        CLOSE CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV3191-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV3191-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV3191-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ARCV3191-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+      *

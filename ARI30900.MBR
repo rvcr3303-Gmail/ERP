@@ -1,0 +1,293 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI30900.
+      ******************************************************************
+      *     PROGRAMA ARI30900.                                         *
+      *                                                                *
+      *     Browse Aplicações Inactivas
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *             20181107                                           *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI30900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAD0500 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV3090.
+       COPY ARCV3091.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY VIAL0015.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-VIAT0500                 PIC X(08) VALUE 'VIAT0500'.
+           05 WS-PROGNAME                  PIC X(08) VALUE 'ARI30900'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+       01  WS-CURSOR-VARS.
+           05 FILLER                       PIC X(01) VALUE SPACES.
+           EXEC SQL
+            DECLARE CURART01 CURSOR FOR
+              SELECT DISTINCT APLIC
+                   , SERVCODE
+                FROM VIAT0500_INACTIV
+               WHERE APLIC     > :VIAD0500-APLIC
+                  OR (APLIC    = :VIAD0500-APLIC
+                 AND SERVCODE >= :VIAD0500-SERVCODE)
+              ORDER BY APLIC
+                     , SERVCODE
+           END-EXEC
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI30900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV3090-MSG
+                                              ARCV3091-MSG.
+      *
+           MOVE ZEROES                     TO ARCV3091-INDICE.
+
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL ARCV3091-PAGINA-CHEIA.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+      *
+           ADD 1                           TO ARCV3091-INDICE.
+
+           MOVE SPACES
+             TO ARCV3091-D-APLIC(ARCV3091-INDICE)
+           MOVE SPACES
+             TO ARCV3091-D-SERVCODE(ARCV3091-INDICE).
+      *
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE ARCV3091-DIMINUI-LENGTH EQUAL
+                         ARCV3091-INDICE-INVERSO * ARCV3091-LENGTH-OCCUR
+                    COMPUTE ARCV3091-LENGTH EQUAL ARCV3091-LENGTH
+                         - ARCV3091-DIMINUI-LENGTH
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV3091-APLIC-S
+                    MOVE ARCK0001-REGISTO-N-EXISTE
+                      TO ARCV3091-APLIC-MSG
+                 END-IF
+              END-IF
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+
+           INITIALIZE DCLVIAD0500.
+
+           IF ARCV3090-APLIC-PAG EQUAL SPACES
+              MOVE ARCV3090-APLIC          TO VIAD0500-APLIC
+           ELSE
+              MOVE ARCV3090-APLIC-PAG      TO VIAD0500-APLIC
+           END-IF.
+
+           IF ARCV3090-SERVCODE-PAG EQUAL SPACES
+              MOVE ARCV3090-SERVCODE       TO VIAD0500-SERVCODE
+           ELSE
+              MOVE ARCV3090-SERVCODE-PAG   TO VIAD0500-SERVCODE
+           END-IF.
+
+           EXEC SQL
+              OPEN CURART01
+           END-EXEC.
+
+           MOVE CON-VIAT0500               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'OPEN     '             TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE  '             TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+
+           EXEC SQL
+              FETCH CURART01
+               INTO :VIAD0500-APLIC
+                  , :VIAD0500-SERVCODE
+            END-EXEC
+
+           MOVE CON-VIAT0500               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'FETCH    '             TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE  '             TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+
+           MOVE ZEROES                     TO ARCV3091-INDICE.
+
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR ARCV3091-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT ARCV3091-PAGINA-CHEIA
+                    COMPUTE ARCV3091-INDICE-INVERSO EQUAL
+                         ARCV3091-INDICE-INVERSO - ARCV3091-INDICE
+                    COMPUTE ARCV3091-DIMINUI-LENGTH EQUAL
+                         ARCV3091-INDICE-INVERSO * ARCV3091-LENGTH-OCCUR
+                    COMPUTE ARCV3091-LENGTH EQUAL ARCV3091-LENGTH -
+                         ARCV3091-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+      *
+           ADD 1                           TO ARCV3091-INDICE.
+           MOVE VIAD0500-APLIC
+             TO ARCV3091-D-APLIC(ARCV3091-INDICE).
+           MOVE VIAD0500-SERVCODE
+             TO ARCV3091-D-SERVCODE(ARCV3091-INDICE).
+      *
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+      *
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+
+           EXEC SQL
+               CLOSE CURART01
+           END-EXEC.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV3091-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV3091-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV3091-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ARCV3091-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0015.

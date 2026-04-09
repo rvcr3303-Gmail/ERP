@@ -1,0 +1,201 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI31101.
+      ******************************************************************
+      *     PROGRAMA ARI31101.
+      *
+      *      CCT
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI31101         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV3110.
+       COPY ARCV3111.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY TGCL1000.
+       COPY TGCL2000.
+       COPY TGCK0002.
+      *
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME                  PIC X(08) VALUE 'ARI31101'.
+           05 CON-CTABELA-APLICEXT         PIC X(05) VALUE 'AR011'.
+           05 CON-CTABELA-PRGINEXT         PIC X(05) VALUE 'AR012'.
+           05 CON-CTABELA-PRGFIMEXT        PIC X(05) VALUE 'AR012'.
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-CTABELA                   PIC X(05) VALUE SPACES.
+           05 WS-CCOD                      PIC X(40) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI31101         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE '1000-INICIO-PROGRAMA'     TO VIAL0015-CALLER-ID
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV3110-MSG.
+           MOVE VIAL0001-MENSAGEM-OUTPUT   TO ARCV3111-MSG.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           MOVE '2000-PROC-PROGRAMA'       TO VIAL0015-CALLER-ID
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-DESC-CAMPOS
+                 THRU 2100-DESC-CAMPOS-EXIT
+           END-IF
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-DESC-CAMPOS
+      *--------------------------------------------------------------
+       2100-DESC-CAMPOS.
+      *
+           MOVE '2100-DESC-CAMPOS'         TO VIAL0015-CALLER-ID
+      *
+           IF  VIAL0002-SEM-ERROS
+           AND ARCV3111-XDESCAPLICEXT EQUAL SPACES
+           AND ARCV3111-APLICEXT  NOT EQUAL SPACES
+              MOVE CON-CTABELA-APLICEXT    TO WS-CTABELA
+              MOVE ARCV3111-APLICEXT       TO WS-CCOD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC       TO ARCV3111-XDESCAPLICEXT
+              END-IF
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ARCV3111-XDESCPRGINEXT EQUAL SPACES
+           AND ARCV3111-PRGINEXT  NOT EQUAL SPACES
+              MOVE CON-CTABELA-PRGINEXT    TO WS-CTABELA
+              MOVE ARCV3111-PRGINEXT       TO WS-CCOD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC       TO ARCV3111-XDESCPRGINEXT
+              END-IF
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ARCV3111-XDESCPRGFIMEXT EQUAL SPACES
+           AND ARCV3111-PRGFIMEXT  NOT EQUAL SPACES
+              MOVE CON-CTABELA-PRGFIMEXT   TO WS-CTABELA
+              MOVE ARCV3111-PRGFIMEXT      TO WS-CCOD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC       TO ARCV3111-XDESCPRGFIMEXT
+              END-IF
+           END-IF.
+
+       2100-DESC-CAMPOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-VAL-TAB-ART05
+      *--------------------------------------------------------------
+       2200-VAL-TAB-ART05.
+      *
+           INITIALIZE TGCL2000-MSG.
+
+           MOVE WS-CTABELA                 TO TGCL2000-CTABELA
+           MOVE WS-CCOD                    TO TGCL2000-CCOD
+
+           PERFORM CALL-TGCP2000
+              THRU CALL-TGCP2000-EXIT.
+
+       2200-VAL-TAB-ART05-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2300-VAL-TAB-OUTRA
+      *--------------------------------------------------------------
+       2300-VAL-TAB-OUTRA.
+      *
+
+           INITIALIZE TGCL1000-MSG.
+
+           MOVE WS-CTABELA                 TO TGCL1000-CTABELA
+           MOVE WS-CCOD                    TO TGCL1000-CCOD
+
+           PERFORM CALL-TGCP1000
+              THRU CALL-TGCP1000-EXIT.
+
+       2300-VAL-TAB-OUTRA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           MOVE '3000-FINAL-PROGRAMA'      TO VIAL0015-CALLER-ID
+
+           MOVE ARCV3111-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV3110-MSG               TO VIAL0001-MENSAGEM-INPUT.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
+           COPY TGCP1000.
+           COPY TGCP2000.

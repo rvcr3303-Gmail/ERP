@@ -1,0 +1,146 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI30108.
+      ******************************************************************
+      *     PROGRAMA ARI30108.                                         *
+      *                                                                *
+      *     Aplicação Inactivas
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *             20181106                                           *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI30108         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAD0500 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV3010.
+       COPY ARCV3011.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-VIAT0500                 PIC X(08) VALUE 'VIAT0500'.
+           05 WS-PROGNAME                  PIC X(08) VALUE 'ARI30108'.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI30108         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV3010-MSG
+                                              ARCV3011-MSG.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-ELIMINA-DADOS
+                 THRU 2299-ELIMINA-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-ELIMINA-DADOS
+      *--------------------------------------------------------------
+       2200-ELIMINA-DADOS.
+
+           INITIALIZE DCLVIAD0500.
+
+           MOVE ARCV3010-APLIC             TO VIAD0500-APLIC
+           MOVE ARCV3010-SERVCODE          TO VIAD0500-SERVCODE
+
+           EXEC SQL
+              DELETE FROM VIAT0500_INACTIV
+               WHERE APLIC    = :VIAD0500-APLIC
+                 AND SERVCODE = :VIAD0500-SERVCODE
+           END-EXEC
+
+           MOVE CON-VIAT0500               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+              WHEN DB2-OK
+                 CONTINUE
+              WHEN DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                                           TO ARCV3011-SERVCODE-S
+                 MOVE ARCK0001-REGISTO-N-EXISTE
+                                           TO ARCV3011-SERVCODE-MSG
+              WHEN OTHER
+                 MOVE VIAK0002-ABEND-DB2   TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2    TO VIAL0002-COD-ERRO-GRAVE
+           END-EVALUATE.
+
+       2299-ELIMINA-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV3011-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV3011-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV3011-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.

@@ -1,0 +1,343 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI32900.
+      ******************************************************************
+      *     PROGRAMA ARI32900.                                         *
+      *                                                                *
+      *     Lista atributos por utilizador
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI32900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD2100 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV3290.
+       COPY ARCV3291.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+      *
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT2100 PIC X(08) VALUE 'ARVT2100'.
+           05 WS-PROGNAME  PIC X(08) VALUE 'ARI32900'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+      *
+       01  WS-CURSOR-VARS.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+           EXEC SQL
+                DECLARE CURART01 CURSOR FOR
+                 SELECT
+                       GUSERNAME
+                     , CATRIBUTO
+                     , GATRIBUTO
+                     , CUSERID
+                     , HTIMEST
+                 FROM ARVT2100_USRATRIB
+                 WHERE
+                    GUSERNAME > :ARCD2100-GUSERNAME
+                     OR (GUSERNAME = :ARCD2100-GUSERNAME
+                     AND CATRIBUTO >= :ARCD2100-CATRIBUTO)
+                 ORDER BY
+                       GUSERNAME
+                     , CATRIBUTO
+           END-EXEC
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI32900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV3290-MSG.
+           MOVE ARCV3290-ASE               TO ARCV3291-ASE.
+      *
+           MOVE ZEROES                     TO ARCV3291-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL ARCV3291-PAGINA-CHEIA.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+      *
+           ADD 1                       TO ARCV3291-INDICE.
+           MOVE SPACES
+             TO ARCV3291-D-GUSERNAME(ARCV3291-INDICE)
+           MOVE SPACES
+             TO ARCV3291-D-CATRIBUTO(ARCV3291-INDICE)
+           MOVE SPACES
+             TO ARCV3291-D-GATRIBUTO(ARCV3291-INDICE)
+      *
+           .
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           MOVE ARCV3290-GUSERNAME-PAG
+             TO ARCV3291-GUSERNAME-PAG
+           MOVE ARCV3290-CATRIBUTO-PAG
+             TO ARCV3291-CATRIBUTO-PAG
+           MOVE ARCV3290-GUSERNAME
+             TO ARCV3291-GUSERNAME
+           MOVE ARCV3290-CATRIBUTO
+             TO ARCV3291-CATRIBUTO
+      *
+           PERFORM 2010-VALIDACOES
+              THRU 2019-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE ARCV3291-DIMINUI-LENGTH EQUAL
+                         ARCV3291-INDICE-INVERSO * ARCV3291-LENGTH-OCCUR
+                    COMPUTE ARCV3291-LENGTH EQUAL ARCV3291-LENGTH
+                         - ARCV3291-DIMINUI-LENGTH
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV3291-CATRIBUTO-S
+                    MOVE ARCK0001-CATRIBUTO-N-EXISTS
+                      TO ARCV3291-CATRIBUTO-MSG
+                 END-IF
+              END-IF
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+
+
+           CONTINUE.
+
+       2019-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+
+           IF ARCV3290-GUSERNAME-PAG EQUAL SPACES
+              MOVE ARCV3290-GUSERNAME      TO ARCV3290-GUSERNAME-PAG
+           END-IF
+
+           IF ARCV3290-CATRIBUTO-PAG EQUAL SPACES
+              MOVE ARCV3290-CATRIBUTO      TO ARCV3290-CATRIBUTO-PAG
+           END-IF
+
+           MOVE ARCV3290-GUSERNAME-PAG
+             TO ARCD2100-GUSERNAME
+           MOVE ARCV3290-CATRIBUTO-PAG
+             TO ARCD2100-CATRIBUTO
+
+           SET SW-CURSOR-NONE TO TRUE
+
+
+           IF SW-CURSOR-NONE
+              SET SW-CURSOR-1 TO TRUE
+           END-IF
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        OPEN CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+           MOVE CON-ARVT2100               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                       FETCH CURART01
+                       INTO
+                           :ARCD2100-GUSERNAME
+                         , :ARCD2100-CATRIBUTO
+                         , :ARCD2100-GATRIBUTO
+                         , :ARCD2100-CUSERID
+                         , :ARCD2100-HTIMEST
+                    END-EXEC
+
+
+           END-EVALUATE.
+
+           MOVE CON-ARVT2100               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+
+           MOVE ZEROES                     TO ARCV3291-INDICE.
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR ARCV3291-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT ARCV3291-PAGINA-CHEIA
+                    COMPUTE ARCV3291-INDICE-INVERSO EQUAL
+                         ARCV3291-INDICE-INVERSO - ARCV3291-INDICE
+                    COMPUTE ARCV3291-DIMINUI-LENGTH EQUAL
+                         ARCV3291-INDICE-INVERSO * ARCV3291-LENGTH-OCCUR
+                    COMPUTE ARCV3291-LENGTH EQUAL ARCV3291-LENGTH -
+                         ARCV3291-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+      *
+           ADD 1                       TO ARCV3291-INDICE.
+           MOVE ARCD2100-GUSERNAME
+             TO ARCV3291-D-GUSERNAME(ARCV3291-INDICE).
+           MOVE ARCD2100-CATRIBUTO
+             TO ARCV3291-D-CATRIBUTO(ARCV3291-INDICE).
+           MOVE ARCD2100-GATRIBUTO
+             TO ARCV3291-D-GATRIBUTO(ARCV3291-INDICE).
+      *
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+      *
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        CLOSE CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV3291-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV3291-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV3291-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ARCV3291-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+      *
+

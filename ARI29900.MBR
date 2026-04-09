@@ -1,0 +1,365 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI29900.
+      ******************************************************************
+      *     PROGRAMA ARI29900.                                         *
+      *                                                                *
+      *     Browse Informação Perfis
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI29900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD2000 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV2990.
+       COPY ARCV2991.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY ARCL2505.
+       COPY ETCL0002.
+      *
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT2000 PIC X(08) VALUE 'ARVT2000'.
+           05 WS-PROGNAME  PIC X(08) VALUE 'ARI29900'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+      *
+       01  WS-CURSOR-VARS.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+           EXEC SQL
+                DECLARE CURART01 CURSOR FOR
+                 SELECT
+                       CPERFIL
+                     , GDESCRICAO
+                     , INDPERM
+                     , CPERFILM
+                     , CUSERID
+                     , HTIMEST
+                 FROM ARVT2002_INFPERFIL
+                 WHERE
+                    CPERFIL >= :ARCD2000-CPERFIL AND
+                    CPERFILM = :ARCD2000-CPERFILM
+                 ORDER BY
+                       CPERFIL
+           END-EXEC
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI29900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV2990-MSG.
+           MOVE ARCV2990-ASE               TO ARCV2991-ASE.
+      *
+           MOVE ZEROES                     TO ARCV2991-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL ARCV2991-PAGINA-CHEIA.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+      *
+           ADD 1                       TO ARCV2991-INDICE.
+           MOVE SPACES
+             TO ARCV2991-D-CPERFIL(ARCV2991-INDICE)
+           MOVE SPACES
+             TO ARCV2991-D-GDESCRICAO(ARCV2991-INDICE)
+           MOVE SPACES
+             TO ARCV2991-D-INDPERFM(ARCV2991-INDICE)
+           MOVE SPACES
+             TO ARCV2991-D-CPERFILM(ARCV2991-INDICE)
+           .
+      *
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           MOVE ARCV2990-CPERFIL-PAG
+             TO ARCV2991-CPERFIL-PAG
+           MOVE ARCV2990-CPERFIL
+             TO ARCV2991-CPERFIL
+      *
+           PERFORM 2010-VALIDACOES
+              THRU 2019-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE ARCV2991-DIMINUI-LENGTH EQUAL
+                         ARCV2991-INDICE-INVERSO * ARCV2991-LENGTH-OCCUR
+                    COMPUTE ARCV2991-LENGTH EQUAL ARCV2991-LENGTH
+                         - ARCV2991-DIMINUI-LENGTH
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV2991-CPERFIL-S
+                    MOVE ARCK0001-CPERFIL-N-EXISTS
+                      TO ARCV2991-CPERFIL-MSG
+                 END-IF
+              END-IF
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+
+           CONTINUE.
+
+       2019-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+
+           IF ARCV2990-CPERFIL-PAG EQUAL SPACES
+              MOVE ARCV2990-CPERFIL        TO ARCV2990-CPERFIL-PAG
+           END-IF
+
+           MOVE ARCV2990-CPERFIL-PAG
+             TO ARCD2000-CPERFIL
+
+      * Descobrir o master do user logado para listar apenas os perfis
+      * com esse master. EX.: Plataforma VIA s� lista perfis da VIA
+           PERFORM  2080-OBT-MASTER-USER
+              THRU  2080-OBT-MASTER-USER-EXIT.
+
+           SET SW-CURSOR-NONE TO TRUE
+
+           IF SW-CURSOR-NONE
+              SET SW-CURSOR-1 TO TRUE
+           END-IF
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        OPEN CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+           MOVE CON-ARVT2000               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                       FETCH CURART01
+                       INTO
+                           :ARCD2000-CPERFIL
+                         , :ARCD2000-GDESCRICAO
+                         , :ARCD2000-INDPERM
+                         , :ARCD2000-CPERFILM
+                         , :ARCD2000-CUSERID
+                         , :ARCD2000-HTIMEST
+                    END-EXEC
+
+           END-EVALUATE.
+
+           MOVE CON-ARVT2000               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+
+           MOVE ZEROES                     TO ARCV2991-INDICE.
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR ARCV2991-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT ARCV2991-PAGINA-CHEIA
+                    COMPUTE ARCV2991-INDICE-INVERSO EQUAL
+                         ARCV2991-INDICE-INVERSO - ARCV2991-INDICE
+                    COMPUTE ARCV2991-DIMINUI-LENGTH EQUAL
+                         ARCV2991-INDICE-INVERSO * ARCV2991-LENGTH-OCCUR
+                    COMPUTE ARCV2991-LENGTH EQUAL ARCV2991-LENGTH -
+                         ARCV2991-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+      *
+           ADD 1                       TO ARCV2991-INDICE.
+           MOVE ARCD2000-CPERFIL
+             TO ARCV2991-D-CPERFIL(ARCV2991-INDICE).
+           MOVE ARCD2000-GDESCRICAO
+             TO ARCV2991-D-GDESCRICAO(ARCV2991-INDICE).
+           MOVE ARCD2000-INDPERM
+             TO ARCV2991-D-INDPERFM(ARCV2991-INDICE).
+           MOVE ARCD2000-CPERFILM
+             TO ARCV2991-D-CPERFILM(ARCV2991-INDICE).
+      *
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+      *
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        CLOSE CURART01
+                    END-EXEC
+           END-EVALUATE.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2080-OBT-MASTER-USER
+      *--------------------------------------------------------------
+       2080-OBT-MASTER-USER.
+
+           INITIALIZE ARCL2505-COMMAREA REPLACING NUMERIC BY ZEROES
+                                             ALPHANUMERIC BY SPACES.
+
+           MOVE VIAL0001-CUTILIZA-I        TO ARCL2505-CUSERID.
+
+           CALL ARCL2505-ROTINA USING ETCL0002-COMMAREA
+                                      ARCL2505-COMMAREA.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE ARCL2505-CPERFILMAST TO ARCD2000-CPERFILM
+              ELSE
+                 MOVE ETCL0002-IND-ERROS
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV2991-CPERFIL-S
+                 MOVE ETCL0002-ST-ERRO
+                   TO ARCV2991-CPERFIL-MSG
+           END-IF.
+
+       2080-OBT-MASTER-USER-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV2991-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV2991-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV2991-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ARCV2991-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+      *
+

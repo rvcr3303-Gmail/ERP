@@ -1,0 +1,421 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI29108.
+      ******************************************************************
+      *     PROGRAMA ARI29108.                                         *
+      *                                                                *
+      *     Informacao Perfis                                          *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI29108         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD2000 END-EXEC.
+           EXEC SQL INCLUDE ARCD3000 END-EXEC.
+           EXEC SQL INCLUDE ARCD1000 END-EXEC.
+           EXEC SQL INCLUDE ARCD0200 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV2910.
+       COPY ARCV2911.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT2002 PIC X(08) VALUE 'ARVT2002'.
+           05 CON-ARVT1000 PIC X(08) VALUE 'ARVT1000'.
+           05 CON-ARVT0200 PIC X(08) VALUE 'ARVT0200'.
+           05 CON-ARVT3000 PIC X(08) VALUE 'ARVT3000'.
+           05 WS-PROGNAME  PIC X(08) VALUE 'ARI29108'.
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-NULL                       PIC S9(04) BINARY.
+           05 WS-TOTAL-PERFIS               PIC S9(02) VALUE ZEROES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI29108         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV2910-MSG.
+           MOVE ARCV2910-ASE               TO ARCV2911-ASE.
+      *
+           PERFORM 1100-VALIDACOES
+              THRU 1199-VALIDACOES-EXIT.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-VALIDACOES
+      *--------------------------------------------------------------
+       1100-VALIDACOES.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1100-VALIDACOES  ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      * Não é permitido eliminar o perfil master da VIA
+           IF ARCV2911-INDPERFM EQUAL ARCK0002-PERFILMAST-VIA
+              MOVE VIAK0002-ERROS-FUNCAO   TO VIAL0002-IND-ERROS
+              MOVE ARCK0002-STATUS-ACTIVO  TO ARCV2911-CPERFIL-S
+              MOVE ARCK0002-CAPLIC-AR      TO ARCV2911-CPERFIL-CAPLIC
+              MOVE ARCK0001-OPER-N-PERMITIDA
+                                           TO ARCV2911-CPERFIL-MSG
+           END-IF.
+
+      * Temos de ter sempre um perfil navegável no portal da VIA e
+      * e no portal do cliente
+           IF VIAL0002-SEM-ERROS AND
+           ARCV2911-INDPERFM EQUAL ARCK0002-N-PERFIL-MASTER
+
+              MOVE ARCV2911-INDPERFM       TO ARCD2000-INDPERM
+              EXEC SQL
+                 SELECT  COUNT(CPERFIL)
+                 INTO :WS-TOTAL-PERFIS :WS-NULL
+                 FROM  ARVT2002_INFPERFIL
+                 WHERE INDPERM = :ARCD2000-INDPERM
+              END-EXEC
+
+              MOVE CON-ARVT2002            TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF DB2-OK
+                 IF WS-TOTAL-PERFIS > 1
+                    CONTINUE
+                 ELSE
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                   MOVE ARCK0002-STATUS-ACTIVO
+                                           TO ARCV2911-CPERFIL-S
+                   MOVE ARCK0002-CAPLIC-AR TO ARCV2911-CPERFIL-CAPLIC
+                   MOVE ARCK0001-OPER-N-PERMITIDA
+                                           TO ARCV2911-CPERFIL-MSG
+                 END-IF
+              ELSE
+                 MOVE VIAK0002-ABEND-DB2   TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2    TO VIAL0002-COD-ERRO-GRAVE
+              END-IF
+           END-IF.
+
+      *    ve se ha utilizadores com o perfil
+
+           IF VIAL0002-SEM-ERROS
+              MOVE ARCV2910-CPERFIL           TO ARCD3000-CPERFIL
+
+              EXEC SQL
+                    SELECT GUSERNAME
+                       INTO :ARCD3000-GUSERNAME
+                    FROM ARVT3000_PERFISUSER
+                    WHERE   CPERFIL = :ARCD3000-CPERFIL
+              END-EXEC
+
+              MOVE CON-ARVT3000               TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+                 IF DB2-OK
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                                           TO ARCV2911-CPERFIL-S
+                    MOVE ARCK0002-CAPLIC-AR
+                                           TO ARCV2911-CPERFIL-CAPLIC
+                    MOVE ARCK0001-PERFIL-UTILIZADOR
+                                           TO ARCV2911-CPERFIL-MSG
+                 END-IF
+           END-IF.
+      *
+       1199-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV2910-ADE               TO ARCV2911-ADE.
+
+      * ELIMINA DA TABELA DOS PEFIS  INFPERFIS
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-ELIMINA-DADOS
+                 THRU 2299-ELIMINA-DADOS-EXIT
+           END-IF.
+
+      * ELIMINA DA TABELA DOIS DOS PERFIS
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2300-ELIMINA-DADOS
+                 THRU 2399-ELIMINA-DADOS-EXIT
+           END-IF.
+
+      * ELIMINA DA TABELA DEZ PERFIL ACTIONS
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2400-ELIMINA-DADOS
+                 THRU 2499-ELIMINA-DADOS-EXIT
+           END-IF.
+
+      * ELIMINA DA TABELA 30  PERFILUSER
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2500-ELIMINA-DADOS
+                 THRU 2599-ELIMINA-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2200-ELIMINA-DADOS
+      *--------------------------------------------------------------
+       2200-ELIMINA-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-ELIMINA     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV2910-CPERFIL           TO ARCD2000-CPERFIL
+
+           EXEC SQL
+                 DELETE FROM
+                ARVT2002_INFPERFIL
+                 WHERE
+                    CPERFIL = :ARCD2000-CPERFIL
+           END-EXEC
+
+           MOVE CON-ARVT2002               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV2911-CPERFIL-S
+                    MOVE ARCK0001-CPERFIL-N-EXISTS
+                      TO ARCV2911-CPERFIL-MSG
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2      TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2       TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2299-ELIMINA-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2300-ELIMINA-DADOS
+      *--------------------------------------------------------------
+       2300-ELIMINA-DADOS.
+
+           MOVE ARCV2910-CPERFIL           TO ARCD0200-CPERFIL
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2300-ELIMINA     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+                 DELETE FROM
+                 ARVT0200_PERFIL
+                 WHERE
+                    CPERFIL = :ARCD0200-CPERFIL
+
+           END-EXEC
+
+           MOVE CON-ARVT0200               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT DB2-OK AND NOT DB2-NOTFND
+                 MOVE VIAK0002-ABEND-DB2
+                   TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2
+                   TO VIAL0002-COD-ERRO-GRAVE
+              END-IF
+           END-IF.
+
+       2399-ELIMINA-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2400-ELIMINA-DADOS
+      *--------------------------------------------------------------
+       2400-ELIMINA-DADOS.
+
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2400-ELIMINA     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV2910-CPERFIL           TO ARCD1000-CPERFIL
+
+           EXEC SQL
+                DELETE FROM
+                ARVT1000_PERFIL_ACTIONS
+                WHERE CPERFIL = :ARCD1000-CPERFIL
+           END-EXEC
+
+           MOVE CON-ARVT1000               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT DB2-OK AND NOT DB2-NOTFND
+                 MOVE VIAK0002-ABEND-DB2
+                   TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2
+                   TO VIAL0002-COD-ERRO-GRAVE
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2499-ELIMINA-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2500-ELIMINA-DADOS
+      *--------------------------------------------------------------
+       2500-ELIMINA-DADOS.
+      *
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-ELIMINA     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV2910-CPERFIL           TO ARCD3000-CPERFIL
+
+           EXEC SQL
+                 DELETE FROM
+                ARVT3000_PERFISUSER
+                 WHERE   CPERFIL = :ARCD3000-CPERFIL
+           END-EXEC
+
+           MOVE CON-ARVT3000               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT DB2-OK AND NOT DB2-NOTFND
+                 MOVE VIAK0002-ABEND-DB2
+                   TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2
+                   TO VIAL0002-COD-ERRO-GRAVE
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2      TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2       TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+
+       2599-ELIMINA-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV2911-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV2911-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV2911-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+           COPY VIAP0016.
