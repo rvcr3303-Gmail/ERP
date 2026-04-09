@@ -1,0 +1,762 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. COB07000.
+      ******************************************************************
+      *                                                                *
+      *  Cria registos com cotacoes diarias das moedas utilizadas no   *
+      *  sistema                                                       *
+      *                                                                *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       SOURCE-COMPUTER. IBM-AS400.
+       OBJECT-COMPUTER. IBM-AS400.
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       01  FILLER              PIC X(40) VALUE 'INICIO WORKING-STORAGE'.
+      ******************************************************************
+      * PROGRAM CONTROL
+      ******************************************************************
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME              PIC  X(10) VALUE 'COB07000'.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+           EXEC SQL INCLUDE EXCD0100 END-EXEC.
+           EXEC SQL INCLUDE ARCD0500 END-EXEC.
+
+      ******************************************************************
+      * APIS
+      ******************************************************************
+
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  CONSTANTES.
+           05 CON-EXVT0100             PIC  X(10) VALUE 'EXVT0100'.
+           05 CON-ARVT0500             PIC  X(10) VALUE 'ARVT0500'.
+           05 CON-TAB-AR041            PIC  X(05) VALUE 'AR041'.
+           05 CON-SIM                  PIC  X(01) VALUE 'S'.
+           05 CON-NAO                  PIC  X(01) VALUE 'N'.
+           05 CON-CMR                  PIC  X(03) VALUE 'CMR'.
+           05 CON-ERR-TIMEOUT          PIC  X(80)
+              VALUE
+             'Erro na invocação do WebService (Timeout)'.
+
+      *--------------------------------------------------------------***
+      *            VARIAVEIS
+      *--------------------------------------------------------------***
+       01  WS-VARIAVEIS.
+           05 WS-FACTOR-USD             PIC  9(12)V9(07).
+           05 WS-INDICE                 PIC  9(03).
+              88 WS-INDICE-MAXIMO                   VALUE 180.
+           05 WS-ADE.
+              10 WS-DCAMB               PIC  X(10).
+              10 WS-CMOED               PIC  X(03).
+              10 WS-DETALHE OCCURS 180 TIMES.
+                 15 WS-D-DCAMB          PIC  X(10).
+                 15 WS-D-CMOED          PIC  X(03).
+                 15 WS-D-TXCAMB         PIC  9(12)V9(07).
+           05 WS-HORA                   PIC 9(08) VALUE ZEROS.
+           05 FILLER REDEFINES WS-HORA.
+              10 WS-HORA-HH             PIC 9(02).
+              10 WS-HORA-MM             PIC 9(02).
+              10 WS-HORA-SS             PIC 9(02).
+              10 WS-HORA-XX             PIC 9(02).
+           05 WS-HORA-OUT               PIC 9(06) VALUE ZEROS.
+           05 FILLER REDEFINES WS-HORA-OUT.
+              10 WS-HORA-HH-OUT         PIC 9(02).
+              10 WS-HORA-MM-OUT         PIC 9(02).
+              10 WS-HORA-SS-OUT         PIC 9(02).
+      ******************************************************************
+      * SWITCHES
+      ******************************************************************
+       01  WS-SWITCHES.
+           05 WS-STATUS-COT34       PIC S9(03) VALUE 0.
+              88 WS-COT34-OK                   VALUE 0.
+              88 WS-COT34-NOTFND               VALUE 100.
+           05 SW-MOEDA                   PIC X(01) VALUE SPACES.
+              88 SW-MOEDA-VAL                      VALUE 'S'.
+              88 SW-MOEDA-INVAL                    VALUE 'N'.
+
+           05 SW-TRIANGULA               PIC X(01) VALUE SPACES.
+              88 SW-TRIANGULA-OK                   VALUE 'S'.
+              88 SW-TRIANGULA-NOK                  VALUE 'N'.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY VIAL0001.
+           COPY EXCV1050.
+           COPY EXCV1051.
+           COPY ATCK0001.
+           COPY ARCK0002.
+           COPY COCK0002.
+           COPY VIAL0015.
+           COPY AQCL0001.
+           COPY AQCW0109.
+           COPY AQCW0009.
+           COPY VIAW0033.
+           COPY VIAW0012.
+           COPY VIATK001.
+           COPY VIATK002.
+           COPY ETCL0050.
+           COPY ETCK0002.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+
+      ******************************************************************
+       01  FILLER                          PIC X(40) VALUE
+            'FIM DA WORKING-STORAGE                 '.
+      *****************************************************************
+      *                    LINKAGE SECTION
+      *****************************************************************
+       COPY VIAL0005.
+      *****************************************************************
+      *                  PROCEDURE DIVISION
+      *****************************************************************
+           EXEC SQL INCLUDE VIAP0014 END-EXEC.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ATCK0001-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      *                   INICIO DO PROGRAMA.
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+
+           INITIALIZE WS-VARIAVEIS
+                    , WS-SWITCHES.
+
+           MOVE ARCK0002-RCODE-OK         TO ATCK0001-RCODE.
+
+      * INFORMA ARQUITECTURA BATCH
+           PERFORM AQCP0100-OBT-DADOS-ARQ
+              THRU AQCP0100-OBT-DADOS-ARQ-EXIT.
+
+           MOVE AQCW0100-AT-DEBUG         TO VIAL0015-I-DEBUG.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-REG-INICIO
+                 THRU AQCP0100-REG-INICIO-EXIT
+           END-IF.
+
+           INITIALIZE VIAL0001-COMMAREA REPLACING NUMERIC BY ZEROES
+                                             ALPHANUMERIC BY SPACES.
+
+           INITIALIZE EXCV1050-ASE REPLACING NUMERIC BY ZEROES
+                                        ALPHANUMERIC BY SPACES.
+
+           INITIALIZE EXCV1050-ADE REPLACING NUMERIC BY ZEROES
+                                        ALPHANUMERIC BY SPACES.
+
+           INITIALIZE EXCV1051-ASE REPLACING NUMERIC BY ZEROES
+                                        ALPHANUMERIC BY SPACES.
+
+           INITIALIZE EXCV1051-ADE REPLACING NUMERIC BY ZEROES
+                                        ALPHANUMERIC BY SPACES.
+
+
+           MOVE 'PT-PT'                    TO VIAL0001-IDIOMA.
+           MOVE 'EUR'                      TO EXCV1050-CMOED.
+           MOVE 'EUR'                      TO EXCV1051-CMOED.
+
+           MOVE ZEROES                     TO EXCV1051-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL EXCV1051-PAGINA-CHEIA.
+      *
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+      *
+           ADD 1                       TO EXCV1051-INDICE.
+           MOVE SPACES
+             TO EXCV1051-D-DCAMB(EXCV1051-INDICE)
+           MOVE SPACES
+             TO EXCV1051-D-CMOED(EXCV1051-INDICE)
+           MOVE ZEROES
+             TO EXCV1051-D-TXCAMB(EXCV1051-INDICE).
+      *
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      ******************************************************************
+      *                   PROCESSA PROGRAMA
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ATCK0001-SEM-ERROS
+             PERFORM 2100-OBTER-CAMBIOS-WS
+                THRU 2100-OBTER-CAMBIOS-WS-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *-------------------------------------------------------------
+      *                   2100-OBTER-CAMBIOS-WS
+      *-------------------------------------------------------------
+       2100-OBTER-CAMBIOS-WS.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2100-OBTER-CAMBIOS-WS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           PERFORM ETCP0009-FORM-ONLINE-IN
+              THRU ETCP0009-FORM-ONLINE-IN-EXIT.
+
+           MOVE 'EX'           TO VIAL0001-CAPLIC.
+           MOVE '105'          TO VIAL0001-COPCAO.
+           MOVE ETCL0002-DOPER TO EXCV1050-DCAMB.
+           MOVE EXCV1050-MSG   TO VIAL0001-MENSAGEM-INPUT.
+
+           CALL ARCK0002-ARWEBSERVICE       USING VIAL0001-COMMAREA
+                                                  ETCL0002-COMMAREA.
+      *
+           PERFORM ETCP0009-STD-END
+              THRU ETCP0009-STD-END-EXIT.
+
+           IF ETCL0002-SEM-ERROS AND VIAL0001-MENSAGEM-OUTPUT
+                                    NOT EQUAL CON-ERR-TIMEOUT
+
+             MOVE VIAL0001-MENSAGEM-OUTPUT TO EXCV1051-MSG
+
+             MOVE EXCV1050-ASE             TO EXCV1051-ASE
+      *
+             PERFORM 2200-CONTINUA
+                THRU 2200-CONTINUA-EXIT
+      *
+           ELSE
+             SET  AQCW0009-RCODE-APL     TO TRUE
+             SET  VIAW0033-DB2-ERROR     TO TRUE
+             MOVE WS-PROGNAME            TO VIAW0033-PGMNAME
+             MOVE VIAL0015-CALLER-ID     TO VIAW0033-PARAGRAPH-NAME
+             MOVE ETCL0002-TABLE-NAME TO VIAW0033-TABLE-NAME
+             MOVE ETCL0002-SQLCODE       TO VIAW0033-SQLCODE
+             MOVE 'ERRO CHAMADA WEBSEVICE           '
+                                         TO VIAW0033-DESC1
+             MOVE VIAL0001-MENSAGEM-OUTPUT TO VIAW0033-ACCESS-KEY
+             PERFORM VIAP0033-ESCREVE-SPOOL
+                THRU VIAP0033-ESCREVE-SPOOL-EXIT
+           END-IF.
+      *
+       2100-OBTER-CAMBIOS-WS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2200-CONTINUA
+      *--------------------------------------------------------------
+       2200-CONTINUA.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2200-CONTINUA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ZEROES                      TO WS-INDICE.
+           MOVE EXCV1051-ADE                TO WS-ADE.
+      *
+           MOVE ZEROES                     TO EXCV1051-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL EXCV1051-PAGINA-CHEIA.
+      *
+           SET SW-TRIANGULA-NOK TO TRUE.
+           MOVE ZEROES                     TO EXCV1051-INDICE.
+           PERFORM 2300-TRIANGULACAO
+              THRU 2300-TRIANGULACAO-EXIT
+                   VARYING WS-INDICE FROM 1 BY 1
+                   UNTIL   WS-INDICE-MAXIMO
+                   OR      EXCV1051-PAGINA-CHEIA
+                   OR      NOT VIAL0002-SEM-ERROS
+                   OR      NOT ETCL0002-SEM-ERROS
+                   OR      SW-TRIANGULA-OK.
+
+           MOVE ZEROES                     TO WS-INDICE.
+           MOVE ZEROES                     TO EXCV1051-INDICE.
+           PERFORM 2350-TRATA-OCCURS
+              THRU 2350-TRATA-OCCURS-EXIT
+                   VARYING WS-INDICE FROM 1 BY 1
+                   UNTIL   WS-INDICE-MAXIMO
+                   OR      EXCV1051-PAGINA-CHEIA
+                   OR      NOT VIAL0002-SEM-ERROS
+                   OR      NOT ETCL0002-SEM-ERROS.
+      *
+       2200-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2300-TRIANGULACAO
+      *--------------------------------------------------------------
+       2300-TRIANGULACAO.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2300-TRIANGULACAO ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS AND ETCL0002-SEM-ERROS
+              PERFORM 2310-FACTOR-USD
+                 THRU 2310-FACTOR-USD-EXIT
+           END-IF.
+      *
+       2300-TRIANGULACAO-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            2350-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2350-TRATA-OCCURS.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2350-TRATA-OCCURS'      TO VIAL0015-CALLER-ID
+              MOVE '(WS-INDICE)          ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-INDICE              TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-D-CMOED(WS-INDICE)' TO VIAL0015-CAMPO-NM(2)
+              MOVE WS-D-CMOED(WS-INDICE)   TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           SET SW-MOEDA-INVAL TO TRUE.
+
+           IF VIAL0002-SEM-ERROS AND ETCL0002-SEM-ERROS
+              PERFORM 2340-ELIM-CAMB-ANT
+                 THRU 2340-ELIM-CAMB-ANT-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS AND ETCL0002-SEM-ERROS
+              PERFORM 2310-VALIDA-MOEDA
+                 THRU 2310-VALIDA-MOEDA-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS AND ETCL0002-SEM-ERROS
+             IF SW-MOEDA-VAL
+               PERFORM 2320-FORMATA-SAIDA
+                  THRU 2320-FORMATA-SAIDA-EXIT
+             END-IF
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS AND ETCL0002-SEM-ERROS
+             IF SW-MOEDA-VAL
+               PERFORM 2330-INSERT-CAMBIO
+                  THRU 2330-INSERT-CAMBIO-EXIT
+             END-IF
+           END-IF.
+
+       2350-TRATA-OCCURS-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            2310-FACTOR-USD
+      *--------------------------------------------------------------
+       2310-FACTOR-USD.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2310-FACTOR-USD'        TO VIAL0015-CALLER-ID
+              MOVE 'WS-D-CMOED(WS-INDICE)' TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-D-CMOED(WS-INDICE)   TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF WS-D-CMOED(WS-INDICE) = 'EUR'
+             MOVE WS-D-TXCAMB(WS-INDICE) TO WS-FACTOR-USD
+             MOVE 'EUR'                  TO EXCV1050-CMOED
+             MOVE 'EUR'                  TO EXCV1051-CMOED
+             SET SW-TRIANGULA-OK TO TRUE
+           END-IF.
+      *
+       2310-FACTOR-USD-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2340-ELIM-CAMB-ANT
+      *--------------------------------------------------------------
+       2340-ELIM-CAMB-ANT.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2340-ELIM-CAMB-ANT'        TO VIAL0015-CALLER-ID
+              MOVE 'WS-D-DCAMB(WS-INDICE)' TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-D-DCAMB(WS-INDICE)   TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-D-CMOED(WS-INDICE)' TO VIAL0015-CAMPO-NM(2)
+              MOVE WS-D-CMOED(WS-INDICE)   TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE DCLEXCD0100.
+           MOVE CON-CMR                    TO EXCD0100-EXTIPOCAMB.
+           MOVE WS-D-DCAMB(WS-INDICE)      TO AQCW0005-DTX10.
+           PERFORM AQCP0005-CONV-DT10INDT8
+              THRU AQCP0005-CONV-DT10INDT8-EXIT.
+           MOVE AQCW0005-DT98              TO EXCD0100-EXDATA.
+           MOVE WS-D-CMOED(WS-INDICE)      TO EXCD0100-EXMOEDORIG.
+           MOVE EXCV1051-CMOED             TO EXCD0100-EXMOEDDEST.
+      *
+           EXEC SQL
+              DELETE EXVT0100_CAMBIO
+                 WHERE EXTIPOCAMB   = :EXCD0100-EXTIPOCAMB
+                   AND EXDATA       = :EXCD0100-EXDATA
+                   AND EXMOEDORIG   = :EXCD0100-EXMOEDORIG
+           END-EXEC.
+      *
+           MOVE CON-EXVT0100               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+             CONTINUE
+           ELSE
+             SET  AQCW0009-RCODE-APL     TO TRUE
+             SET  VIAW0033-DB2-ERROR     TO TRUE
+             MOVE WS-PROGNAME         TO VIAW0033-PGMNAME
+             MOVE VIAL0015-CALLER-ID     TO VIAW0033-PARAGRAPH-NAME
+             MOVE ETCL0002-TABLE-NAME TO VIAW0033-TABLE-NAME
+             MOVE ETCL0002-SQLCODE       TO VIAW0033-SQLCODE
+             MOVE 'ERRO DELETE TABELA CAMBIOS       '
+                                            TO VIAW0033-DESC1
+             PERFORM VIAP0033-ESCREVE-SPOOL
+                THRU VIAP0033-ESCREVE-SPOOL-EXIT
+           END-IF.
+      *
+       2340-ELIM-CAMB-ANT-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2310-VALIDA-MOEDA
+      *--------------------------------------------------------------
+       2310-VALIDA-MOEDA.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2310-VALIDA-MOEDA' TO VIAL0015-CALLER-ID
+              MOVE 'WS-D-CMOED(WS-INDICE)' TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-D-CMOED(WS-INDICE)   TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE DCLARCD0500.
+      *
+           MOVE CON-TAB-AR041               TO ARCD0500-CTABELA.
+           MOVE WS-D-CMOED(WS-INDICE)       TO ARCD0500-CCOD.
+           MOVE VIAL0001-IDIOMA             TO ARCD0500-CLINGUA.
+      *
+           EXEC SQL
+                SELECT CTABELA
+                     , CCOD
+                     , C2COD
+                     , CLINGUA
+                     , GDESC
+                     , CUSERID
+                     , HTIMEST
+                  INTO :ARCD0500-CTABELA
+                     , :ARCD0500-CCOD
+                     , :ARCD0500-C2COD
+                     , :ARCD0500-CLINGUA
+                     , :ARCD0500-GDESC
+                     , :ARCD0500-CUSERID
+                     , :ARCD0500-HTIMEST
+                  FROM ARVT0500_CODESTABLE
+                 WHERE CTABELA = :ARCD0500-CTABELA
+                   AND CCOD    = :ARCD0500-CCOD
+                   AND C2COD   = :ARCD0500-C2COD
+                   AND CLINGUA = :ARCD0500-CLINGUA
+           END-EXEC.
+      *
+           MOVE CON-ARVT0500               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+             IF ETCL0002-SQL-OK
+                SET SW-MOEDA-VAL TO TRUE
+             ELSE
+               IF ETCL0002-SQL-NOTFND
+                SET SW-MOEDA-INVAL TO TRUE
+               ELSE
+                MOVE VIAK0002-ABEND-DB2     TO ETCL0002-IND-ERROS
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                SET  VIAW0033-DB2-ERROR     TO TRUE
+                MOVE WS-PROGNAME         TO VIAW0033-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO VIAW0033-PARAGRAPH-NAME
+                MOVE ETCL0002-TABLE-NAME TO VIAW0033-TABLE-NAME
+                MOVE ETCL0002-SQLCODE       TO VIAW0033-SQLCODE
+                MOVE 'ERRO SELECT ART05                '
+                                            TO VIAW0033-DESC1
+                PERFORM VIAP0033-ESCREVE-SPOOL
+                   THRU VIAP0033-ESCREVE-SPOOL-EXIT
+             END-IF
+           ELSE
+             SET  AQCW0009-RCODE-APL     TO TRUE
+             SET  VIAW0033-DB2-ERROR     TO TRUE
+             MOVE WS-PROGNAME         TO VIAW0033-PGMNAME
+             MOVE VIAL0015-CALLER-ID     TO VIAW0033-PARAGRAPH-NAME
+             MOVE ETCL0002-TABLE-NAME TO VIAW0033-TABLE-NAME
+             MOVE ETCL0002-SQLCODE       TO VIAW0033-SQLCODE
+             MOVE 'ERRO SELECT ART05                '
+                                            TO VIAW0033-DESC1
+             PERFORM VIAP0033-ESCREVE-SPOOL
+                THRU VIAP0033-ESCREVE-SPOOL-EXIT
+           END-IF.
+      *
+       2310-VALIDA-MOEDA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2320-FORMATA-SAIDA
+      *--------------------------------------------------------------
+       2320-FORMATA-SAIDA.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2320-FORMATA-SAIDA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           ADD  1                          TO EXCV1051-INDICE.
+           MOVE WS-D-DCAMB(WS-INDICE)
+             TO EXCV1051-D-DCAMB (EXCV1051-INDICE).
+           MOVE WS-D-CMOED(WS-INDICE)
+             TO EXCV1051-D-CMOED (EXCV1051-INDICE).
+           MOVE WS-D-TXCAMB(WS-INDICE)
+             TO EXCV1051-D-TXCAMB(EXCV1051-INDICE).
+      *
+       2320-FORMATA-SAIDA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2330-INSERT-CAMBIO
+      *--------------------------------------------------------------
+       2330-INSERT-CAMBIO.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2330-INSERT-CAMBIO' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+      *-------------------------------------------------------*
+      *    Verifica se existe no EXT01_CAMBIO o registo com:
+      *    - Tipo de Cambio
+      *    - Data
+      *    - Moeda Origem
+      *    - Moeda Destino
+      *    - Valor do Cambio de Compra
+      *    - Valor do Cambio de Venda
+      *    - Valor do Cambio de Fixing
+      *
+      *    Só insere se não existir no ficheiro.
+      *-------------------------------------------------------*
+      *
+      *
+           IF ETCL0002-SEM-ERROS
+             PERFORM 2345-INS-CAM-MOE-VAL
+                THRU 2345-INS-CAM-MOE-VAL-EXIT
+           END-IF.
+      *
+       2330-INSERT-CAMBIO-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2345-INS-CAM-MOE-VAL
+      *--------------------------------------------------------------
+       2345-INS-CAM-MOE-VAL.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2345-INS-CAM-MOE-VAL' TO VIAL0015-CALLER-ID
+              MOVE 'WS-D-CMOED(WS-INDICE)' TO VIAL0015-CAMPO-NM(1)
+              MOVE WS-D-CMOED(WS-INDICE)   TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE DCLEXCD0100
+           MOVE CON-CMR                   TO EXCD0100-EXTIPOCAMB
+           MOVE WS-D-DCAMB(WS-INDICE)     TO AQCW0005-DTX10
+           PERFORM AQCP0005-CONV-DT10INDT8
+              THRU AQCP0005-CONV-DT10INDT8-EXIT
+           MOVE AQCW0005-DT98             TO EXCD0100-EXDATA
+           ACCEPT WS-HORA FROM TIME
+           MOVE WS-HORA-HH                TO WS-HORA-HH-OUT
+           MOVE WS-HORA-MM                TO WS-HORA-MM-OUT
+           MOVE WS-HORA-SS                TO WS-HORA-SS-OUT
+           MOVE WS-HORA-OUT               TO EXCD0100-EXHORA
+           MOVE WS-D-CMOED(WS-INDICE)     TO EXCD0100-EXMOEDORIG
+           MOVE EXCV1051-CMOED            TO EXCD0100-EXMOEDDEST
+
+           COMPUTE EXCD0100-EXVALOR1 = WS-D-TXCAMB(WS-INDICE) /
+                                       WS-FACTOR-USD
+           COMPUTE EXCD0100-EXVALOR2 = WS-D-TXCAMB(WS-INDICE) /
+                                       WS-FACTOR-USD
+           COMPUTE EXCD0100-EXVALOR3 = WS-D-TXCAMB(WS-INDICE) /
+                                       WS-FACTOR-USD
+
+           COMPUTE EXCD0100-EXVALOR1 = 1 / EXCD0100-EXVALOR1
+           COMPUTE EXCD0100-EXVALOR2 = 1 / EXCD0100-EXVALOR2
+           COMPUTE EXCD0100-EXVALOR3 = 1 / EXCD0100-EXVALOR3
+
+           MOVE VIAL0001-CUTILIZA-I       TO EXCD0100-CUSERID
+
+           EXEC SQL
+           INSERT INTO EXVT0100_CAMBIO
+                ( EXTIPOCAMB
+                , EXDATA
+                , EXHORA
+                , EXMOEDORIG
+                , EXMOEDDEST
+                , EXVALOR1
+                , EXVALOR2
+                , EXVALOR3
+                , CUSERID
+                , HTIMEST    )
+           VALUES
+                ( :EXCD0100-EXTIPOCAMB
+                , :EXCD0100-EXDATA
+                , :EXCD0100-EXHORA
+                , :EXCD0100-EXMOEDORIG
+                , :EXCD0100-EXMOEDDEST
+                , :EXCD0100-EXVALOR1
+                , :EXCD0100-EXVALOR2
+                , :EXCD0100-EXVALOR3
+                , :EXCD0100-CUSERID
+                , CURRENT TIMESTAMP    )
+           END-EXEC
+
+           MOVE CON-EXVT0100 TO ETCL0002-TABLE-NAME
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT
+      *
+           IF ETCL0002-SEM-ERROS
+             IF ETCL0002-SQL-OK
+                CONTINUE
+             ELSE
+                MOVE VIAK0002-ABEND-DB2     TO ETCL0002-IND-ERROS
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                SET  VIAW0033-DB2-ERROR     TO TRUE
+                MOVE WS-PROGNAME         TO VIAW0033-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO VIAW0033-PARAGRAPH-NAME
+                MOVE ETCL0002-TABLE-NAME TO VIAW0033-TABLE-NAME
+                MOVE ETCL0002-SQLCODE       TO VIAW0033-SQLCODE
+                MOVE 'ERRO INSERT TABELA CAMBIOS       '
+                                            TO VIAW0033-DESC1
+                PERFORM VIAP0033-ESCREVE-SPOOL
+                   THRU VIAP0033-ESCREVE-SPOOL-EXIT
+             END-IF
+           ELSE
+             SET  AQCW0009-RCODE-APL     TO TRUE
+             SET  VIAW0033-DB2-ERROR     TO TRUE
+             MOVE WS-PROGNAME         TO VIAW0033-PGMNAME
+             MOVE VIAL0015-CALLER-ID     TO VIAW0033-PARAGRAPH-NAME
+             MOVE ETCL0002-TABLE-NAME TO VIAW0033-TABLE-NAME
+             MOVE ETCL0002-SQLCODE       TO VIAW0033-SQLCODE
+             MOVE 'ERRO INSERT TABELA CAMBIOS       '
+                                            TO VIAW0033-DESC1
+             PERFORM VIAP0033-ESCREVE-SPOOL
+                THRU VIAP0033-ESCREVE-SPOOL-EXIT
+           END-IF.
+      *
+       2345-INS-CAM-MOE-VAL-EXIT.
+           EXIT.
+      ******************************************************************
+      *                   FIM DO PROGRAMA
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+
+           IF VIAL0015-DEBUG-SIM
+           MOVE '3000-FIM-PROGRAMA       ' TO VIAL0015-CALLER-ID
+              MOVE 'AQCW0009-RCODE '       TO VIAL0015-CAMPO-NM(1)
+              MOVE AQCW0009-RCODE          TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF NOT ATCK0001-SEM-ERROS
+             MOVE '*** ERRO COB07000 ***'  TO VIAL0015-CALLER-ID
+             MOVE 'ATCK0001-RCODE '        TO VIAL0015-CAMPO-NM(1)
+             MOVE ATCK0001-RCODE           TO VIAL0015-CAMPO-VLR(1)
+             PERFORM VIAP0015-TRATA-DEBUG
+                THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM ETCP0005-TRATA-SYNCPOINT
+              THRU ETCP0005-TRATA-SYNCPOINT-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-REG-FIM
+                 THRU AQCP0100-REG-FIM-EXIT
+      *    ELSE
+      *       MOVE AQCW0009-RCODE TO VIAL0100-RCODE
+           END-IF.
+
+       3000-FIM-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+           COPY VIAP0015.
+           COPY AQCP0109.
+           COPY AQCP0009.
+           COPY VIAP0033.
+
+           EXEC SQL INCLUDE VIAP9999 END-EXEC.
+           EXEC SQL INCLUDE ETCP0005 END-EXEC.
+           EXEC SQL INCLUDE ETCP0009 END-EXEC.
+           EXEC SQL INCLUDE ETCP0021 END-EXEC.

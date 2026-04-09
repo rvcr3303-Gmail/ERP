@@ -1,0 +1,279 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. COB50035.
+      ******************************************************************
+      *  Envio Mapas por Email
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+       SPECIAL-NAMES. DECIMAL-POINT IS COMMA.
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      *
+       FILE-CONTROL.
+      *
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *              D A T A   D I V I S I O N                         *
+      ******************************************************************
+       FILE SECTION.
+      *
+      ******************************************************************
+      *                  WORKING STORAGE SECTION                       *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      *
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COB50035        '.
+      *
+      ******************************************************************
+      *                  CONSTANTES                                    *
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME             PIC X(10) VALUE 'COB50035'.
+      *
+      ******************************************************************
+      *           VARIAVEIS                                            *
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-DATA                 PIC X(10)  VALUE SPACES.
+           05 WS-FICHEIRO             PIC X(100) VALUE SPACES.
+           05 WS-COUNT                PIC 9(2)   VALUE ZEROES.
+      *
+      ******************************************************************
+      *              DECLARACOES DE COPYBOOKS                          *
+      ******************************************************************
+      *
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *
+       COPY AQCL0001.
+       COPY VIAL0015.
+       COPY VIAL1000.
+       COPY AQCW0109.
+       COPY ARCL2405.
+       COPY ARCL2706.
+      *
+      ******************************************************************
+      *              DECLARACOES DE CURSORES DB2                       *
+      ******************************************************************
+      *
+       01  FILLER                          PIC X(40) VALUE
+            'FIM DA WORKING-STORAGE COB50035        '.
+      *
+      ******************************************************************
+      *                    LINKAGE SECTION                             *
+      ******************************************************************
+       LINKAGE SECTION.
+       COPY AQCW0009.
+       01 LK-TYPE                      PIC X(03).
+       01 LK-IFSDIR                    PIC X(30).
+       01 LK-FICHOUT                   PIC X(100).
+       01 LK-CEMAIL                    PIC X(10).
+       01 LK-GEMAIL                    PIC X(100).
+      *
+      ******************************************************************
+      *                  PROCEDURE DIVISION                            *
+      ******************************************************************
+       PROCEDURE DIVISION USING AQCW0009-DATA
+                              , LK-TYPE
+                              , LK-IFSDIR
+                              , LK-FICHOUT
+                              , LK-CEMAIL
+                              , LK-GEMAIL.
+      *
+      ******************************************************************
+      *    PROCESSO                                                    *
+      ******************************************************************
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+      *
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+      *
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           GOBACK.
+      *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           SET  AQCW0100-AT-DEBUG-SIM
+                AQCW0009-SEM-ERROS         TO TRUE.
+      *
+           IF AQCW0100-AT-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF AQCW0009-RCODE NOT NUMERIC
+              MOVE ZEROES                  TO AQCW0009-RCODE
+           END-IF.
+      *
+           IF AQCW0009-SEM-ERROS
+              PERFORM 1100-OBTEM-DATA
+                 THRU 1100-OBTEM-DATA-EXIT
+           END-IF.
+      *
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+       1100-OBTEM-DATA.
+      ******************************************************************
+           IF AQCW0100-AT-DEBUG-SIM
+              MOVE '1100-OBTEM-DATA      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ARCL2405-COMMAREA
+           MOVE '**'                       TO ARCL2405-CAPLIC
+      *
+           PERFORM CALL-ARR02405
+              THRU CALL-ARR02405-EXIT.
+      *
+           IF ETCL0002-SEM-ERROS
+              MOVE ARCL2405-DOPERACAO      TO WS-DATA
+           ELSE
+              SET  AQCW0009-RCODE-APL      TO TRUE
+              MOVE WS-PROGNAME             TO AQCW0100-PGMNAME
+              MOVE VIAL0015-CALLER-ID      TO AQCW0100-NM-ENTIDADE
+              MOVE 'ERRO AO OBTER DATA'    TO AQCW0100-DESC1
+              MOVE ' DO SISTEMA       '    TO AQCW0100-DESC2
+              PERFORM AQCP0100-ESCREVE-MSG
+                 THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-IF.
+      *
+       1100-OBTEM-DATA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                  2000-PROC-PROGRAMA                            *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      *
+           IF AQCW0100-AT-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA   ' TO VIAL0015-CALLER-ID
+              MOVE 'LK-TYPE              ' TO VIAL0015-CAMPO-NM(1)
+              MOVE 'LK-CEMAIL            ' TO VIAL0015-CAMPO-NM(2)
+              MOVE 'LK-IFSDIR            ' TO VIAL0015-CAMPO-NM(3)
+              MOVE 'LK-FICHOUT           ' TO VIAL0015-CAMPO-NM(4)
+              MOVE 'WS-DATA              ' TO VIAL0015-CAMPO-NM(5)
+              MOVE  LK-TYPE                TO VIAL0015-CAMPO-VLR(1)
+              MOVE  LK-CEMAIL              TO VIAL0015-CAMPO-VLR(2)
+              MOVE  LK-IFSDIR              TO VIAL0015-CAMPO-VLR(3)
+              MOVE  LK-FICHOUT             TO VIAL0015-CAMPO-VLR(4)
+              MOVE  WS-DATA                TO VIAL0015-CAMPO-VLR(5)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2100-ESCREVE-MAIL
+                 THRU 2100-ESCREVE-MAIL-EXIT
+           END-IF.
+      *
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+       2100-ESCREVE-MAIL.
+      ******************************************************************
+           IF AQCW0100-AT-DEBUG-SIM
+              MOVE '2100-ESCREVE-MAIL    ' TO VIAL0015-CALLER-ID
+              MOVE 'LK-GEMAIL            ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  LK-GEMAIL              TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ARCL2706-DATA  REPLACING NUMERIC BY ZEROES
+                                          ALPHANUMERIC BY SPACES
+      *
+              PERFORM VARYING WS-COUNT FROM 1 BY 1
+                UNTIL LK-IFSDIR(WS-COUNT:1)
+                  NOT EQUAL LK-FICHOUT(WS-COUNT:1)
+                      CONTINUE
+              END-PERFORM.
+      *
+              ADD 1                        TO WS-COUNT
+              MOVE LK-FICHOUT(WS-COUNT:)   TO WS-FICHEIRO
+              STRING LK-IFSDIR             DELIMITED BY SPACES
+                     '/'                   DELIMITED BY SIZE
+                INTO ARCL2706-CBATTACH
+              MOVE WS-FICHEIRO             TO ARCL2706-CNATTACH
+
+              MOVE LK-CEMAIL               TO ARCL2706-CCOD
+      *
+              IF LK-GEMAIL NOT EQUAL SPACES
+                 MOVE LK-GEMAIL            TO ARCL2706-CTO
+              END-IF
+      *
+              MOVE WS-FICHEIRO             TO ARCL2706-VALOR(1)
+              MOVE 30                      TO ARCL2706-TAMANHO(1)
+              MOVE LK-TYPE                 TO ARCL2706-VALOR(2)
+              MOVE 3                       TO ARCL2706-TAMANHO(2)
+              MOVE WS-DATA                 TO ARCL2706-VALOR(3)
+              MOVE 10                      TO ARCL2706-TAMANHO(3)
+      *
+           IF AQCW0100-AT-DEBUG-SIM
+              MOVE '2100 DADOS           ' TO VIAL0015-CALLER-ID
+              MOVE 'LK-TYPE              ' TO VIAL0015-CAMPO-NM(1)
+              MOVE 'LK-CEMAIL            ' TO VIAL0015-CAMPO-NM(2)
+              MOVE 'LK-IFSDIR            ' TO VIAL0015-CAMPO-NM(3)
+              MOVE 'LK-FICHOUT           ' TO VIAL0015-CAMPO-NM(4)
+              MOVE 'WS-DATA              ' TO VIAL0015-CAMPO-NM(5)
+              MOVE  LK-TYPE                TO VIAL0015-CAMPO-VLR(1)
+              MOVE  LK-CEMAIL              TO VIAL0015-CAMPO-VLR(2)
+              MOVE  LK-IFSDIR              TO VIAL0015-CAMPO-VLR(3)
+              MOVE  WS-FICHEIRO            TO VIAL0015-CAMPO-VLR(4)
+              MOVE  WS-DATA                TO VIAL0015-CAMPO-VLR(5)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           CALL ARCL2706-ROTINA  USING ARCL2706-DATA
+                                       VIAL0002-COMMAREA.
+      *
+       2100-ESCREVE-MAIL-EXIT.
+           EXIT.
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           IF AQCW0100-AT-DEBUG-SIM
+              MOVE '3000-FIM-PROGRAMA    ' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-CAPLIC-ERRO   ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0002-CAPLIC-ERRO     TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0002-IND-ERROS     ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  VIAL0002-IND-ERROS       TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'VIAL0002-COD-ERRO-GRAVE' TO VIAL0015-CAMPO-NM(3)
+              MOVE  VIAL0002-COD-ERRO-GRAVE  TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           PERFORM AQCP0009-TRATA-RCODE
+              THRU AQCP0009-TRATA-RCODE-EXIT.
+      *
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-REG-FIM
+                 THRU AQCP0100-REG-FIM-EXIT
+           END-IF.
+      *
+       3000-FIM-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                      PROCEDURES                                *
+      ******************************************************************
+            EXEC SQL INCLUDE AQCP0002 END-EXEC.
+       COPY AQCP0009.
+       COPY AQCP0109.
+       COPY VIAP0015.
+       COPY ARCP2405.

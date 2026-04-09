@@ -1,0 +1,405 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI64104.
+      ******************************************************************
+      *     PROGRAMA COI64104.                                         *
+      *                                                                *
+      *     Contactos                                                  *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *-----------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *-----------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI64104         '.
+      *-----------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *-----------------------------------------------------------------
+           EXEC SQL INCLUDE COCD5502 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *-----------------------------------------------------------------
+       01 WS-SQL-AUXILIARY.
+         05 IND-NULL                       PIC S9(04) BINARY.
+
+      *-----------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *-----------------------------------------------------------------
+       COPY COCV6410.
+       COPY COCV6411.
+      *-----------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *-----------------------------------------------------------------
+      *COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0020.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY ETCK0001.
+       COPY ETCK0002.
+       COPY ARCK0002.
+       COPY ETCL0002.
+       COPY AQCW0005.
+       COPY COCL0011.
+      *-----------------------------------------------------------------
+      *            CONSTANTES
+      *-----------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT5502 PIC X(08) VALUE 'COVT5502'.
+
+      *-----------------------------------------------------------------
+      * PROGRAM CONTROL
+      *-----------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'COI64104'.
+      *-----------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI64104         '.
+      *-----------------------------------------------------------------
+       LINKAGE SECTION.
+      *-----------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *-----------------------------------------------------------------
+      *            0000-MAINLINE
+      *-----------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *-----------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *-----------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV6410-MSG.
+           MOVE COCV6410-ASE               TO COCV6411-ASE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *-----------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *-----------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6410-ADE               TO COCV6411-ADE.
+
+           PERFORM 2100-VALIDACOES
+              THRU 2100-VALIDACOES-EXIT
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-INSERE-DADOS
+                 THRU 2299-INSERE-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *-----------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *-----------------------------------------------------------------
+       2100-VALIDACOES.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF COCV6410-CTIPCON EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE COCK0002-STATUS-ACTIVO TO COCV6411-CTIPCON-S
+               MOVE COCK0001-ERR-CTIPCON   TO COCV6411-CTIPCON-MSG
+               MOVE ARCK0002-CAPLIC-AR     TO COCV6411-CTIPCON-CAPLIC
+             END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2110-VAL-CONTACT
+                 THRU 2110-VAL-CONTACT-EXIT
+           END-IF.
+
+       2100-VALIDACOES-EXIT.
+           EXIT.
+      *-----------------------------------------------------------------
+      *                   2250-OBTEM-SEQ
+      *-----------------------------------------------------------------
+       2250-OBTEM-SEQ.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2250-OBTEM-SEQ'  TO VIAL0015-CALLER-ID
+              MOVE 'COCD5502-ZREF  ' TO VIAL0015-CAMPO-NM(1)
+              MOVE COCD5502-ZREF     TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+                SELECT  IFNULL(MAX(ZSEQ), 0) + 1
+                  INTO :COCD5502-ZSEQ
+                  FROM  COVT5502_CONTACTOS
+                 WHERE  CFAMCON = :COCD5502-CFAMCON
+                   AND  ZREF    = :COCD5502-ZREF
+           END-EXEC
+
+           MOVE CON-COVT5502               TO VIAL0002-TABLE-NAME
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ABEND-DB2 TO VIAL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2  TO VIAL0002-COD-ERRO-GRAVE
+              END-IF
+           END-IF.
+
+       2250-OBTEM-SEQ-EXIT.
+           EXIT.
+      *-----------------------------------------------------------------
+      *                   2200-INSERE-DADOS
+      *-----------------------------------------------------------------
+       2200-INSERE-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-INSERE-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6410-CFAMCON             TO COCD5502-CFAMCON
+           MOVE FUNCTION TRIM(COCV6410-ZREF) TO COCD5502-ZREF.
+           MOVE COCV6410-CTIPCON             TO COCD5502-CTIPCON
+
+           INSPECT COCV6410-GNOME
+           REPLACING ALL X'0D25' BY SPACES,
+                     ALL X'25' BY SPACES,
+                     ALL X'0D' BY SPACES,
+                     ALL X'3F' BY SPACES
+
+           MOVE COCV6410-GNOME               TO COCD5502-GNOME
+           MOVE COCV6410-GMORADA             TO COCD5502-GMORADA
+           MOVE COCV6410-CCODPOS             TO COCD5502-CCODPOS
+           MOVE COCV6410-GLOCPOS             TO COCD5502-GLOCPOS
+           MOVE COCV6410-CPAIS               TO COCD5502-CPAIS
+           MOVE COCV6410-GTELEFONE1          TO COCD5502-GTELEFONE1
+           MOVE COCV6410-GTELEFONE2          TO COCD5502-GTELEFONE2
+           MOVE COCV6410-GTELEFONE3          TO COCD5502-GTELEFONE3
+           MOVE COCV6410-GFAX                TO COCD5502-GFAX
+           MOVE COCV6410-GEMAILEMP           TO COCD5502-GEMAILEMP
+           MOVE COCV6410-GEMAILPROF          TO COCD5502-GEMAILPROF
+           MOVE COCV6410-GEMAILPES           TO COCD5502-GEMAILPES
+           MOVE VIAL0001-CUTILIZA-I          TO COCD5502-CUSERID
+           MOVE COCV6410-CTITULO             TO COCD5502-CTITULO
+           MOVE COCV6410-GNOME1              TO COCD5502-GNOME1
+           MOVE COCV6410-GNOME9              TO COCD5502-GNOME9
+           MOVE COCV6410-RGPD                TO COCD5502-RGPD
+           MOVE COCV6410-RGPDDATA            TO COCD5502-RGPDDATA
+
+           PERFORM 2250-OBTEM-SEQ
+              THRU 2250-OBTEM-SEQ-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+
+           EXEC SQL
+                INSERT  INTO COVT5502_CONTACTOS
+                     (
+                        CFAMCON
+                     ,  ZREF
+                     ,  ZSEQ
+                     ,  CTIPCON
+                     ,  GNOME
+                     ,  GMORADA
+                     ,  CCODPOS
+                     ,  GLOCPOS
+                     ,  CPAIS
+                     ,  GTELEFONE1
+                     ,  GTELEFONE2
+                     ,  GTELEFONE3
+                     ,  GFAX
+                     ,  GEMAILEMP
+                     ,  GEMAILPROF
+                     ,  GEMAILPES
+                     ,  CUSERID
+                     ,  HTIMEST
+                     ,  CTITULO
+                     ,  GNOME1
+                     ,  GNOME9
+                     ,  RGPD
+                     ,  RGPDDATA
+                     )
+                VALUES
+                     (
+                       :COCD5502-CFAMCON
+                     , :COCD5502-ZREF
+                     , :COCD5502-ZSEQ
+                     , :COCD5502-CTIPCON
+                     , :COCD5502-GNOME
+                     , :COCD5502-GMORADA
+                     , :COCD5502-CCODPOS
+                     , :COCD5502-GLOCPOS
+                     , :COCD5502-CPAIS
+                     , :COCD5502-GTELEFONE1
+                     , :COCD5502-GTELEFONE2
+                     , :COCD5502-GTELEFONE3
+                     , :COCD5502-GFAX
+                     , :COCD5502-GEMAILEMP
+                     , :COCD5502-GEMAILPROF
+                     , :COCD5502-GEMAILPES
+                     , :COCD5502-CUSERID
+                     ,  CURRENT TIMESTAMP
+                     , :COCD5502-CTITULO
+                     , :COCD5502-GNOME1
+                     , :COCD5502-GNOME9
+                     , :COCD5502-RGPD
+                     , :COCD5502-RGPDDATA
+                     )
+           END-EXEC
+
+
+              MOVE CON-COVT5502               TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-DUPREC
+                    MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO TO COCV6411-ZREF-S
+                    MOVE COCK0001-ZREF-EXISTS   TO COCV6411-ZREF-MSG
+                    MOVE COCK0002-CAPLIC        TO COCV6411-ZREF-CAPLIC
+                 ELSE
+                    IF NOT DB2-OK
+                      MOVE VIAK0002-ABEND-DB2 TO VIAL0002-IND-ERROS
+                      MOVE VIAK0001-ERRO-DB2  TO VIAL0002-COD-ERRO-GRAVE
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+       2299-INSERE-DADOS-EXIT.
+           EXIT.
+      *-----------------------------------------------------------------
+      *                   2110-VAL-CONTACT
+      *-----------------------------------------------------------------
+       2110-VAL-CONTACT.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-VAL-CONTACT' TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-I-DEBUG  '  TO VIAL0015-CAMPO-NM(1)
+              MOVE VIAL0001-I-DEBUG      TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'VIAL0001-VERSAO-SYS' TO VIAL0015-CAMPO-NM(2)
+              MOVE VIAL0001-VERSAO-SYS   TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE COCL0011-COMMAREA REPLACING NUMERIC BY ZEROES
+                                             ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL0002-COMMAREA  REPLACING NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES.
+           MOVE ZEROES TO ETCL0002-RCODE.
+
+           MOVE COCV6410-CTIPCON    TO COCL0011-CTIPCON.
+
+           MOVE COCV6410-CFAMCON    TO COCL0011-CFAMCON.
+
+           MOVE COCV6410-GEMAILPROF TO COCL0011-GEMAILPROF.
+
+           MOVE COCV6410-GMORADA    TO COCL0011-GMORADA.
+
+           MOVE COCV6410-CCODPOS    TO COCL0011-CCODPOS.
+
+           MOVE COCV6410-GLOCPOS    TO COCL0011-GLOCPOS.
+
+           MOVE COCV6410-CPAIS      TO COCL0011-CPAIS.
+
+           MOVE COCV6410-GTELEFONE1 TO COCL0011-GTELEFONE1.
+
+           PERFORM ETCP0002-FORM-ONLINE-IN
+              THRU ETCP0002-FORM-ONLINE-IN-EXIT.
+
+           PERFORM COCP0011-CALL-ROTINA
+              THRU COCP0011-CALL-ROTINA-EXIT.
+
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              CONTINUE
+           ELSE
+              MOVE COCL0011-GEMAILPROF-S      TO COCV6411-CTIPCON-S
+              MOVE COCL0011-GEMAILPROF-MSG    TO COCV6411-CTIPCON-MSG
+              MOVE COCL0011-GEMAILPROF-CAPLIC TO
+                   COCV6411-CTIPCON-CAPLIC
+
+              MOVE COCL0011-GMORADA-S      TO COCV6411-CPAIS-S
+              MOVE COCL0011-GMORADA-MSG    TO COCV6411-CPAIS-MSG
+              MOVE COCL0011-GMORADA-CAPLIC TO
+                   COCV6411-CPAIS-CAPLIC
+           END-IF.
+
+       2110-VAL-CONTACT-EXIT.
+           EXIT.
+      *-----------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *-----------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV6411-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV6411-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV6411-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+      **R  COPY VIAP0010.
+           COPY VIAP0016.
+           COPY COCP0011.
+           COPY ETCP0002.
+      **R  COPY VIAP0004.
+           COPY AQCP0005.

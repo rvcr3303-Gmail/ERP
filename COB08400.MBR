@@ -1,0 +1,541 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. COB08400.
+      ******************************************************************
+      *                                                                *
+      *  Cria registos de periodo de reporting e actualiza numero de   *
+      *  horas uteis para o periodo                                    *
+      *                                                                *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       SOURCE-COMPUTER. IBM-AS400.
+       OBJECT-COMPUTER. IBM-AS400.
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       01  FILLER              PIC X(40) VALUE 'INICIO WORKING-STORAGE'.
+      ******************************************************************
+      * PROGRAM CONTROL
+      ******************************************************************
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME              PIC  X(10) VALUE 'COB08400'.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--- Acrescentados campos à tabela
+      *    EXEC SQL INCLUDE COCD3400 END-EXEC.
+           EXEC SQL INCLUDE COCD3401 END-EXEC.
+
+      ******************************************************************
+      * APIS
+      ******************************************************************
+
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  CONSTANTES.
+           05 CON-COVT3401             PIC  X(10) VALUE 'COVT3401'.
+           05 CON-SIM                  PIC  X(01) VALUE 'S'.
+           05 CON-NAO                  PIC  X(01) VALUE 'N'.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-ZMES                      PIC  9(03).
+           05 WS-TOT-HORAS-UT              PIC  9(03).
+
+           05 WS-DIA                       PIC  X(01) VALUE SPACES.
+              88 WS-UTIL                              VALUE '2' '3'
+                                                       '4' '5' '6'.
+              88 WS-NAO-UTIL                          VALUE 'S' 'D'.
+
+      *
+           05 WS-MES-SEG              PIC 9(08) VALUE ZEROES.
+           05 FILLER REDEFINES WS-MES-SEG.
+             10  WS-MES-SEG-A         PIC 9(04).
+             10  WS-MES-SEG-M         PIC 9(02).
+             10  WS-MES-SEG-D         PIC 9(02).
+      *
+           05 WS-FIM-MES              PIC 9(08) VALUE ZEROES.
+           05 FILLER REDEFINES WS-FIM-MES.
+             10  WS-FIM-MES-A         PIC 9(04).
+             10  WS-FIM-MES-M         PIC 9(02).
+             10  WS-FIM-MES-D         PIC 9(02).
+      *
+           05 WS-DTMESANO                  PIC  X(10) VALUE SPACES.
+           05 FILLER REDEFINES WS-DTMESANO.
+              10 WS-DTANO                  PIC  X(04).
+              10 FILLER                    PIC  X(01).
+              10 WS-DTMES                  PIC  X(02).
+              10 FILLER                    PIC  X(01).
+              10 WS-DTDIA                  PIC  X(02).
+      *
+           05 WS-PERIODO                   PIC  X(07) VALUE SPACES.
+           05 FILLER REDEFINES WS-PERIODO.
+              10 WS-ANO-PER                PIC  X(04).
+              10 WS-SLASH-PER              PIC  X(01).
+              10 WS-MES-PER                PIC  X(02).
+      *
+      ******************************************************************
+      * SWITCHES
+      ******************************************************************
+       01  WS-SWITCHES.
+           05 WS-STATUS-COT34       PIC S9(03) VALUE 0.
+              88 WS-COT34-OK                   VALUE 0.
+              88 WS-COT34-NOTFND               VALUE 100.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY ATCK0001.
+           COPY ARCK0002.
+           COPY COCK0002.
+           COPY VIAL0015.
+           COPY AQCL0001.
+           COPY AQCW0109.
+           COPY AQCW0009.
+           COPY VIAW0030.
+           COPY VIAW0012.
+           COPY VIATK001.
+           COPY VIATK002.
+           COPY ETCL0050.
+           COPY ETCK0002.
+
+           COPY VIAL1000.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+
+      ******************************************************************
+       01  FILLER                          PIC X(40) VALUE
+            'FIM DA WORKING-STORAGE                 '.
+      *****************************************************************
+      *                    LINKAGE SECTION
+      *****************************************************************
+       COPY VIAL0005.
+      *****************************************************************
+      *                  PROCEDURE DIVISION
+      *****************************************************************
+           EXEC SQL INCLUDE VIAP0014 END-EXEC.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ATCK0001-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      *                   INICIO DO PROGRAMA.
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+
+           INITIALIZE WS-VARIAVEIS
+                    , WS-SWITCHES.
+
+           MOVE ARCK0002-RCODE-OK         TO ATCK0001-RCODE.
+
+      * INFORMA ARQUITECTURA BATCH
+           PERFORM AQCP0100-OBT-DADOS-ARQ
+              THRU AQCP0100-OBT-DADOS-ARQ-EXIT.
+
+           MOVE AQCW0100-AT-DEBUG         TO VIAL0015-I-DEBUG.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-REG-INICIO
+                 THRU AQCP0100-REG-INICIO-EXIT
+           END-IF.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                   PROCESSA PROGRAMA
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA   ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ATCK0001-SEM-ERROS
+              PERFORM 2300-TRATA-PERIODOS
+                 THRU 2300-TRATA-PERIODOS-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                   PROCESSA CURSOR
+      ******************************************************************
+       2300-TRATA-PERIODOS.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2300-TRATA-PERIODOS  ' TO VIAL0015-CALLER-ID
+              MOVE 'AQCW0009-RCODE '          TO VIAL0015-CAMPO-NM(1)
+              MOVE AQCW0009-RCODE             TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           PERFORM 4150-OBT-MES-SEG
+              THRU 4150-OBT-MES-SEG-EXIT.
+      *
+           IF ETCL0002-SEM-ERROS
+             PERFORM 4150-OBT-ULT-DIA-MES
+                THRU 4150-OBT-ULT-DIA-MES-EXIT
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+             MOVE ZEROES TO WS-TOT-HORAS-UT
+             PERFORM 4150-CALC-DIAS-UTIL
+                THRU 4150-CALC-DIAS-UTIL-EXIT
+                   UNTIL VIAL1000-DAT-INPUT1 > WS-FIM-MES
+                      OR NOT ETCL0002-SEM-ERROS
+           END-IF.
+      *
+           PERFORM 2500-ACT-PERIODO
+              THRU 2500-ACT-PERIODO-EXIT.
+
+       2300-TRATA-PERIODOS-EXIT.
+           EXIT.
+      *
+      *****************************************************************
+       4150-OBT-MES-SEG.
+      *****************************************************************
+      *
+           MOVE '4150-OBT-MES-SEG'   TO VIAL0015-CALLER-ID.
+      *
+           IF VIAL0015-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ETCL0002-DOPER             TO WS-DTMESANO.
+           MOVE '01'                       TO WS-DTDIA
+           MOVE WS-DTMESANO                TO AQCW0005-DTX10
+           PERFORM AQCP0005-CONV-DT10INDT8
+              THRU AQCP0005-CONV-DT10INDT8-EXIT
+           MOVE AQCW0005-DT98           TO VIAL1000-DAT-INPUT1
+
+           MOVE 21                         TO VIAL1000-COD-PROCESSO.
+           MOVE 1                          TO VIAL1000-PRZ-M.
+           MOVE 0                          TO VIAL1000-PRZ-D.
+      *
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           MOVE VIAL1000-IND-ERROS TO ETCL0002-IND-ERROS
+
+           IF ETCL0002-SEM-ERROS
+             MOVE VIAL1000-DAT-RES     TO WS-MES-SEG
+           ELSE
+             MOVE VIAL1000-COD-ERRO-GRAVE   TO ETCL0002-ST-ERRO
+                                               ETCL0002-NR-ERRO
+             MOVE VIAK0002-APLIC-AT         TO ETCL0002-CAPLIC-ERRO
+             MOVE SPACES                    TO ETCL0002-GINFO-ERRO
+           END-IF.
+      *
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '4150-OBT-MES-SEG-EXIT'   TO VIAL0015-CALLER-ID
+              MOVE 'VIAL1000-DAT-RES'         TO VIAL0015-CAMPO-NM(1)
+              MOVE VIAL1000-DAT-RES           TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ETCL0002-DOPER  '         TO VIAL0015-CAMPO-NM(2)
+              MOVE ETCL0002-DOPER             TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'WS-DTMESANO     '         TO VIAL0015-CAMPO-NM(3)
+              MOVE WS-DTMESANO                TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       4150-OBT-MES-SEG-EXIT.
+           EXIT.
+      *
+      *****************************************************************
+       4150-OBT-ULT-DIA-MES.
+      *****************************************************************
+      *
+           MOVE '4150-OBT-ULT-DIA-MES'   TO VIAL0015-CALLER-ID.
+      *
+           IF VIAL0015-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+      **R  MOVE ETCL0002-DOPER             TO WS-DTMESANO
+      **R  MOVE '01'                       TO WS-DTDIA
+      **R
+      **R  MOVE WS-DTMESANO                TO AQCW0005-DTX10
+      **R  PERFORM AQCP0005-CONV-DT10INDT8
+      **R     THRU AQCP0005-CONV-DT10INDT8-EXIT
+           MOVE WS-MES-SEG              TO VIAL1000-DAT-INPUT1
+
+      *
+           MOVE '09'                    TO VIAL1000-COD-PROCESSO
+           MOVE ZEROES                  TO VIAL1000-PRZ-M
+           MOVE ZEROES                  TO VIAL1000-PRZ-D
+
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           MOVE VIAL1000-IND-ERROS TO ETCL0002-IND-ERROS
+
+           IF ETCL0002-SEM-ERROS
+             MOVE VIAL1000-DAT-RES     TO WS-FIM-MES
+           ELSE
+             MOVE VIAL1000-COD-ERRO-GRAVE   TO ETCL0002-ST-ERRO
+                                               ETCL0002-NR-ERRO
+             MOVE VIAK0002-APLIC-AT         TO ETCL0002-CAPLIC-ERRO
+             MOVE SPACES                    TO ETCL0002-GINFO-ERRO
+           END-IF.
+      *
+           IF VIAL0015-DEBUG-SIM
+              MOVE '4150-OBT-ULT-DIA-MES '   TO VIAL0015-CALLER-ID
+              MOVE 'VIAL1000-DAT-RES'         TO VIAL0015-CAMPO-NM(1)
+              MOVE VIAL1000-DAT-RES           TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-FIM-MES      '         TO VIAL0015-CAMPO-NM(2)
+              MOVE WS-FIM-MES                 TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+       4150-OBT-ULT-DIA-MES-EXIT.
+           EXIT.
+      *
+      *****************************************************************
+       4150-CALC-DIAS-UTIL.
+      *****************************************************************
+      *
+           MOVE '4150-CALC-DIAS-UTIL'   TO VIAL0015-CALLER-ID.
+      *
+           IF VIAL0015-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE '99'                    TO VIAL1000-COD-PROCESSO
+           MOVE ZEROES                  TO VIAL1000-PRZ-M
+           MOVE ZEROES                  TO VIAL1000-PRZ-D
+
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           MOVE VIAL1000-IND-ERROS TO ETCL0002-IND-ERROS
+
+           IF ETCL0002-SEM-ERROS
+             MOVE VIAL1000-DAT-RES-SEM TO WS-DIA
+             IF WS-NAO-UTIL
+               CONTINUE
+             ELSE
+               ADD 8 TO WS-TOT-HORAS-UT
+             END-IF
+             ADD 1                     TO VIAL1000-I1-D
+           ELSE
+             MOVE VIAL1000-COD-ERRO-GRAVE   TO ETCL0002-ST-ERRO
+                                               ETCL0002-NR-ERRO
+             MOVE VIAK0002-APLIC-AT         TO ETCL0002-CAPLIC-ERRO
+             MOVE SPACES                    TO ETCL0002-GINFO-ERRO
+           END-IF.
+      *
+       4150-CALC-DIAS-UTIL-EXIT.
+           EXIT.
+      *
+      ******************************************************************
+      *       CRIA OU ACTUALIZA O PERIODO EM CURSO
+      ******************************************************************
+       2500-ACT-PERIODO.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2500-ACT-PERIODO      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ATCK0001-SEM-ERROS
+              PERFORM 2600-INSERT
+                 THRU 2600-INSERT-EXIT
+           END-IF.
+
+       2500-ACT-PERIODO-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *       INSERE NOVO PERIODO
+      ******************************************************************
+       2600-INSERT.
+
+           IF VIAL0015-DEBUG-SIM
+              MOVE '2600-INSERT          ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE WS-TOT-HORAS-UT            TO COCD3401-ZHORASU
+
+           MOVE WS-FIM-MES(1:4)           TO COCD3401-ZANO
+           MOVE WS-FIM-MES(5:2)           TO COCD3401-ZMES
+
+           MOVE COCD3401-ZANO              TO WS-ANO-PER.
+           MOVE '/'                        TO WS-SLASH-PER.
+           MOVE COCD3401-ZMES              TO WS-MES-PER.
+           MOVE WS-PERIODO                 TO COCD3401-CPERIODO
+           MOVE COCK0002-SITU-ABERTO       TO COCD3401-CSITU
+           MOVE WS-PROGNAME                TO COCD3401-CUSERID
+           MOVE COCK0002-SITU-ABERTO       TO COCD3401-CSITUER
+           MOVE COCK0002-DATA-MIN          TO COCD3401-DTCSITUER
+           MOVE COCK0002-DATA-MIN          TO COCD3401-DTCSITU
+
+           EXEC SQL
+                INSERT INTO COVT3401_PERIODO
+                     ( CPERIODO
+                     , ZANO
+                     , ZMES
+                     , ZHORASU
+                     , CSITU
+                     , CUSERID
+                     , HTIMEST
+                     , DTCSITU
+                     , CSITUER
+                     , DTCSITUER )
+                VALUES(:COCD3401-CPERIODO
+                     , :COCD3401-ZANO
+                     , :COCD3401-ZMES
+                     , :COCD3401-ZHORASU
+                     , :COCD3401-CSITU
+                     , :COCD3401-CUSERID
+                     ,  CURRENT_TIMESTAMP
+                     , :COCD3401-DTCSITU
+                     , :COCD3401-CSITUER
+                     , :COCD3401-DTCSITUER )
+           END-EXEC.
+
+           MOVE CON-COVT3401               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+             IF ETCL0002-SQL-OK OR ETCL0002-SQL-DUPREC
+                CONTINUE
+             ELSE
+                MOVE VIAK0002-ABEND-DB2     TO ETCL0002-IND-ERROS
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                SET  VIAW0030-DB2-ERROR     TO TRUE
+                MOVE WS-PROGNAME         TO VIAW0030-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO VIAW0030-PARAGRAPH-NAME
+                MOVE CON-COVT3401        TO VIAW0030-TABLE-NAME
+                MOVE ETCL0002-SQLCODE       TO VIAW0030-SQLCODE
+                MOVE 'ERRO INSERT TABELA DE PERIODOS   '
+                                            TO VIAW0030-DESC1
+                PERFORM VIAP0030-ESCREVE-SPOOL
+                   THRU VIAP0030-ESCREVE-SPOOL-EXIT
+             END-IF
+           ELSE
+             SET  AQCW0009-RCODE-APL     TO TRUE
+             SET  VIAW0030-DB2-ERROR     TO TRUE
+             MOVE WS-PROGNAME         TO VIAW0030-PGMNAME
+             MOVE VIAL0015-CALLER-ID     TO VIAW0030-PARAGRAPH-NAME
+             MOVE CON-COVT3401        TO VIAW0030-TABLE-NAME
+             MOVE ETCL0002-SQLCODE       TO VIAW0030-SQLCODE
+             MOVE 'ERRO INSERT TABELA DE PERIODOS   '
+                                            TO VIAW0030-DESC1
+             PERFORM VIAP0030-ESCREVE-SPOOL
+                THRU VIAP0030-ESCREVE-SPOOL-EXIT
+           END-IF.
+
+       2600-INSERT-EXIT.
+           EXIT.
+      ******************************************************************
+      *                   FIM DO PROGRAMA
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+
+           IF VIAL0015-DEBUG-SIM
+           MOVE '3000-FIM-PROGRAMA       ' TO VIAL0015-CALLER-ID
+              MOVE 'AQCW0009-RCODE '       TO VIAL0015-CAMPO-NM(1)
+              MOVE AQCW0009-RCODE          TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF NOT ATCK0001-SEM-ERROS
+             MOVE '*** ERRO COB08400 ***'  TO VIAL0015-CALLER-ID
+             MOVE 'ATCK0001-RCODE '        TO VIAL0015-CAMPO-NM(1)
+             MOVE ATCK0001-RCODE           TO VIAL0015-CAMPO-VLR(1)
+             PERFORM VIAP0015-TRATA-DEBUG
+                THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM ETCP0005-TRATA-SYNCPOINT
+              THRU ETCP0005-TRATA-SYNCPOINT-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-REG-FIM
+                 THRU AQCP0100-REG-FIM-EXIT
+      *    ELSE
+      *       MOVE AQCW0009-RCODE TO VIAL0100-RCODE
+           END-IF.
+
+       3000-FIM-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+           COPY VIAP0015.
+           COPY AQCP0109.
+           COPY AQCP0009.
+           COPY VIAP0030.
+
+           COPY VIAP1000.
+
+           EXEC SQL INCLUDE VIAP9999 END-EXEC.
+           EXEC SQL INCLUDE ETCP0005 END-EXEC.
+           EXEC SQL INCLUDE ETCP0021 END-EXEC.

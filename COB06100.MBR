@@ -1,0 +1,848 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. COB06100.
+      ******************************************************************
+      *                                                                *
+      *     Reconciliacao de Movimentos Bancarios a Credito            *
+      *                                                                *
+      ******************************************************************
+      * Descrição da funcionalidade                                    *
+      * - Obtem de forma automatica a Invoice correspondente aos       *
+      *   movimentos bancarios extraidos pelo robo                     *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       SOURCE-COMPUTER. IBM-AS400.
+       OBJECT-COMPUTER. IBM-AS400.
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+      *
+      ******************************************************************
+      *            DECLARACOES DE DB2
+      ******************************************************************
+           EXEC SQL INCLUDE COCD5013 END-EXEC.
+           EXEC SQL INCLUDE COCD6405 END-EXEC.
+           EXEC SQL INCLUDE COCD6900 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  CONSTANTES.
+           05 WS-PROGNAME              PIC  X(10) VALUE 'COB06100'.
+           05 CON-COVT5013             PIC  X(08) VALUE 'COVT5013'.
+           05 CON-COVT6405             PIC  X(08) VALUE 'COVT6405'.
+           05 CON-COVT6900             PIC  X(08) VALUE 'COVT6900'.
+           05 CON-CS-2                 PIC  X(01) VALUE '2'.
+           05 CON-S                    PIC  X(01) VALUE 'S'.
+           05 CON-CR                   PIC  X(02) VALUE 'CR'.
+           05 CON-DATE-MIN             PIC  X(10) VALUE '0001-01-01'.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-DATA-SEARCH            PIC  X(10)  VALUE SPACES.
+           05 WS-DATA-MINIMA            PIC  X(10)  VALUE SPACES.
+           05 WS-DATA-HOJE              PIC  X(10)  VALUE SPACES.
+           05 WS-NSEQ                   PIC S9(10)  COMP-3 VALUE ZEROES.
+
+      ******************************************************************
+      *  SWITCH
+      ******************************************************************
+       01  WS-SWITCHES.
+           05 WS-STATUS-COT69       PIC S9(03) VALUE 0.
+              88 WS-COT69-OK                   VALUE 0.
+              88 WS-COT69-NOTFND               VALUE 100.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY AQCL0001.
+           COPY AQCW0109.
+           COPY VIAL0015.
+           COPY VIAW0011.
+           COPY VIAW0012.
+           COPY VIATK001.
+           COPY VIATK002.
+           COPY COCK0002.
+           COPY COCF3100.
+           COPY VIAL1000.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+       01  WS-CURSOR-VARS.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+
+      *
+      * MOVIMENTOS BANCARIOS A CREDITO
+      *
+           EXEC SQL
+                DECLARE COT69 CURSOR FOR
+                SELECT
+                       CPAIS
+                     , CBANCO
+                     , CCONTA
+                     , DDATMOV
+                     , NSEQMOV
+                     , DDATVAL
+                     , CTIPOMOV
+                     , NVALMOV
+                     , CMOEDA
+                     , GDESMOV
+                     , NSALDCNT
+                     , CEMPRESA
+                     , IRECON
+                     , GREFINV
+                     , NINVREC
+                 FROM COVT6900_MOVBANC
+                 WHERE  IRECON  <> :CON-S
+                   AND  CTIPOMOV = :CON-CR
+              ORDER BY CPAIS
+                     , CBANCO
+                     , CCONTA
+                     , DDATMOV
+                     , NSEQMOV
+              FOR UPDATE OF
+                       IRECON
+                     , GREFINV
+                     , NINVREC
+           END-EXEC.
+
+      ******************************************************************
+       01  FILLER              PIC X(40) VALUE 'FIM DA WORKING-STORAGE'.
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+           COPY AQCW0009.
+      ******************************************************************
+       PROCEDURE DIVISION USING AQCW0009-DATA.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+      ******************************************************************
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           MOVE '1000-INICIO-PROGRAMA'      TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-REG-INICIO
+                 THRU AQCP0100-REG-INICIO-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-OBT-DADOS-ARQ
+                 THRU AQCP0100-OBT-DADOS-ARQ-EXIT
+           END-IF.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+           MOVE '2000-PROC-PROGRAMA'        TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2200-OPEN-CURSOR
+                 THRU 2200-OPEN-CURSOR-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2300-FETCH-CURSOR
+                 THRU 2300-FETCH-CURSOR-EXIT
+
+              PERFORM 2400-PROC-CURSOR
+                 THRU 2400-PROC-CURSOR-EXIT
+                      UNTIL NOT DB2-OK
+                         OR NOT AQCW0009-SEM-ERROS
+
+              EXEC SQL
+                   CLOSE COT69
+              END-EXEC
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2200-OPEN-CURSOR.
+      ******************************************************************
+           MOVE '2200-OPEN-CURSOR'          TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE DCLCOCD6900.
+
+           EXEC SQL
+                OPEN COT69
+           END-EXEC.
+
+           MOVE CON-COVT6900        TO VIAW0012-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2200-OPEN-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2300-FETCH-CURSOR.
+      ******************************************************************
+           MOVE '2300-FETCH-CURSOR'         TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+              FETCH  COT69
+               INTO
+                    :COCD6900-CPAIS
+                  , :COCD6900-CBANCO
+                  , :COCD6900-CCONTA
+                  , :COCD6900-DDATMOV
+                  , :COCD6900-NSEQMOV
+                  , :COCD6900-DDATVAL
+                  , :COCD6900-CTIPOMOV
+                  , :COCD6900-NVALMOV
+                  , :COCD6900-CMOEDA
+                  , :COCD6900-GDESMOV
+                  , :COCD6900-NSALDCNT
+                  , :COCD6900-CEMPRESA
+                  , :COCD6900-IRECON
+                  , :COCD6900-GREFINV
+                  , :COCD6900-NINVREC
+           END-EXEC.
+
+           MOVE CON-COVT6900        TO VIAW0012-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+           WHEN DB2-NOTFND
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2300-FETCH-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2400-PROC-CURSOR.
+      ******************************************************************
+           MOVE '2400-PROC-CURSOR'          TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2500-TRATA-INVOICE
+                 THRU 2500-TRATA-INVOICE-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2300-FETCH-CURSOR
+                 THRU 2300-FETCH-CURSOR-EXIT
+           END-IF.
+
+       2400-PROC-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2500-TRATA-INVOICE.
+      ******************************************************************
+           MOVE '2500-TRATA-INVOICE'       TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE                       DCLCOCD5013
+
+           MOVE COCD6900-CMOEDA        TO COCD5013-CMOEDA.
+           MOVE COCD6900-CEMPRESA      TO COCD5013-CEMPRESA.
+
+           EXEC SQL
+                SELECT  NIDINVOICE
+                     ,  NIDPROJECTO
+                     ,  GCLIENTE
+                     ,  DDATAINSER
+                     ,  DDATAEMISS
+                     ,  DDATAEMIS2
+                     ,  DDATEDUE
+                     ,  CPRAZO
+                     ,  NTOTALAMOUNT
+                     ,  NTAXAMOUNT
+                     ,  GDESCINVOICE
+                     ,  CSTATUS
+                     ,  CUSERID
+                     ,  HTIMEST
+                     ,  GREFINV
+                     ,  DPAG
+                     ,  CTIPDOC
+                     ,  CMOEDA
+                     ,  CIMPOSTO
+                     ,  NOTAS
+                     ,  NTOTCTRV
+                     ,  NTAXCTRV
+                     ,  CTIPFAC
+                     ,  NTOTPAG
+                     ,  NTAXPAG
+                     ,  NTOTRET
+                     ,  NTAXRET
+                     ,  GREFNCR
+                     ,  DDATEMINCR
+                     ,  CMOTANU
+                     ,  CTIPANU
+                     ,  CEMPRESA
+                     ,  IRECON
+                     ,  DDATMOV
+                     ,  NSEQMOV
+                     ,  NTOTNCR
+                     ,  NTAXNCR
+                     ,  CPAIS
+                     ,  CBANCO
+                     ,  CCONTA
+                  INTO :COCD5013-NIDINVOICE
+                     , :COCD5013-NIDPROJECTO
+                     , :COCD5013-GCLIENTE
+                     , :COCD5013-DDATAINSER
+                     , :COCD5013-DDATAEMISS
+                     , :COCD5013-DDATAEMIS2
+                     , :COCD5013-DDATEDUE
+                     , :COCD5013-CPRAZO
+                     , :COCD5013-NTOTALAMOUNT
+                     , :COCD5013-NTAXAMOUNT
+                     , :COCD5013-GDESCINVOICE
+                     , :COCD5013-CSTATUS
+                     , :COCD5013-CUSERID
+                     , :COCD5013-HTIMEST
+                     , :COCD5013-GREFINV
+                     , :COCD5013-DPAG
+                     , :COCD5013-CTIPDOC
+                     , :COCD5013-CMOEDA
+                     , :COCD5013-CIMPOSTO
+                     , :COCD5013-NOTAS
+                     , :COCD5013-NTOTCTRV
+                     , :COCD5013-NTAXCTRV
+                     , :COCD5013-CTIPFAC
+                     , :COCD5013-NTOTPAG
+                     , :COCD5013-NTAXPAG
+                     , :COCD5013-NTOTRET
+                     , :COCD5013-NTAXRET
+                     , :COCD5013-GREFNCR
+                     , :COCD5013-DDATEMINCR
+                     , :COCD5013-CMOTANU
+                     , :COCD5013-CTIPANU
+                     , :COCD5013-CEMPRESA
+                     , :COCD5013-IRECON
+                     , :COCD5013-DDATMOV
+                     , :COCD5013-NSEQMOV
+                     , :COCD5013-NTOTNCR
+                     , :COCD5013-NTAXNCR
+                     , :COCD5013-CPAIS
+                     , :COCD5013-CBANCO
+                     , :COCD5013-CCONTA
+                  FROM  COVT5013_INVOICES
+                 WHERE  CSTATUS     =  :CON-CS-2
+                   AND  CMOEDA      =  :COCD5013-CMOEDA
+                   AND  CEMPRESA    =  :COCD5013-CEMPRESA
+                   AND  IRECON      <> :CON-S
+                   AND  NTOTALAMOUNT +
+                        NTAXAMOUNT   -
+                        NTOTPAG      -
+                        NTAXPAG      -
+                        NTOTRET      -
+                        NTAXRET      = :COCD6900-NVALMOV
+           END-EXEC.
+
+           MOVE CON-COVT5013           TO VIAW0012-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                PERFORM 2510-TRATA-PAG
+                   THRU 2510-TRATA-PAG-EXIT
+
+           WHEN DB2-NOTFND
+           WHEN DB2-DUPLINE
+                CONTINUE
+
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2500-TRATA-INVOICE-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2510-TRATA-PAG.
+      ******************************************************************
+           MOVE '2510-TRATA-PAG'           TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM 2600-INS-INVPAY
+              THRU 2600-INS-INVPAY-EXIT
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2700-UPD-INVOICES
+                 THRU 2700-UPD-INVOICES-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2800-UPD-MOV-BANC
+                 THRU 2800-UPD-MOV-BANC-EXIT
+           END-IF.
+
+       2510-TRATA-PAG-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2600-INS-INVPAY.
+      ******************************************************************
+           MOVE '2600-INS-INVPAY'        TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD5013-NIDINVOICE      TO COCD6405-NIDINVOICE
+           MOVE COCD5013-NIDPROJECTO     TO COCD6405-NIDPROJECTO
+           MOVE COCD5013-GCLIENTE        TO COCD6405-GCLIENTE
+           MOVE COCD5013-DDATAINSER      TO COCD6405-DDATAINSER
+           MOVE COCD5013-DDATAEMISS      TO COCD6405-DDATAEMISS
+           MOVE COCD5013-DDATAEMIS2      TO COCD6405-DDATAEMIS2
+           MOVE COCD5013-DDATEDUE        TO COCD6405-DDATEDUE
+           MOVE COCD5013-CPRAZO          TO COCD6405-CPRAZO
+           MOVE COCD5013-NTOTALAMOUNT    TO COCD6405-NTOTALAMOUNT
+           MOVE COCD5013-NTAXAMOUNT      TO COCD6405-NTAXAMOUNT
+           MOVE COCD5013-GDESCINVOICE    TO COCD6405-GDESCINVOICE
+           MOVE COCK0002-CSTATUS-PAG     TO COCD6405-CSTATUS
+           MOVE WS-PROGNAME              TO COCD6405-CUSERID
+           MOVE COCD5013-GREFINV         TO COCD6405-GREFINV
+           MOVE COCD6900-DDATMOV         TO COCD6405-DPAG
+           MOVE COCD5013-CTIPDOC         TO COCD6405-CTIPDOC
+           MOVE COCD5013-CMOEDA          TO COCD6405-CMOEDA
+           MOVE COCD5013-CIMPOSTO        TO COCD6405-CIMPOSTO
+           MOVE COCD5013-NOTAS           TO COCD6405-NOTAS
+           MOVE COCD5013-NTOTCTRV        TO COCD6405-NTOTCTRV
+           MOVE COCD5013-NTAXCTRV        TO COCD6405-NTAXCTRV
+           MOVE COCD5013-CTIPFAC         TO COCD6405-CTIPFAC
+
+           COMPUTE COCD6405-NTOTPAG =  COCD5013-NTOTALAMOUNT -
+                                      (COCD5013-NTOTPAG +
+                                       COCD5013-NTOTRET)
+
+           COMPUTE COCD6405-NTAXPAG =  COCD5013-NTAXAMOUNT -
+                                      (COCD5013-NTAXPAG +
+                                       COCD5013-NTAXRET)
+
+           MOVE COCD5013-NTOTRET         TO COCD6405-NTOTRET
+           MOVE COCD5013-NTAXRET         TO COCD6405-NTAXRET
+           MOVE SPACES                   TO COCD6405-CTIPMOV
+           MOVE CON-S                    TO COCD6405-IRECON
+           MOVE COCD6900-DDATMOV         TO COCD6405-DDATMOV
+           MOVE COCD6900-NSEQMOV         TO COCD6405-NSEQMOV
+           MOVE SPACES                   TO COCD6405-GREFNCR
+           MOVE CON-DATE-MIN             TO COCD6405-DDATEMINCR
+           MOVE COCD6900-CPAIS           TO COCD6405-CPAIS
+           MOVE COCD6900-CBANCO          TO COCD6405-CBANCO
+           MOVE COCD6900-CCONTA          TO COCD6405-CCONTA
+
+           PERFORM 2610-OBTEM-SEQ
+              THRU 2610-OBTEM-SEQ-EXIT
+
+           IF AQCW0009-SEM-ERROS
+
+              EXEC SQL
+                   INSERT INTO COVT6405_INVPAY
+                   (
+                      NIDINVOICE
+                    , NSEQ
+                    , NIDPROJECTO
+                    , GCLIENTE
+                    , DDATAINSER
+                    , DDATAEMISS
+                    , DDATAEMIS2
+                    , DDATEDUE
+                    , CPRAZO
+                    , NTOTALAMOUNT
+                    , NTAXAMOUNT
+                    , GDESCINVOICE
+                    , CSTATUS
+                    , CUSERID
+                    , HTIMEST
+                    , GREFINV
+                    , DPAG
+                    , CTIPDOC
+                    , CMOEDA
+                    , CIMPOSTO
+                    , NOTAS
+                    , NTOTCTRV
+                    , NTAXCTRV
+                    , CTIPFAC
+                    , NTOTPAG
+                    , NTAXPAG
+                    , NTOTRET
+                    , NTAXRET
+                    , CTIPMOV
+                    , IRECON
+                    , DDATMOV
+                    , NSEQMOV
+                    , GREFNCR
+                    , DDATEMINCR
+                    , CPAIS
+                    , CBANCO
+                    , CCONTA
+                   )
+                   VALUES (
+                          :COCD6405-NIDINVOICE
+                        , :COCD6405-NSEQ
+                        , :COCD6405-NIDPROJECTO
+                        , :COCD6405-GCLIENTE
+                        , :COCD6405-DDATAINSER
+                        , :COCD6405-DDATAEMISS
+                        , :COCD6405-DDATAEMIS2
+                        , :COCD6405-DDATEDUE
+                        , :COCD6405-CPRAZO
+                        , :COCD6405-NTOTALAMOUNT
+                        , :COCD6405-NTAXAMOUNT
+                        , :COCD6405-GDESCINVOICE
+                        , :COCD6405-CSTATUS
+                        , :COCD6405-CUSERID
+                        ,  CURRENT TIMESTAMP
+                        , :COCD6405-GREFINV
+                        , :COCD6405-DPAG
+                        , :COCD6405-CTIPDOC
+                        , :COCD6405-CMOEDA
+                        , :COCD6405-CIMPOSTO
+                        , :COCD6405-NOTAS
+                        , :COCD6405-NTOTCTRV
+                        , :COCD6405-NTAXCTRV
+                        , :COCD6405-CTIPFAC
+                        , :COCD6405-NTOTPAG
+                        , :COCD6405-NTAXPAG
+                        , :COCD6405-NTOTRET
+                        , :COCD6405-NTAXRET
+                        , :COCD6405-CTIPMOV
+                        , :COCD6405-IRECON
+                        , :COCD6405-DDATMOV
+                        , :COCD6405-NSEQMOV
+                        , :COCD6405-GREFNCR
+                        , :COCD6405-DDATEMINCR
+                        , :COCD6405-CPAIS
+                        , :COCD6405-CBANCO
+                        , :COCD6405-CCONTA
+                   )
+              END-EXEC
+
+              MOVE CON-COVT6405 TO VIAW0012-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              EVALUATE TRUE
+              WHEN DB2-OK
+                   CONTINUE
+              WHEN OTHER
+                   SET  AQCW0009-RCODE-APL     TO TRUE
+                   MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                   MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                   MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                   MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                   PERFORM AQCP0100-ESCREVE-MSG
+                      THRU AQCP0100-ESCREVE-MSG-EXIT
+              END-EVALUATE
+           END-IF.
+
+       2600-INS-INVPAY-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2610-OBTEM-SEQ.
+      ******************************************************************
+           MOVE '2610-OBTEM-SEQ'       TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+              SELECT COUNT(NSEQ)
+                INTO :WS-NSEQ
+                FROM COVT6405_INVPAY
+               WHERE NIDINVOICE  = :COCD6405-NIDINVOICE
+                 AND NIDPROJECTO = :COCD6405-NIDPROJECTO
+           END-EXEC.
+
+           MOVE CON-COVT6405               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+               WHEN DB2-OK
+                    ADD 1                       TO WS-NSEQ
+                    MOVE WS-NSEQ                TO COCD6405-NSEQ
+               WHEN DB2-NOTFND
+                    CONTINUE
+               WHEN OTHER
+                    SET  AQCW0009-RCODE-APL     TO TRUE
+                    MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                    MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                    MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                    MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                    PERFORM AQCP0100-ESCREVE-MSG
+                       THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2610-OBTEM-SEQ-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2700-UPD-INVOICES.
+      ******************************************************************
+           MOVE '2700-UPD-INVOICES'        TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCK0002-CSTATUS-PAG     TO COCD5013-CSTATUS
+           MOVE WS-PROGNAME              TO COCD5013-CUSERID
+           MOVE COCD6900-DDATMOV         TO COCD5013-DPAG
+           MOVE CON-S                    TO COCD5013-IRECON
+           MOVE COCD6900-DDATMOV         TO COCD5013-DDATMOV
+           MOVE COCD6900-NSEQMOV         TO COCD5013-NSEQMOV
+
+           COMPUTE COCD5013-NTOTPAG = COCD5013-NTOTALAMOUNT -
+                                      COCD5013-NTOTRET
+
+           COMPUTE COCD5013-NTAXPAG = COCD5013-NTAXAMOUNT -
+                                      COCD5013-NTAXRET
+
+           EXEC SQL
+                 UPDATE COVT5013_INVOICES
+                 SET    CSTATUS      = :COCD5013-CSTATUS
+                      , CUSERID      = :COCD5013-CUSERID
+                      , HTIMEST      =  CURRENT TIMESTAMP
+                      , DPAG         = :COCD5013-DPAG
+                      , NTOTPAG      = :COCD5013-NTOTPAG
+                      , NTAXPAG      = :COCD5013-NTAXPAG
+                      , IRECON       = :COCD5013-IRECON
+                      , DDATMOV      = :COCD5013-DDATMOV
+                      , NSEQMOV      = :COCD5013-NSEQMOV
+                  WHERE NIDPROJECTO  = :COCD5013-NIDPROJECTO
+                    AND NIDINVOICE   = :COCD5013-NIDINVOICE
+           END-EXEC.
+
+           MOVE CON-COVT5013               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2700-UPD-INVOICES-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2800-UPD-MOV-BANC.
+      ******************************************************************
+           MOVE '2800-UPD-MOV-BANC'        TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE WS-PROGNAME              TO COCD6900-CUSERID
+           MOVE CON-S                    TO COCD6900-IRECON
+           MOVE COCD5013-GREFINV         TO COCD6900-GREFINV
+
+           EXEC SQL
+                 UPDATE COVT6900_MOVBANC
+                 SET    IRECON       = :COCD6900-IRECON
+                      , GREFINV      = :COCD6900-GREFINV
+                      , NINVREC      =  NINVREC + 1
+                      , CUSERID      = :COCD6900-CUSERID
+                      , HTIMEST      =  CURRENT TIMESTAMP
+                  WHERE CPAIS        = :COCD6900-CPAIS
+                    AND CBANCO       = :COCD6900-CBANCO
+                    AND CCONTA       = :COCD6900-CCONTA
+                    AND DDATMOV      = :COCD6900-DDATMOV
+                    AND NSEQMOV      = :COCD6900-NSEQMOV
+           END-EXEC.
+
+           MOVE CON-COVT6900               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2800-UPD-MOV-BANC-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           MOVE '3000-FIM-PROGRAMA'         TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      * Processos finais
+            PERFORM AQCP0009-TRATA-RCODE
+               THRU AQCP0009-TRATA-RCODE-EXIT.
+
+            PERFORM AQCP0002-TRATA-SYNCPOINT
+               THRU AQCP0002-TRATA-SYNCPOINT-EXIT.
+
+           PERFORM AQCP0100-REG-FIM
+              THRU AQCP0100-REG-FIM-EXIT.
+
+       3000-FIM-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+           EXEC SQL INCLUDE AQCP0002 END-EXEC.
+      ******************************************************************
+           COPY AQCP0009.
+           COPY AQCP0109.
+           COPY VIAP0011.
+           COPY VIAP0012.
+           COPY VIAP0015.
+           COPY VIAP1000.
+      ******************************************************************

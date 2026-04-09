@@ -1,0 +1,324 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. COB02600.
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       SPECIAL-NAMES. DECIMAL-POINT IS COMMA.
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC  X(10) VALUE 'COB02600'.
+           05 WS-COCF2500               PIC  X(10) VALUE 'COF02500'.
+           05 WS-PROJFAC                PIC  X(10) VALUE 'PROJFAC '.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-QUANTIDADE             PIC S9(10)V COMP-3.
+           05 WS-EMAIL-TO               PIC  X(200).
+           05 WS-EMAIL-CC               PIC  X(200).
+           05 WS-EMAIL-BCC              PIC  X(200).
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY AQCL0001.
+           COPY AQCW0109.
+           COPY VIAL0015.
+           COPY VIAW0011.
+           COPY VIAW0012.
+           COPY VIATK001.
+           COPY ARCL5060.
+           COPY COCK0002.
+           COPY ARCL2750.
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA       END-EXEC.
+
+      ******************************************************************
+       01  FILLER              PIC X(40) VALUE 'FIM DA WORKING-STORAGE'.
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+           COPY AQCW0009.
+      ******************************************************************
+       PROCEDURE DIVISION USING AQCW0009-DATA.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+      ******************************************************************
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+      * Apenas processa se a quantidade de registos no ficheiro COF02500
+      * for maior que 1 (porque tem sempre uma linha para o header)
+              IF WS-QUANTIDADE > 1
+                 PERFORM 2000-PROC-PROGRAMA
+                    THRU 2000-PROC-PROGRAMA-EXIT
+              END-IF
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           MOVE '1000-INICIO-PROGRAMA'      TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-REG-INICIO
+                 THRU AQCP0100-REG-INICIO-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-OBT-DADOS-ARQ
+                 THRU AQCP0100-OBT-DADOS-ARQ-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 1100-COUNT-COCF2500
+                 THRU 1100-COUNT-COCF2500-EXIT
+           END-IF.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-COUNT-COCF2500.
+      ******************************************************************
+           MOVE '1100-COUNT-COCF2500'       TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+                SELECT IFNULL(COUNT(*), 0)
+                INTO  :WS-QUANTIDADE
+                FROM   COF02500
+           END-EXEC.
+
+           MOVE WS-COCF2500                 TO VIAW0012-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       1100-COUNT-COCF2500-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+           MOVE '2000-PROC-PROGRAMA'        TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      * Obter enderecos de email carregados na ART50
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2300-OBTER-EMAILS-ART50
+                 THRU 2300-OBTER-EMAILS-ART50-EXIT
+           END-IF.
+
+      * Formatar e registar o email para envio
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2500-FORMATAR-EMAIL
+                 THRU 2500-FORMATAR-EMAIL-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *2100-OBTER-PERIODO.
+      ******************************************************************
+      *    MOVE '2100-OBTER-PERIODO'        TO VIAL0015-CALLER-ID.
+      *
+      *    IF AQCW0100-AT-DEBUG-SIM
+      *       PERFORM VIAP0015-TRATA-DEBUG
+      *          THRU VIAP0015-TRATA-DEBUG-EXIT
+      *    END-IF.
+      *
+      * CALCULA O PERIODO
+      *    MOVE AQCW0100-AT-DTOP            TO WS-DATA-OPERACAO.
+      * MES ANTERIOR
+      *    COMPUTE WS-MES = WS-MES - 1.
+      *
+      *    IF WS-MES EQUAL ZEROES
+      *       COMPUTE WS-ANO = WS-ANO - 1
+      *       COMPUTE WS-MES = 12
+      *    END-IF.
+      *
+      *2100-OBTER-PERIODO-EXIT.
+      *    EXIT.
+      *
+      ******************************************************************
+      *2200-OBTER-PARAMETROS.
+      ******************************************************************
+      *    MOVE '2200-OBTER-PARAMETROS'     TO VIAL0015-CALLER-ID.
+      *
+      *    IF AQCW0100-AT-DEBUG-SIM
+      *       PERFORM VIAP0015-TRATA-DEBUG
+      *          THRU VIAP0015-TRATA-DEBUG-EXIT
+      *    END-IF.
+      *
+      *    INITIALIZE                          ARCL2205-DATA.
+      *    MOVE COCK0002-CAPLIC             TO ARCL2205-CAPLIC.
+      *    MOVE WS-TREMFALTA                TO ARCL2205-CPARAM.
+      *
+      *    PERFORM ETCP0003-STD-INIT
+      *       THRU ETCP0003-STD-INIT-EXIT.
+      *
+      *    PERFORM CALL-ARM2206
+      *       THRU CALL-ARM2206-EXIT.
+      *
+      *    PERFORM ETCP0003-STD-END
+      *       THRU ETCP0003-STD-END-EXIT.
+      *
+      *    IF ETCL0002-SEM-ERROS
+      *       CONTINUE
+      *    ELSE
+      *       SET  AQCW0009-RCODE-APL       TO TRUE
+      *       MOVE WS-PROGNAME              TO AQCW0100-PGMNAME
+      *       MOVE VIAL0015-CALLER-ID       TO AQCW0100-PARAGRAPH
+      *       PERFORM AQCP0100-ESCREVE-MSG
+      *          THRU AQCP0100-ESCREVE-MSG-EXIT
+      *    END-IF.
+      *
+      *2200-OBTER-PARAMETROS-EXIT.
+      *    EXIT.
+      *
+      ******************************************************************
+       2300-OBTER-EMAILS-ART50.
+      ******************************************************************
+           MOVE '2300-OBTER-EMAILS-ART50'   TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2300-OBTER-EMAILS-ART50-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2500-FORMATAR-EMAIL.
+      ******************************************************************
+           MOVE '2500-FORMATAR-EMAIL'       TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE                          ARCL2750-COMMAREA.
+           MOVE WS-PROJFAC                  TO ARCL2750-CCOD.
+           MOVE WS-EMAIL-TO                 TO ARCL2750-CTO.
+           MOVE WS-EMAIL-CC                 TO ARCL2750-CCC.
+           MOVE WS-EMAIL-BCC                TO ARCL2750-CBCC.
+           MOVE WS-COCF2500                 TO ARCL2750-GNOMEFIC.
+
+           PERFORM ETCP0003-STD-INIT
+              THRU ETCP0003-STD-INIT-EXIT.
+
+           PERFORM CALL-ARM2750
+              THRU CALL-ARM2750-EXIT.
+
+           PERFORM ETCP0003-STD-END
+              THRU ETCP0003-STD-END-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              CONTINUE
+           ELSE
+              SET  AQCW0009-RCODE-APL       TO TRUE
+              MOVE WS-PROGNAME              TO AQCW0100-PGMNAME
+              MOVE VIAL0015-CALLER-ID       TO AQCW0100-PARAGRAPH
+              PERFORM AQCP0100-ESCREVE-MSG
+                 THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-IF.
+
+       2500-FORMATAR-EMAIL-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           MOVE '3000-FIM-PROGRAMA'         TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      * Processos finais
+            PERFORM AQCP0009-TRATA-RCODE
+               THRU AQCP0009-TRATA-RCODE-EXIT.
+
+            PERFORM AQCP0002-TRATA-SYNCPOINT
+               THRU AQCP0002-TRATA-SYNCPOINT-EXIT.
+
+           PERFORM AQCP0100-REG-FIM
+              THRU AQCP0100-REG-FIM-EXIT.
+
+       3000-FIM-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+           EXEC SQL INCLUDE AQCP0002 END-EXEC.
+      ******************************************************************
+           COPY AQCP0009.
+           COPY AQCP0109.
+           COPY VIAP0011.
+           COPY VIAP0012.
+           COPY VIAP0015.
+           COPY ARCP2750.
+      ******************************************************************

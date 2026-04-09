@@ -1,0 +1,641 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. COB01100.
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       SPECIAL-NAMES. DECIMAL-POINT IS COMMA.
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       FILE-CONTROL.
+           SELECT   COF01100-FILE
+                    ASSIGN              TO DISK-COF01100
+                    ORGANIZATION        IS SEQUENTIAL
+                    FILE STATUS         IS VIAW0011-FSTATUS.
+
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       FD  COF01100-FILE.
+           COPY COCF1100.
+
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC  X(10) VALUE 'COB01100'.
+           05 WS-COCF1100               PIC  X(10) VALUE 'COF01100'.
+           05 WS-ARVT0500               PIC  X(10) VALUE 'ARVT3600'.
+           05 WS-COVT3600               PIC  X(10) VALUE 'COVT3600'.
+           05 WS-COVT5008               PIC  X(10) VALUE 'COVT5008'.
+           05 WS-COVT5401               PIC  X(10) VALUE 'COVT5401'.
+           05 WS-FACTVENC               PIC  X(10) VALUE 'FACTVENC'.
+           05 WS-CTABELA-PAISES         PIC  X(10) VALUE 'AR047'.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-DATA-MIN              PIC X(10)  VALUE SPACES.
+           05 WS-DATA-HOJE             PIC X(10)  VALUE SPACES.
+           05 WS-CSTATUS1              PIC X(01)  VALUE SPACES.
+           05 WS-CSTATUS2              PIC X(01)  VALUE SPACES.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY AQCL0001.
+           COPY AQCW0109.
+           COPY VIAL0015.
+           COPY VIAW0011.
+           COPY VIAW0012.
+           COPY VIATK001.
+           COPY VIATK002.
+           COPY COCK0002.
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA       END-EXEC.
+           EXEC SQL INCLUDE ARCD0500    END-EXEC.
+           EXEC SQL INCLUDE COCD3600    END-EXEC.
+           EXEC SQL INCLUDE COCD5008    END-EXEC.
+           EXEC SQL INCLUDE COCD5401    END-EXEC.
+
+           EXEC SQL
+                DECLARE CRS_COT50 CURSOR FOR
+                SELECT NIDINVOICE
+                     , NIDPROJECTO
+                     , GCLIENTE
+                     , DDATAINSER
+                     , DDATAEMISS
+                     , DDATAEMIS2
+                     , DDATEDUE
+                     , CPRAZO
+                     , NTOTALAMOUNT
+                     , NTAXAMOUNT
+                     , GDESCINVOICE
+                     , CSTATUS
+                     , CUSERID
+                     , HTIMEST
+                     , GREFINV
+                     , DPAG
+                     , CMOEDA
+                     , NTOTPAG
+                  FROM COVT5008_INVOICES
+                 WHERE DDATEDUE <= :COCD5008-DDATEDUE
+                   AND DPAG      = :COCD5008-DPAG
+                   AND CSTATUS  IN ( :WS-CSTATUS1
+                                   , :WS-CSTATUS2 )
+              ORDER BY GCLIENTE
+                     , NIDPROJECTO
+                     , NIDINVOICE
+           END-EXEC.
+
+      ******************************************************************
+       01  FILLER              PIC X(40) VALUE 'FIM DA WORKING-STORAGE'.
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+           COPY AQCW0009.
+      ******************************************************************
+       PROCEDURE DIVISION USING AQCW0009-DATA.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+      ******************************************************************
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           MOVE '1000-INICIO-PROGRAMA'      TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-REG-INICIO
+                 THRU AQCP0100-REG-INICIO-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM AQCP0100-OBT-DADOS-ARQ
+                 THRU AQCP0100-OBT-DADOS-ARQ-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 1100-OPEN-COCF1100
+                 THRU 1100-OPEN-COCF1100-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 1200-WRITE-HEADER
+                 THRU 1200-WRITE-HEADER-EXIT
+           END-IF.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-OPEN-COCF1100.
+      ******************************************************************
+           MOVE '1100-OPEN-COCF1100'        TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           OPEN OUTPUT COF01100-FILE.
+
+           PERFORM 9030-FSCHECK
+              THRU 9039-FSCHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN FS-OK
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE WS-COCF1100            TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0011-FSTATUS       TO AQCW0100-FILE-STATUS
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       1100-OPEN-COCF1100-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1200-WRITE-HEADER.
+      ******************************************************************
+           MOVE '1200-WRITE-HEADER'         TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      * Preencher os titulos das colunas da tabela
+           STRING 'País;'                   DELIMITED BY SIZE
+                  'Cliente;'                DELIMITED BY SIZE
+                  'Projecto;'               DELIMITED BY SIZE
+                  'Sequência;'              DELIMITED BY SIZE
+                  'Referência;'             DELIMITED BY SIZE
+                  'Data Vencimento;'        DELIMITED BY SIZE
+                  'Data Emissão;'           DELIMITED BY SIZE
+                  'Montante;'               DELIMITED BY SIZE
+                  'Moeda'                   DELIMITED BY SIZE
+                                            INTO COCF1100-RECORD.
+
+           WRITE COCF1100-RECORD.
+
+           PERFORM 9030-FSCHECK
+              THRU 9039-FSCHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN FS-OK
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE WS-COCF1100            TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0011-FSTATUS       TO AQCW0100-FILE-STATUS
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       1200-WRITE-HEADER-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+           MOVE '2000-PROC-PROGRAMA'        TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM 2100-OPEN-CURSOR
+              THRU 2100-OPEN-CURSOR-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2200-FETCH-CURSOR
+                 THRU 2200-FETCH-CURSOR-EXIT
+
+              PERFORM 2300-PROC-CURSOR
+                 THRU 2300-PROC-CURSOR-EXIT
+                      UNTIL NOT DB2-OK
+                         OR NOT AQCW0009-SEM-ERROS
+
+              EXEC SQL
+                   CLOSE CRS_COT50
+              END-EXEC
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2100-OPEN-CURSOR.
+      ******************************************************************
+           MOVE '2100-OPEN-CURSOR'          TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE DCLCOCD5008.
+
+           MOVE COCK0002-CSTATUS-EMIT       TO WS-CSTATUS1.
+           MOVE COCK0002-CSTATUS-PPAG       TO WS-CSTATUS2.
+           MOVE VIAK0002-DATA-MINIMA        TO COCD5008-DPAG.
+           MOVE ETCL0002-DATA-PROCESSO      TO COCD5008-DDATEDUE.
+
+           EXEC SQL
+                OPEN CRS_COT50
+           END-EXEC.
+
+           MOVE WS-COVT5008                 TO VIAW0012-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2100-OPEN-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2200-FETCH-CURSOR.
+      ******************************************************************
+           MOVE '2200-FETCH-CURSOR'         TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+                FETCH CRS_COT50
+                 INTO :COCD5008-NIDINVOICE
+                    , :COCD5008-NIDPROJECTO
+                    , :COCD5008-GCLIENTE
+                    , :COCD5008-DDATAINSER
+                    , :COCD5008-DDATAEMISS
+                    , :COCD5008-DDATAEMIS2
+                    , :COCD5008-DDATEDUE
+                    , :COCD5008-CPRAZO
+                    , :COCD5008-NTOTALAMOUNT
+                    , :COCD5008-NTAXAMOUNT
+                    , :COCD5008-GDESCINVOICE
+                    , :COCD5008-CSTATUS
+                    , :COCD5008-CUSERID
+                    , :COCD5008-HTIMEST
+                    , :COCD5008-GREFINV
+                    , :COCD5008-DPAG
+                    , :COCD5008-CMOEDA
+                    , :COCD5008-NTOTPAG
+           END-EXEC.
+
+           MOVE WS-COVT5008                 TO VIAW0012-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+           WHEN DB2-NOTFND
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2200-FETCH-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2300-PROC-CURSOR.
+      ******************************************************************
+           MOVE '2300-PROC-CURSOR'          TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE                          COCF1100-RECORD.
+           MOVE ALL ';'                     TO COCF1100-RECORD.
+
+      * Vai formatando o ficheiro output
+      * com os campos que obtem das tabelas
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2400-OBTER-PROJECTO
+                 THRU 2400-OBTER-PROJECTO-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2500-OBTER-PAIS
+                 THRU 2500-OBTER-PAIS-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2600-OBTER-CLIENTE
+                 THRU 2600-OBTER-CLIENTE-EXIT
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              IF COCD5401-IVIA = 'S'
+                CONTINUE
+              ELSE
+                PERFORM 2700-WRITE-COCF1100
+                   THRU 2700-WRITE-COCF1100-EXIT
+              END-IF
+           END-IF.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2200-FETCH-CURSOR
+                 THRU 2200-FETCH-CURSOR-EXIT
+           END-IF.
+
+       2300-PROC-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2400-OBTER-PROJECTO.
+      ******************************************************************
+           MOVE '2400-OBTER-PROJECTO'       TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+                SELECT  CPROJECT
+                     ,  PAIS
+                  INTO :COCD3600-CPROJECT
+                     , :COCD3600-PAIS
+                  FROM  COVT3600_PROJECTS
+                 WHERE  NIDPROJECTO = :COCD5008-NIDPROJECTO
+           END-EXEC.
+
+           MOVE WS-COVT3600                 TO VIAW0012-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                MOVE COCD5008-NIDPROJECTO   TO COCF1100-PROJECT-COD
+                MOVE ' - '                  TO COCF1100-PROJECT-SEP
+                MOVE COCD3600-CPROJECT      TO COCF1100-PROJECT-DES
+                IF COCD3600-CPROJECT (81:) NOT EQUAL SPACES
+                   MOVE '...'
+                     TO COCF1100-PROJECT-DES(78:)
+                END-IF
+           WHEN DB2-NOTFND
+                MOVE COCD5008-NIDPROJECTO   TO COCF1100-PROJECT-COD
+                MOVE SPACES                 TO COCF1100-PROJECT-SEP
+                MOVE SPACES                 TO COCF1100-PROJECT-DES
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2400-OBTER-PROJECTO-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2500-OBTER-PAIS.
+      ******************************************************************
+           MOVE '2500-OBTER-PAIS'           TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE WS-CTABELA-PAISES           TO ARCD0500-CTABELA.
+           MOVE COCD3600-PAIS               TO ARCD0500-CCOD.
+           MOVE VIATK002-IDIOMA-DFT         TO ARCD0500-CLINGUA.
+
+           EXEC SQL
+                SELECT  GDESC
+                  INTO :ARCD0500-GDESC
+                  FROM  ARVT0500_CODESTABLE
+                 WHERE  CTABELA = :ARCD0500-CTABELA
+                   AND  CCOD    = :ARCD0500-CCOD
+                   AND  CLINGUA = :ARCD0500-CLINGUA
+           END-EXEC.
+
+           MOVE WS-ARVT0500                 TO VIAW0012-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                MOVE ARCD0500-GDESC         TO COCF1100-GPAIS
+           WHEN DB2-NOTFND
+                MOVE COCD3600-PAIS          TO COCF1100-GPAIS
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2500-OBTER-PAIS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2600-OBTER-CLIENTE.
+      ******************************************************************
+           MOVE '2600-OBTER-CLIENTE'        TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+                SELECT  GNOME,
+                        IVIA
+                  INTO :COCD5401-GNOME,
+                       :COCD5401-IVIA
+                  FROM  COVT5401_EMPRESAS
+                 WHERE  CSIGLA = :COCD5008-GCLIENTE
+           END-EXEC.
+
+           MOVE WS-COVT5401                 TO VIAW0012-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN DB2-OK
+                MOVE COCD5008-GCLIENTE      TO COCF1100-CLIENTE-COD
+                MOVE ' - '                  TO COCF1100-CLIENTE-SEP
+                MOVE COCD5401-GNOME         TO COCF1100-CLIENTE-DES
+           WHEN DB2-NOTFND
+                MOVE COCD5008-GCLIENTE      TO COCF1100-CLIENTE-COD
+                MOVE SPACES                 TO COCF1100-CLIENTE-SEP
+                MOVE SPACES                 TO COCF1100-CLIENTE-DES
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE VIAW0012-TABLE-NAME    TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0012-SQLCODE       TO AQCW0100-SQLCODE
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2600-OBTER-CLIENTE-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2700-WRITE-COCF1100.
+      ******************************************************************
+           MOVE '2700-WRITE-COCF1100'       TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD5008-NIDINVOICE         TO COCF1100-ZFACTURA.
+           MOVE COCD5008-GREFINV            TO COCF1100-GREFERENCIA.
+           MOVE COCD5008-DDATEDUE           TO COCF1100-DVENCIMENTO.
+           MOVE COCD5008-DDATAEMIS2         TO COCF1100-DEMISSAO.
+      *--- Passa a mostrar o montante em divida
+      *    MOVE COCD5008-NTOTALAMOUNT       TO COCF1100-MMONTANTE.
+           COMPUTE COCF1100-MMONTANTE =
+                   COCD5008-NTOTALAMOUNT - COCD5008-NTOTPAG.
+
+           MOVE COCD5008-CMOEDA             TO COCF1100-CMOEDA.
+
+           WRITE COCF1100-RECORD.
+
+           PERFORM 9030-FSCHECK
+              THRU 9039-FSCHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN FS-OK
+                CONTINUE
+           WHEN OTHER
+                SET  AQCW0009-RCODE-APL     TO TRUE
+                MOVE WS-PROGNAME            TO AQCW0100-PGMNAME
+                MOVE VIAL0015-CALLER-ID     TO AQCW0100-PARAGRAPH
+                MOVE WS-COCF1100            TO AQCW0100-NM-ENTIDADE
+                MOVE VIAW0011-FSTATUS       TO AQCW0100-FILE-STATUS
+                PERFORM AQCP0100-ESCREVE-MSG
+                   THRU AQCP0100-ESCREVE-MSG-EXIT
+           END-EVALUATE.
+
+       2700-WRITE-COCF1100-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           MOVE '3000-FIM-PROGRAMA'         TO VIAL0015-CALLER-ID.
+
+           IF AQCW0100-AT-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           CLOSE COF01100-FILE.
+
+      * Processos finais
+            PERFORM AQCP0009-TRATA-RCODE
+               THRU AQCP0009-TRATA-RCODE-EXIT.
+
+            PERFORM AQCP0002-TRATA-SYNCPOINT
+               THRU AQCP0002-TRATA-SYNCPOINT-EXIT.
+
+           PERFORM AQCP0100-REG-FIM
+              THRU AQCP0100-REG-FIM-EXIT.
+
+       3000-FIM-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+           EXEC SQL INCLUDE AQCP0002 END-EXEC.
+      ******************************************************************
+           COPY AQCP0009.
+           COPY AQCP0109.
+           COPY VIAP0011.
+           COPY VIAP0012.
+           COPY VIAP0015.
+      ******************************************************************

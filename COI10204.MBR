@@ -1,0 +1,870 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI10204.
+      ******************************************************************
+      *     PROGRAMA COI10204.                                         *
+      *                                                                *
+      *     Detalhe de Ausência
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI10204         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD7601 END-EXEC.
+           EXEC SQL INCLUDE COCD7001 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+       01 WS-SQL-AUXILIARY.
+         05 IND-NULL                       PIC S9(04) BINARY.
+
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV1020.
+       COPY COCV1021.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+       COPY TGCL2000.
+       COPY EXCL0200.
+       COPY ETCL0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT7601 PIC X(08) VALUE 'COVT7601'.
+           05 CON-COVT7001 PIC X(08) VALUE 'COVT7001'.
+           05 CON-CTABELA-CPAIS  PIC X(05) VALUE 'AR047'.
+           05 CON-CTABELA-LNEG   PIC X(05) VALUE 'CO702'.
+           05 CON-MANUAL   PIC X(06) VALUE 'MANUAL'.
+           05 CON-IN       PIC X(02) VALUE 'IN'.
+           05 CON-AP       PIC X(02) VALUE 'AP'.
+           05 CON-01       PIC X(02) VALUE '01'.
+           05 CON-8        PIC 9(01) VALUE 8.
+           05 CON-SEP      PIC X(01) VALUE '-'.
+
+      *--------------------------------------------------------------
+      * PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'COI10204'.
+           05 WS-NIDPROJECTO       PIC X(10) VALUE SPACES.
+           05 WS-NHORAS            PIC 9(03) VALUE ZEROS.
+           05 WS-TOTAL             PIC 9(08) VALUE ZEROS.
+           05 WS-TOTALHORAS        PIC 9(08) VALUE ZEROS.
+           05 WS-TOTALHORAS-FERIAS PIC 9(08) VALUE ZEROS.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI10204         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV1020-MSG.
+           MOVE COCV1020-ASE               TO COCV1021-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1020-ADE               TO COCV1021-ADE.
+
+           PERFORM 2100-VALIDACOES
+              THRU 2199-VALIDACOES-EXIT
+
+      *--- Apaga registos que não estejam aprovados
+           IF  VIAL0002-SEM-ERROS
+               PERFORM 2140-APAGA-DADOS
+                  THRU 2140-APAGA-DADOS-EXIT
+           END-IF.
+
+      *--- Insere Ausências (se com dados)
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO1 NOT = SPACES
+           AND COCV1020-CSITU1       NOT = CON-AP
+               MOVE COCV1020-NIDPROJECTO1 TO WS-NIDPROJECTO
+               MOVE COCV1020-NHORAS1      TO WS-NHORAS
+               PERFORM 2150-INSERE-DADOS
+                  THRU 2150-INSERE-DADOS-EXIT
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO2 NOT = SPACES
+           AND COCV1020-CSITU2       NOT = CON-AP
+               MOVE COCV1020-NIDPROJECTO2 TO WS-NIDPROJECTO
+               MOVE COCV1020-NHORAS2      TO WS-NHORAS
+               PERFORM 2150-INSERE-DADOS
+                  THRU 2150-INSERE-DADOS-EXIT
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO3 NOT = SPACES
+           AND COCV1020-CSITU3       NOT = CON-AP
+               MOVE COCV1020-NIDPROJECTO3 TO WS-NIDPROJECTO
+               MOVE COCV1020-NHORAS3      TO WS-NHORAS
+               PERFORM 2150-INSERE-DADOS
+                  THRU 2150-INSERE-DADOS-EXIT
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO4 NOT = SPACES
+           AND COCV1020-CSITU4       NOT = CON-AP
+               MOVE COCV1020-NIDPROJECTO4 TO WS-NIDPROJECTO
+               MOVE COCV1020-NHORAS4      TO WS-NHORAS
+               PERFORM 2150-INSERE-DADOS
+                  THRU 2150-INSERE-DADOS-EXIT
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO5 NOT = SPACES
+           AND COCV1020-CSITU5       NOT = CON-AP
+               MOVE COCV1020-NIDPROJECTO5 TO WS-NIDPROJECTO
+               MOVE COCV1020-NHORAS5      TO WS-NHORAS
+               PERFORM 2150-INSERE-DADOS
+                  THRU 2150-INSERE-DADOS-EXIT
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO6 NOT = SPACES
+           AND COCV1020-CSITU6       NOT = CON-AP
+               MOVE COCV1020-NIDPROJECTO6 TO WS-NIDPROJECTO
+               MOVE COCV1020-NHORAS6      TO WS-NHORAS
+               PERFORM 2150-INSERE-DADOS
+                  THRU 2150-INSERE-DADOS-EXIT
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO7 NOT = SPACES
+           AND COCV1020-CSITU7       NOT = CON-AP
+               MOVE COCV1020-NIDPROJECTO7 TO WS-NIDPROJECTO
+               MOVE COCV1020-NHORAS7      TO WS-NHORAS
+               PERFORM 2150-INSERE-DADOS
+                  THRU 2150-INSERE-DADOS-EXIT
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO8 NOT = SPACES
+           AND COCV1020-CSITU8       NOT = CON-AP
+               MOVE COCV1020-NIDPROJECTO8 TO WS-NIDPROJECTO
+               MOVE COCV1020-NHORAS8      TO WS-NHORAS
+               PERFORM 2150-INSERE-DADOS
+                  THRU 2150-INSERE-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-CIDEMP EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-CIDEMP-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV1021-CIDEMP-MSG
+              MOVE COCK0002-CAPLIC        TO COCV1021-CIDEMP-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND (COCV1020-DDATAUS EQUAL SPACES
+           OR   COCV1020-DDATAUS EQUAL COCK0002-DATA-MIN)
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-DDATAUS-S
+              MOVE COCK0001-CAMPO-OBRIGAT TO COCV1021-DDATAUS-MSG
+              MOVE COCK0002-CAPLIC        TO COCV1021-DDATAUS-CAPLIC
+           END-IF.
+
+      *--- Valida se há Contas repetidas que não sejam espaços
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO1 NOT = SPACES
+           AND COCV1020-CSITU1       NOT = CON-AP
+           AND ( COCV1020-NIDPROJECTO1 = COCV1020-NIDPROJECTO2
+           OR    COCV1020-NIDPROJECTO1 = COCV1020-NIDPROJECTO3
+           OR    COCV1020-NIDPROJECTO1 = COCV1020-NIDPROJECTO4
+           OR    COCV1020-NIDPROJECTO1 = COCV1020-NIDPROJECTO5
+           OR    COCV1020-NIDPROJECTO1 = COCV1020-NIDPROJECTO6
+           OR    COCV1020-NIDPROJECTO1 = COCV1020-NIDPROJECTO7
+           OR    COCV1020-NIDPROJECTO1 = COCV1020-NIDPROJECTO8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO1-S
+              MOVE COCK0001-CONTA-REPET   TO COCV1021-NIDPROJECTO1-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO1-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO2 NOT = SPACES
+           AND COCV1020-CSITU2       NOT = CON-AP
+           AND ( COCV1020-NIDPROJECTO2 = COCV1020-NIDPROJECTO1
+           OR    COCV1020-NIDPROJECTO2 = COCV1020-NIDPROJECTO3
+           OR    COCV1020-NIDPROJECTO2 = COCV1020-NIDPROJECTO4
+           OR    COCV1020-NIDPROJECTO2 = COCV1020-NIDPROJECTO5
+           OR    COCV1020-NIDPROJECTO2 = COCV1020-NIDPROJECTO6
+           OR    COCV1020-NIDPROJECTO2 = COCV1020-NIDPROJECTO7
+           OR    COCV1020-NIDPROJECTO2 = COCV1020-NIDPROJECTO8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO2-S
+              MOVE COCK0001-CONTA-REPET   TO COCV1021-NIDPROJECTO2-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO2-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO3 NOT = SPACES
+           AND COCV1020-CSITU3       NOT = CON-AP
+           AND ( COCV1020-NIDPROJECTO3 = COCV1020-NIDPROJECTO1
+           OR    COCV1020-NIDPROJECTO3 = COCV1020-NIDPROJECTO2
+           OR    COCV1020-NIDPROJECTO3 = COCV1020-NIDPROJECTO4
+           OR    COCV1020-NIDPROJECTO3 = COCV1020-NIDPROJECTO5
+           OR    COCV1020-NIDPROJECTO3 = COCV1020-NIDPROJECTO6
+           OR    COCV1020-NIDPROJECTO3 = COCV1020-NIDPROJECTO7
+           OR    COCV1020-NIDPROJECTO3 = COCV1020-NIDPROJECTO8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO3-S
+              MOVE COCK0001-CONTA-REPET   TO COCV1021-NIDPROJECTO3-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO3-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO4 NOT = SPACES
+           AND COCV1020-CSITU4       NOT = CON-AP
+           AND ( COCV1020-NIDPROJECTO4 = COCV1020-NIDPROJECTO1
+           OR    COCV1020-NIDPROJECTO4 = COCV1020-NIDPROJECTO2
+           OR    COCV1020-NIDPROJECTO4 = COCV1020-NIDPROJECTO3
+           OR    COCV1020-NIDPROJECTO4 = COCV1020-NIDPROJECTO5
+           OR    COCV1020-NIDPROJECTO4 = COCV1020-NIDPROJECTO6
+           OR    COCV1020-NIDPROJECTO4 = COCV1020-NIDPROJECTO7
+           OR    COCV1020-NIDPROJECTO4 = COCV1020-NIDPROJECTO8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO4-S
+              MOVE COCK0001-CONTA-REPET   TO COCV1021-NIDPROJECTO4-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO4-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO5 NOT = SPACES
+           AND COCV1020-CSITU5       NOT = CON-AP
+           AND ( COCV1020-NIDPROJECTO5 = COCV1020-NIDPROJECTO1
+           OR    COCV1020-NIDPROJECTO5 = COCV1020-NIDPROJECTO2
+           OR    COCV1020-NIDPROJECTO5 = COCV1020-NIDPROJECTO3
+           OR    COCV1020-NIDPROJECTO5 = COCV1020-NIDPROJECTO4
+           OR    COCV1020-NIDPROJECTO5 = COCV1020-NIDPROJECTO6
+           OR    COCV1020-NIDPROJECTO5 = COCV1020-NIDPROJECTO7
+           OR    COCV1020-NIDPROJECTO5 = COCV1020-NIDPROJECTO8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO5-S
+              MOVE COCK0001-CONTA-REPET   TO COCV1021-NIDPROJECTO5-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO5-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO6 NOT = SPACES
+           AND COCV1020-CSITU6       NOT = CON-AP
+           AND ( COCV1020-NIDPROJECTO6 = COCV1020-NIDPROJECTO1
+           OR    COCV1020-NIDPROJECTO6 = COCV1020-NIDPROJECTO2
+           OR    COCV1020-NIDPROJECTO6 = COCV1020-NIDPROJECTO3
+           OR    COCV1020-NIDPROJECTO6 = COCV1020-NIDPROJECTO4
+           OR    COCV1020-NIDPROJECTO6 = COCV1020-NIDPROJECTO5
+           OR    COCV1020-NIDPROJECTO6 = COCV1020-NIDPROJECTO7
+           OR    COCV1020-NIDPROJECTO6 = COCV1020-NIDPROJECTO8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO6-S
+              MOVE COCK0001-CONTA-REPET   TO COCV1021-NIDPROJECTO6-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO6-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO7 NOT = SPACES
+           AND COCV1020-CSITU7       NOT = CON-AP
+           AND ( COCV1020-NIDPROJECTO7 = COCV1020-NIDPROJECTO1
+           OR    COCV1020-NIDPROJECTO7 = COCV1020-NIDPROJECTO2
+           OR    COCV1020-NIDPROJECTO7 = COCV1020-NIDPROJECTO3
+           OR    COCV1020-NIDPROJECTO7 = COCV1020-NIDPROJECTO4
+           OR    COCV1020-NIDPROJECTO7 = COCV1020-NIDPROJECTO5
+           OR    COCV1020-NIDPROJECTO7 = COCV1020-NIDPROJECTO6
+           OR    COCV1020-NIDPROJECTO7 = COCV1020-NIDPROJECTO8 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO7-S
+              MOVE COCK0001-CONTA-REPET   TO COCV1021-NIDPROJECTO7-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO7-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND COCV1020-NIDPROJECTO8 NOT = SPACES
+           AND COCV1020-CSITU8       NOT = CON-AP
+           AND ( COCV1020-NIDPROJECTO8 = COCV1020-NIDPROJECTO1
+           OR    COCV1020-NIDPROJECTO8 = COCV1020-NIDPROJECTO2
+           OR    COCV1020-NIDPROJECTO8 = COCV1020-NIDPROJECTO3
+           OR    COCV1020-NIDPROJECTO8 = COCV1020-NIDPROJECTO4
+           OR    COCV1020-NIDPROJECTO8 = COCV1020-NIDPROJECTO5
+           OR    COCV1020-NIDPROJECTO8 = COCV1020-NIDPROJECTO6
+           OR    COCV1020-NIDPROJECTO8 = COCV1020-NIDPROJECTO7 )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO8-S
+              MOVE COCK0001-CONTA-REPET   TO COCV1021-NIDPROJECTO8-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO8-CAPLIC
+           END-IF.
+
+      *--- Valida Conta versus Horas
+      *--- 01
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO1 NOT = SPACES
+           AND   COCV1020-NHORAS1          = ZEROS
+           AND   COCV1020-CSITU1       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS1-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NHORAS1-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NHORAS1-CAPLIC
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO1     = SPACES
+           AND   COCV1020-NHORAS1      NOT = ZEROS
+           AND   COCV1020-CSITU1       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO1-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NIDPROJECTO1-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO1-CAPLIC
+           END-IF.
+
+      *--- 02
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO2 NOT = SPACES
+           AND   COCV1020-NHORAS2          = ZEROS
+           AND   COCV1020-CSITU2       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS2-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NHORAS2-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NHORAS2-CAPLIC
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO2     = SPACES
+           AND   COCV1020-NHORAS2      NOT = ZEROS
+           AND   COCV1020-CSITU2       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO2-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NIDPROJECTO2-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO2-CAPLIC
+           END-IF.
+
+      *--- 03
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO3 NOT = SPACES
+           AND   COCV1020-NHORAS3          = ZEROS
+           AND   COCV1020-CSITU3       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS3-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NHORAS3-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NHORAS3-CAPLIC
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO3     = SPACES
+           AND   COCV1020-NHORAS3      NOT = ZEROS
+           AND   COCV1020-CSITU3       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO3-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NIDPROJECTO3-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO3-CAPLIC
+           END-IF.
+
+      *--- 04
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO4 NOT = SPACES
+           AND   COCV1020-NHORAS4          = ZEROS
+           AND   COCV1020-CSITU4       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS4-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NHORAS4-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NHORAS4-CAPLIC
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO4     = SPACES
+           AND   COCV1020-NHORAS4      NOT = ZEROS
+           AND   COCV1020-CSITU4       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO4-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NIDPROJECTO4-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO4-CAPLIC
+           END-IF.
+
+      *--- 05
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO5 NOT = SPACES
+           AND   COCV1020-NHORAS5          = ZEROS
+           AND   COCV1020-CSITU5       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS5-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NHORAS5-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NHORAS5-CAPLIC
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO5     = SPACES
+           AND   COCV1020-NHORAS5      NOT = ZEROS
+           AND   COCV1020-CSITU5       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO5-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NIDPROJECTO5-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO5-CAPLIC
+           END-IF.
+
+      *--- 06
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO6 NOT = SPACES
+           AND   COCV1020-NHORAS6          = ZEROS
+           AND   COCV1020-CSITU6       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS6-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NHORAS6-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NHORAS6-CAPLIC
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO6     = SPACES
+           AND   COCV1020-NHORAS6      NOT = ZEROS
+           AND   COCV1020-CSITU6       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO6-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NIDPROJECTO6-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO6-CAPLIC
+           END-IF.
+
+      *--- 07
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO7 NOT = SPACES
+           AND   COCV1020-NHORAS7          = ZEROS
+           AND   COCV1020-CSITU7       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS7-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NHORAS7-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NHORAS7-CAPLIC
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO7     = SPACES
+           AND   COCV1020-NHORAS7      NOT = ZEROS
+           AND   COCV1020-CSITU7       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO7-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NIDPROJECTO7-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO7-CAPLIC
+           END-IF.
+
+      *--- 08
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO8 NOT = SPACES
+           AND   COCV1020-NHORAS8          = ZEROS
+           AND   COCV1020-CSITU8       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS8-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NHORAS8-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NHORAS8-CAPLIC
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ( COCV1020-NIDPROJECTO8     = SPACES
+           AND   COCV1020-NHORAS8      NOT = ZEROS
+           AND   COCV1020-CSITU8       NOT = CON-AP )
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NIDPROJECTO8-S
+              MOVE COCK0001-SIMULT        TO COCV1021-NIDPROJECTO8-MSG
+              MOVE COCK0002-CAPLIC   TO COCV1021-NIDPROJECTO8-CAPLIC
+           END-IF.
+
+      *--- Numero total de horas não pode ser maior que 8
+           COMPUTE WS-TOTALHORAS = COCV1020-NHORAS1
+                                 + COCV1020-NHORAS2
+                                 + COCV1020-NHORAS3
+                                 + COCV1020-NHORAS4
+                                 + COCV1020-NHORAS5
+                                 + COCV1020-NHORAS6
+                                 + COCV1020-NHORAS7
+                                 + COCV1020-NHORAS8.
+
+           IF  VIAL0002-SEM-ERROS
+           AND WS-TOTALHORAS > CON-8
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+
+               IF COCV1020-NHORAS1 NOT = ZEROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS1-S
+                  MOVE COCK0001-TOTHOR-INV    TO COCV1021-NHORAS1-MSG
+                  MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS1-CAPLIC
+               END-IF
+
+               IF COCV1020-NHORAS2 NOT = ZEROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS2-S
+                  MOVE COCK0001-TOTHOR-INV    TO COCV1021-NHORAS2-MSG
+                  MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS2-CAPLIC
+               END-IF
+
+               IF COCV1020-NHORAS3 NOT = ZEROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS3-S
+                  MOVE COCK0001-TOTHOR-INV    TO COCV1021-NHORAS3-MSG
+                  MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS3-CAPLIC
+               END-IF
+
+               IF COCV1020-NHORAS4 NOT = ZEROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS4-S
+                  MOVE COCK0001-TOTHOR-INV    TO COCV1021-NHORAS4-MSG
+                  MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS4-CAPLIC
+               END-IF
+
+               IF COCV1020-NHORAS5 NOT = ZEROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS5-S
+                  MOVE COCK0001-TOTHOR-INV    TO COCV1021-NHORAS5-MSG
+                  MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS5-CAPLIC
+               END-IF
+
+               IF COCV1020-NHORAS6 NOT = ZEROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS6-S
+                  MOVE COCK0001-TOTHOR-INV    TO COCV1021-NHORAS6-MSG
+                  MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS6-CAPLIC
+               END-IF
+
+               IF COCV1020-NHORAS7 NOT = ZEROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS7-S
+                  MOVE COCK0001-TOTHOR-INV    TO COCV1021-NHORAS7-MSG
+                  MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS7-CAPLIC
+               END-IF
+
+               IF COCV1020-NHORAS8 NOT = ZEROS
+                  MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS8-S
+                  MOVE COCK0001-TOTHOR-INV    TO COCV1021-NHORAS8-MSG
+                  MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS8-CAPLIC
+               END-IF
+
+           END-IF.
+
+      *--- Valida se o total horas de ausências mais o total de horas
+      *--- de férias não pode ultrapassar 8
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2130-VER-FERIAS     THRU 2130-VER-FERIAS-EXIT
+              COMPUTE WS-TOTAL = WS-TOTALHORAS + WS-TOTALHORAS-FERIAS
+              IF WS-TOTAL > CON-8
+                 MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+
+                 IF COCV1020-NHORAS1 NOT = ZEROS
+                    MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS1-S
+                    MOVE COCK0001-TOTHOR-INVF   TO COCV1021-NHORAS1-MSG
+                    MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS1-CAPLIC
+                 END-IF
+
+                 IF COCV1020-NHORAS2 NOT = ZEROS
+                    MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS2-S
+                    MOVE COCK0001-TOTHOR-INVF   TO COCV1021-NHORAS2-MSG
+                    MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS2-CAPLIC
+                 END-IF
+
+                 IF COCV1020-NHORAS3 NOT = ZEROS
+                    MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS3-S
+                    MOVE COCK0001-TOTHOR-INVF   TO COCV1021-NHORAS3-MSG
+                    MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS3-CAPLIC
+                 END-IF
+
+                 IF COCV1020-NHORAS4 NOT = ZEROS
+                    MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS4-S
+                    MOVE COCK0001-TOTHOR-INVF   TO COCV1021-NHORAS4-MSG
+                    MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS4-CAPLIC
+                 END-IF
+
+                 IF COCV1020-NHORAS5 NOT = ZEROS
+                    MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS5-S
+                    MOVE COCK0001-TOTHOR-INVF   TO COCV1021-NHORAS5-MSG
+                    MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS5-CAPLIC
+                 END-IF
+
+                 IF COCV1020-NHORAS6 NOT = ZEROS
+                    MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS6-S
+                    MOVE COCK0001-TOTHOR-INVF   TO COCV1021-NHORAS6-MSG
+                    MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS6-CAPLIC
+                 END-IF
+
+                 IF COCV1020-NHORAS7 NOT = ZEROS
+                    MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS7-S
+                    MOVE COCK0001-TOTHOR-INVF   TO COCV1021-NHORAS7-MSG
+                    MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS7-CAPLIC
+                 END-IF
+
+                 IF COCV1020-NHORAS8 NOT = ZEROS
+                    MOVE COCK0002-STATUS-ACTIVO TO COCV1021-NHORAS8-S
+                    MOVE COCK0001-TOTHOR-INVF   TO COCV1021-NHORAS8-MSG
+                    MOVE COCK0002-CAPLIC     TO COCV1021-NHORAS8-CAPLIC
+                 END-IF
+
+              END-IF
+           END-IF.
+
+       2199-VALIDACOES-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2130-VER-FERIAS
+      *--------------------------------------------------------------
+       2130-VER-FERIAS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2130-VER-FERIAS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1020-CIDEMP   TO COCD7001-CIDEMP.
+           MOVE COCV1020-DDATAUS  TO COCD7001-DFERIAS.
+
+           EXEC SQL
+                SELECT CIDEMP
+                     , DFERIAS
+                     , ZHORAS
+                 INTO  :COCD7001-CIDEMP
+                    ,  :COCD7001-DFERIAS
+                    ,  :COCD7001-ZHORAS
+                 FROM COVT7001
+                 WHERE CIDEMP   = :COCD7001-CIDEMP
+                 AND   DFERIAS  = :COCD7001-DFERIAS
+                 FETCH FIRST ROW ONLY
+           END-EXEC.
+
+           MOVE CON-COVT7001
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 COMPUTE WS-TOTALHORAS-FERIAS = COCD7001-ZHORAS
+              END-IF
+           END-IF.
+
+       2130-VER-FERIAS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2140-APAGA-DADOS
+      *--------------------------------------------------------------
+       2140-APAGA-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1020-CIDEMP   TO COCD7601-CIDEMP.
+           MOVE COCV1020-DDATAUS  TO COCD7601-DDATAUS.
+
+           EXEC SQL
+                 DELETE FROM COVT7601
+                 WHERE CIDEMP  = :COCD7601-CIDEMP
+                 AND   DDATAUS = :COCD7601-DDATAUS
+                 AND   CSITU   = :CON-IN
+           END-EXEC.
+
+           MOVE CON-COVT7601 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+              OR DB2-NOTFND
+                 CONTINUE
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2140-APAGA-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2150-INSERE-DADOS
+      *--------------------------------------------------------------
+       2150-INSERE-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2150-INSERE-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1020-CIDEMP
+             TO COCD7601-CIDEMP.
+           MOVE COCV1020-DDATAUS
+             TO COCD7601-DDATAUS.
+           MOVE WS-NIDPROJECTO
+             TO COCD7601-NIDPROJECTO.
+           MOVE WS-NHORAS
+             TO COCD7601-NHORAS.
+           MOVE CON-IN
+             TO COCD7601-CSITU.
+           MOVE VIAL0001-CUTILIZA-I
+             TO COCD7601-CUSERID.
+           MOVE SPACES
+             TO COCD7601-HTIMEST.
+           MOVE SPACES
+             TO COCD7601-CUSERAPR.
+           MOVE COCK0002-DATA-MIN
+             TO COCD7601-DDATAPR
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2550-INSERE-REGISTO
+                 THRU 2550-INSERE-REGISTO-EXIT
+           END-IF.
+
+
+       2150-INSERE-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2550-INSERE-REGISTO
+      *--------------------------------------------------------------
+       2550-INSERE-REGISTO.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2550-INSERE-REGISTO' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+
+           EXEC SQL
+                 INSERT INTO COVT7601
+                (
+                   CIDEMP
+                 , DDATAUS
+                 , NIDPROJECTO
+                 , NHORAS
+                 , CSITU
+                 , CUSERAPR
+                 , DDATAPR
+                 , CUSERID
+                 , HTIMEST
+                )
+                VALUES (
+                       :COCD7601-CIDEMP
+                     , :COCD7601-DDATAUS
+                     , :COCD7601-NIDPROJECTO
+                     , :COCD7601-NHORAS
+                     , :COCD7601-CSITU
+                     , :COCD7601-CUSERAPR
+                     , :COCD7601-DDATAPR
+                     , :COCD7601-CUSERID
+                     , CURRENT_TIMESTAMP
+                )
+           END-EXEC
+
+              MOVE CON-COVT7601  TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-DUPREC
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                 ELSE
+                    IF NOT DB2-OK
+                       MOVE VIAK0002-ABEND-DB2
+                         TO VIAL0002-IND-ERROS
+                       MOVE VIAK0001-ERRO-DB2
+                         TO VIAL0002-COD-ERRO-GRAVE
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+       2550-INSERE-REGISTO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1021-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV1021-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV1021-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+           COPY VIAP0016.
+           COPY TGCP2000.
+           COPY EXCP0200.

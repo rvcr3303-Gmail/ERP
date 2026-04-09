@@ -1,0 +1,351 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. COB50020.
+
+      ******************************************************************
+      *                       ADMINISTRATIVO                           *
+      ******************************************************************
+      * OBJECTIVO: Envia campanhas                                     *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       01  FILLER                       PIC  X(40)
+            VALUE 'INICIO WORKING-STORAGE DO COB50020      '.
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC  X(10)  VALUE 'COB50020'.
+           05 WS-CON-PROG-ID            PIC  X(10)  VALUE 'COB50020'.
+           05 WS-COVT0201               PIC  X(10)  VALUE 'COVT0201'.
+           05 WS-QCMDEXC                PIC  X(10)  VALUE 'QCMDEXC'.
+           05 WS-DLYJOB                 PIC  X(10)  VALUE 'DLYJOB'.
+           05 WS-VIAR0075               PIC  X(10)  VALUE 'VIAR0075'.
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-PARAGRAPH-NAME         PIC  X(30)  VALUE  SPACES.
+           05 WS-COMMAND                PIC  X(80).
+           05 WS-LENGTH                 PIC S9(10)V9(05) COMP-3.
+           05 WS-DECISAO                PIC  X(01).
+              88 WS-DECISAO-WAIT                    VALUE 'W'.
+              88 WS-DECISAO-GO                      VALUE 'G'.
+           05 WS-DELAY-X.
+              10 WS-DELAY               PIC  9(11).
+              10 FILLER                 PIC  X(39).
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY ATCK0001.
+           COPY ARCK0001.
+           COPY ARCK0002.
+           COPY ARCL2205.
+           COPY ARCL2705.
+           COPY COCK0001.
+           COPY COCK0002.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIATK001.
+           COPY VIAW0012.
+           COPY VIAW0030.
+           COPY VIAL0002.
+           COPY ETCL0002.
+           COPY VIAL0100.
+           COPY VIAL0015.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+           EXEC SQL INCLUDE COCD0201 END-EXEC.
+
+           EXEC SQL
+                DECLARE CRS_COT02 CURSOR WITH HOLD FOR
+                 SELECT CCONTACT
+                      , CENTITY
+                      , GNOME
+                      , GNOMFIRST
+                      , GNOMLAST
+                      , GEMAIL
+                      , CLIST
+                      FROM COVT0201_CONTACTS
+                      WHERE IEXCLUDE <> "S"
+                      ORDER BY CCONTACT
+           END-EXEC.
+
+      ******************************************************************
+       01  FILLER         PIC X(40) VALUE 'FIM DA WORKING-STORAGE'.
+
+      *****************************************************************
+       PROCEDURE DIVISION.
+      *****************************************************************
+      *              P R O C E D U R E   D I V I S I O N              *
+      *****************************************************************
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ATCK0001-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           INITIALIZE                           WS-VARIAVEIS.
+
+           PERFORM 1100-VALIDAR-DADOS-INPUT
+              THRU 1100-VALIDAR-DADOS-INPUT-EXIT.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDAR-DADOS-INPUT.
+      ******************************************************************
+           IF VIAL0015-DEBUG-SIM
+             MOVE '2000-PROC-PROGRAMAS     '  TO VIAL0015-CALLER-ID
+             PERFORM VIAP0015-TRATA-DEBUG
+                THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+                DELETE FROM VIAFMAIL
+                WHERE 1 = 1
+           END-EXEC.
+
+           MOVE SQLCODE                     TO VIAW0012-SQLCODE
+      *
+       1100-VALIDAR-DADOS-INPUT-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+           IF VIAL0015-DEBUG-SIM
+             MOVE '2000-PROC-PROGRAMA      '  TO VIAL0015-CALLER-ID
+             PERFORM VIAP0015-TRATA-DEBUG
+                THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           PERFORM 2100-OPEN-CRS-COT02
+              THRU 2100-OPEN-CRS-COT02-EXIT.
+
+           IF ATCK0001-SEM-ERROS
+              PERFORM 2200-FETCH-CRS-COT02
+                 THRU 2200-FETCH-CRS-COT02-EXIT
+           END-IF.
+
+           PERFORM 2300-ENVIA-CAMPANHA
+              THRU 2300-ENVIA-CAMPANHA-EXIT
+                 UNTIL NOT ATCK0001-SEM-ERROS
+                    OR NOT DB2-OK.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2300-ENVIA-CAMPANHA.
+      ******************************************************************
+           IF VIAL0015-DEBUG-SIM
+             MOVE '2000-PROC-PROGRAMA      '  TO VIAL0015-CALLER-ID
+             PERFORM VIAP0015-TRATA-DEBUG
+                THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF ATCK0001-SEM-ERROS
+              IF COCD0201-GEMAIL NOT EQUAL SPACES AND
+                 COCD0201-CLIST  NOT EQUAL SPACES
+                PERFORM 2300-ENVIA-EMAIL
+                   THRU 2300-ENVIA-EMAIL-EXIT
+              END-IF
+           END-IF.
+
+           IF ATCK0001-SEM-ERROS
+              PERFORM 2200-FETCH-CRS-COT02
+                 THRU 2200-FETCH-CRS-COT02-EXIT
+           END-IF.
+
+       2300-ENVIA-CAMPANHA-EXIT.
+           EXIT.
+      *****************************************************************
+       2100-OPEN-CRS-COT02.
+      *****************************************************************
+
+           EXEC SQL
+                OPEN CRS_COT02
+           END-EXEC.
+
+           MOVE SQLCODE                     TO VIAW0012-SQLCODE
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT
+
+           IF DB2-OK
+              CONTINUE
+           ELSE
+              IF NOT DB2-NOTFND
+                 SET  VIAW0030-DB2-ERROR   TO TRUE
+                 SET  VIAW0012-ABEND-DB2   TO TRUE
+                 MOVE WS-CON-PROG-ID       TO VIAW0030-PGMNAME
+                 MOVE WS-PARAGRAPH-NAME    TO VIAW0030-PARAGRAPH-NAME
+                 MOVE VIAW0012-TABLE-NAME  TO VIAW0030-TABLE-NAME
+                 MOVE VIAW0012-SQLCODE     TO VIAW0030-SQLCODE
+                 MOVE SPACES               TO VIAW0030-ACCESS-KEY
+                 MOVE 'ERRO NO FETCH DO CURSOR'
+                                           TO VIAW0030-DESC1
+                 MOVE 'CUR0001T01'
+                                           TO VIAW0030-DESC2
+                 PERFORM VIAP0030-ESCREVE-SPOOL
+                 THRU VIAP0030-ESCREVE-SPOOL-EXIT
+                 PERFORM 9990-ABEND
+                    THRU 9999-ABEND-EXIT
+              END-IF
+            END-IF.
+
+       2100-OPEN-CRS-COT02-EXIT.
+           EXIT.
+      *****************************************************************
+       2200-FETCH-CRS-COT02.
+      *****************************************************************
+           EXEC SQL
+               FETCH CRS_COT02
+                INTO :COCD0201-CCONTACT
+                   , :COCD0201-CENTITY
+                   , :COCD0201-GNOME
+                   , :COCD0201-GNOMFIRST
+                   , :COCD0201-GNOMLAST
+                   , :COCD0201-GEMAIL
+                   , :COCD0201-CLIST
+           END-EXEC.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT
+
+           IF DB2-OK
+             CONTINUE
+           ELSE
+              IF NOT DB2-NOTFND
+                 SET  VIAW0030-DB2-ERROR   TO TRUE
+                 SET  VIAW0012-ABEND-DB2   TO TRUE
+                 MOVE WS-CON-PROG-ID       TO VIAW0030-PGMNAME
+                 MOVE WS-PARAGRAPH-NAME    TO VIAW0030-PARAGRAPH-NAME
+                 MOVE VIAW0012-TABLE-NAME  TO VIAW0030-TABLE-NAME
+                 MOVE VIAW0012-SQLCODE     TO VIAW0030-SQLCODE
+                 MOVE SPACES               TO VIAW0030-ACCESS-KEY
+                 MOVE 'ERRO NO FETCH DO CURSOR'
+                                           TO VIAW0030-DESC1
+                 MOVE 'CUR0001T01'
+                                           TO VIAW0030-DESC2
+                 PERFORM VIAP0030-ESCREVE-SPOOL
+                 THRU VIAP0030-ESCREVE-SPOOL-EXIT
+                 PERFORM 9990-ABEND
+                    THRU 9999-ABEND-EXIT
+              END-IF
+            END-IF.
+
+       2200-FETCH-CRS-COT02-EXIT.
+           EXIT.
+      *****************************************************************
+       2500-CLOSE-CRS-COT02.
+      *****************************************************************
+           EXEC SQL
+                CLOSE CRS_COT02
+           END-EXEC.
+
+       2500-CLOSE-CRS-COT02-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2300-ENVIA-EMAIL.
+      ******************************************************************
+           INITIALIZE ARCL2705-DATA         REPLACING NUMERIC BY ZEROES
+                                                 ALPHANUMERIC BY SPACES.
+           MOVE COCD0201-CLIST              TO ARCL2705-CCOD.
+           MOVE COCD0201-GEMAIL             TO ARCL2705-CTO.
+           MOVE COCD0201-GNOMFIRST          TO ARCL2705-VALOR(1).
+           MOVE COCD0201-GNOMLAST           TO ARCL2705-VALOR(2).
+           MOVE '#303#'                     TO ARCL2705-VALOR(3).
+
+           CALL ARCL2705-ROTINA USING ARCL2705-DATA
+                                      VIAL0002-COMMAREA
+           ON EXCEPTION
+              SET  VIAL0002-ABEND           TO TRUE
+      **R     MOVE VIAK0001-PROG-NOTFND     TO VIAL0002-NR-ERRO
+      **R     SET ATCK0001-IND-ERROS
+      **R     MOVE VIAL0002-IND-ERROS       TO VIAL0002-CAPLIC-ERRO
+      **R     MOVE ARCL2705-ROTINA          TO VIAL0002-GINFO-ERRO
+           END-CALL.
+
+           IF NOT VIAL0002-SEM-ERROS
+             SET ATCK0001-ABEND TO TRUE
+           END-IF.
+
+       2300-ENVIA-EMAIL-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           IF VIAL0015-DEBUG-SIM
+             MOVE '3000-FIM-PROGRAMA       '  TO VIAL0015-CALLER-ID
+             PERFORM VIAP0015-TRATA-DEBUG
+                THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+      *    IF ATCK0001-SEM-ERROS
+      *       CALL WS-VIAR0075
+      *    END-IF.
+
+            EXEC SQL COMMIT END-EXEC.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0012 END-EXEC.
+           EXEC SQL INCLUDE VIAP0030 END-EXEC.
+           EXEC SQL INCLUDE VIAP9999 END-EXEC.
+
+      ******************************************************************
+           COPY ARCR2206.
+           COPY VIAP0015.
+
+      ******************************************************************
