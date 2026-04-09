@@ -1,0 +1,426 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI80206.
+      ******************************************************************
+      *     PROGRAMA ARI80206.                                         *
+      *                                                                *
+      *     Utilizadores
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI80206         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD0103 END-EXEC.
+           EXEC SQL INCLUDE ARCD0200 END-EXEC.
+           EXEC SQL INCLUDE ARCD2000 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV8020.
+       COPY ARCV8021.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+      *
+       COPY ARCL2505.
+       COPY ETCL0002.
+      *
+DBG    COPY TGCL1000.
+DBG    COPY TGCL2000.
+DBG    COPY TGCK0002.
+      *
+       COPY VIAL1030.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT0103           PIC X(08) VALUE 'ARVT0103'.
+           05 CON-ARVT0200           PIC X(08) VALUE 'ARVT0200'.
+           05 CON-ARVT2000           PIC X(08) VALUE 'ARVT2000'.
+           05 WS-PROGNAME            PIC X(08) VALUE 'ARI80206'.
+DBG        05 CON-CTABELA-CLINGUA    PIC X(05) VALUE 'AR001'.
+DBG        05 CON-CTABELA-ISTATUS    PIC X(05) VALUE 'AR007'.
+           05 CON-CTABELA-CTIPOUTIL  PIC X(05) VALUE 'AR066'.
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 AUX-CPERFIL            PIC X(12).
+           05 WS-CPERFIL             PIC X(12).
+DBG        05 WS-CTABELA                   PIC X(05) VALUE SPACES.
+DBG        05 WS-CCOD                      PIC X(40) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI80206         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV8020-MSG.
+           MOVE ARCV8020-ASE               TO ARCV8021-ASE.
+           MOVE ARCV8020-ADE               TO ARCV8021-ADE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           PERFORM 2100-VALIDACOES
+              THRU 2199-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-MODIFICA-DADOS
+                 THRU 2200-MODIFICA-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES     ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+      * Valida se o perfil introduzido é master, se for dá erro
+           PERFORM 2110-VALIDA-PERFILMASTER
+              THRU 2110-VALIDA-PERFILMASTER-EXIT.
+
+      * Valida o email
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2150-VALIDA-EMAIL
+                 THRU 2150-VALIDA-EMAIL-EXIT
+           END-IF.
+
+       2199-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2110-VALIDA-PERFILMASTER
+      *--------------------------------------------------------------
+       2110-VALIDA-PERFILMASTER.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-VALIDA-PERFILMASTER' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV8020-CPERFIL     TO ARCD2000-CPERFIL
+
+           EXEC SQL
+             SELECT   CPERFIL
+                    , INDPERM
+                    , CPERFILM
+               INTO  :ARCD2000-CPERFIL
+                    ,:ARCD2000-INDPERM
+                    ,:ARCD2000-CPERFILM
+               FROM ARVT2002_INFPERFIL
+              WHERE CPERFIL = :ARCD2000-CPERFIL
+           END-EXEC
+
+           MOVE CON-ARVT2000         TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV8021-CPERFIL-S
+                 MOVE ARCK0001-ERR-CPERFIL
+                   TO ARCV8021-CPERFIL-MSG
+                 MOVE ARCK0002-CAPLIC-AR
+                   TO ARCV8021-CPERFIL-CAPLIC
+              END-IF
+
+              IF DB2-OK AND
+                 ARCD2000-INDPERM NOT EQUAL ARCK0002-N-PERFIL-MASTER
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV8021-CPERFIL-S
+                 MOVE ARCK0001-ESTE-PER-AESTEUSER-N
+                   TO ARCV8021-CPERFIL-MSG
+                 MOVE ARCK0002-CAPLIC-AR
+                   TO ARCV8021-CPERFIL-CAPLIC
+              END-IF
+           END-IF.
+
+       2110-VALIDA-PERFILMASTER-EXIT.
+           EXIT.
+
+      *-------------------------------------------------------------*
+      *                   2150-VALIDA-EMAIL                         *
+      *-------------------------------------------------------------*
+       2150-VALIDA-EMAIL.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2150-VALIDA-EMAIL      ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE VIAL1030-COMMAREA.
+
+           MOVE ARCV8020-GEMAIL              TO VIAL1030-EMAIL.
+
+           CALL VIAL1030-NM-ROTINA USING VIAL1030-COMMAREA
+                                         ETCL0002-COMMAREA.
+
+           IF NOT ETCL0002-SEM-ERROS
+              MOVE ETCL0002-IND-ERROS
+                TO VIAL0002-IND-ERROS
+              MOVE ARCK0002-STATUS-ACTIVO
+                TO ARCV8021-GEMAIL-S
+              MOVE ETCL0002-NR-ERRO
+                TO ARCV8021-GEMAIL-MSG
+              MOVE ETCL0002-CAPLIC-ERRO
+                TO ARCV8021-GEMAIL-CAPLIC
+           END-IF.
+
+       2150-VALIDA-EMAIL-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2200-MODIFICA-DADOS
+      *--------------------------------------------------------------
+       2200-MODIFICA-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-MODIFICA-DADOS        ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV8020-GUSERNAME
+             TO ARCD0103-GUSERNAME
+           MOVE ARCV8020-CNOME
+             TO ARCD0103-CNOME
+           MOVE ARCV8020-CFUNCAO
+             TO ARCD0103-CFUNCAO
+           MOVE ARCV8020-CTIPOUTIL
+             TO ARCD0103-CTIPOUTIL
+           MOVE ARCV8020-CPERFIL
+             TO ARCD0103-CPERFIL
+           MOVE ARCV8020-CLINGUA
+             TO ARCD0103-CLINGUA
+           MOVE ARCV8020-CEMPRESA
+             TO ARCD0103-CEMPRESA
+           MOVE ARCV8020-GEMAIL
+             TO ARCD0103-GEMAIL
+           MOVE ARCV8020-ISTATUS
+             TO ARCD0103-ISTATUS
+           MOVE SPACES
+             TO ARCD0103-CCENTRO
+           MOVE SPACES
+             TO ARCD0103-CMOED
+           MOVE SPACES
+             TO ARCD0103-MCUSTMED
+           MOVE ARCV8020-DDATINI
+             TO ARCD0103-DDATINI
+           MOVE ARCV8020-DDATFIM
+             TO ARCD0103-DDATFIM
+           MOVE VIAL0001-CUTILIZA-I
+             TO ARCD0103-CUSERID
+
+           EXEC SQL
+                 UPDATE
+                ARVT0103
+                SET
+                       CNOME = :ARCD0103-CNOME
+                     , CFUNCAO = :ARCD0103-CFUNCAO
+                     , CPERFIL = :ARCD0103-CPERFIL
+                     , CLINGUA = :ARCD0103-CLINGUA
+                     , ISTATUS = :ARCD0103-ISTATUS
+                     , CEMPRESA = :ARCD0103-CEMPRESA
+                     , CCENTRO = :ARCD0103-CCENTRO
+                     , CMOED = :ARCD0103-CMOED
+                     , MCUSTMED = :ARCD0103-MCUSTMED
+                     , DDATINI = :ARCD0103-DDATINI
+                     , DDATFIM = :ARCD0103-DDATFIM
+                     , CUSERID = :ARCD0103-CUSERID
+                     , HTIMEST = CURRENT TIMESTAMP
+                     , GEMAIL = :ARCD0103-GEMAIL
+                     , CTIPOUTIL = :ARCD0103-CTIPOUTIL
+                 WHERE
+                    UPPER(GUSERNAME) = UPPER(:ARCD0103-GUSERNAME)
+           END-EXEC
+
+           MOVE CON-ARVT0103               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV8021-GUSERNAME-S
+                 MOVE ARCK0001-GUSERNAME-N-EXISTS
+                   TO ARCV8021-GUSERNAME-MSG
+                 MOVE ARCK0002-CAPLIC-AR
+                   TO ARCV8021-GUSERNAME-CAPLIC
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF
+           .
+
+       2200-MODIFICA-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+CDT   *    IF VIAL0002-SEM-ERROS
+      *       PERFORM 3100-VAL-CAMPOS
+      *          THRU 3100-VAL-CAMPOS-EXIT
+CDT   *    END-IF.
+
+           MOVE ARCV8021-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV8021-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV8021-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   3100-VAL-CAMPOS
+      *--------------------------------------------------------------
+       3100-VAL-CAMPOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3100-VAL-CAMPOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+
+           IF VIAL0002-SEM-ERROS AND ARCV8020-CLINGUA NOT EQUAL SPACES
+              MOVE CON-CTABELA-CLINGUA         TO WS-CTABELA
+              MOVE ARCV8020-CLINGUA            TO WS-CCOD
+              PERFORM 3200-VAL-TAB-ART05
+                 THRU 3200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S       TO ARCV8021-CLINGUA-S
+                 MOVE TGCL2000-CCOD-CAPLIC  TO ARCV8021-CLINGUA-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG     TO ARCV8021-CLINGUA-MSG
+                 MOVE TGCL2000-GDESC        TO ARCV8021-XDESCCLINGUA
+              ELSE
+                 MOVE TGCL2000-GDESC        TO ARCV8020-XDESCCLINGUA
+              END-IF
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS AND ARCV8020-ISTATUS NOT EQUAL SPACES
+              MOVE CON-CTABELA-ISTATUS         TO WS-CTABELA
+              MOVE ARCV8020-ISTATUS            TO WS-CCOD
+              PERFORM 3200-VAL-TAB-ART05
+                 THRU 3200-VAL-TAB-ART05-EXIT
+              IF NOT VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-CCOD-S       TO ARCV8021-ISTATUS-S
+                 MOVE TGCL2000-CCOD-CAPLIC  TO ARCV8021-ISTATUS-CAPLIC
+                 MOVE TGCL2000-CCOD-MSG     TO ARCV8021-ISTATUS-MSG
+                 MOVE TGCL2000-GDESC        TO ARCV8021-XDESCISTATUS
+              ELSE
+                 MOVE TGCL2000-GDESC        TO ARCV8020-XDESCISTATUS
+              END-IF
+           END-IF.
+      *
+
+       3100-VAL-CAMPOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   3200-VAL-TAB-ART05
+      *--------------------------------------------------------------
+       3200-VAL-TAB-ART05.
+      *
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3200-VAL-TAB-ART05' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE TGCL2000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL2000-CTABELA
+           MOVE WS-CCOD                   TO TGCL2000-CCOD
+
+           PERFORM CALL-TGCP2000
+              THRU CALL-TGCP2000-EXIT.
+
+       3200-VAL-TAB-ART05-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0015.
+           COPY VIAP0016.
+CDT        COPY TGCP1000.
+CDT        COPY TGCP2000.
+

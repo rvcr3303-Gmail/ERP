@@ -1,0 +1,232 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI10302.
+      ******************************************************************
+      *     PROGRAMA ARI10302.
+      *
+      *     Registo de licenças
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI10302         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD4600 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV1030.
+       COPY ARCV1031.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+      *
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT4600 PIC X(08) VALUE 'ARVT4600'.
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'ARI10302'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI10302         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV1030-MSG.
+           MOVE ARCV1030-ASE       TO ARCV1031-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV1030-ADE       TO ARCV1031-ADE.
+
+
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF
+
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV1030-CAPLIC
+             TO ARCD4600-CAPLIC
+           MOVE ARCV1030-NLICENCA
+             TO ARCD4600-NLICENCA
+
+           EXEC SQL
+                 SELECT
+                       CAPLIC
+                     , NLICENCA
+                     , CUSERID
+                     , HTIMEST
+                 INTO
+                       :ARCD4600-CAPLIC
+                     , :ARCD4600-NLICENCA
+                     , :ARCD4600-CUSERID
+                     , :ARCD4600-HTIMEST
+                 FROM ARVT4600
+                 WHERE
+                    CAPLIC = :ARCD4600-CAPLIC
+                     AND NLICENCA = :ARCD4600-NLICENCA
+           END-EXEC
+
+
+           MOVE CON-ARVT4600
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1031-CAPLIC-S
+                    MOVE ARCK0001-CAPLIC-EXISTS
+                      TO ARCV1031-CAPLIC-MSG
+                    MOVE ARCK0002-CAPLIC
+                      TO ARCV1031-CAPLIC-CAPLIC
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1031-NLICENCA-S
+                    MOVE ARCK0001-NLICENCA-EXISTS
+                      TO ARCV1031-NLICENCA-MSG
+                    MOVE ARCK0002-CAPLIC
+                      TO ARCV1031-NLICENCA-CAPLIC
+                 ELSE
+                    MOVE ARCD4600-CAPLIC
+                      TO ARCV1031-CAPLIC
+                    MOVE ARCD4600-NLICENCA
+                      TO ARCV1031-NLICENCA
+                    IF NOT VIAL0001-VISUALIZACAO
+                        CONTINUE
+                    END-IF
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1031-CAPLIC-S
+                    MOVE ARCK0001-CAPLIC-N-EXISTS
+                      TO ARCV1031-CAPLIC-MSG
+                    MOVE ARCK0002-CAPLIC
+                      TO ARCV1031-CAPLIC-CAPLIC
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1031-NLICENCA-S
+                    MOVE ARCK0001-NLICENCA-N-EXISTS
+                      TO ARCV1031-NLICENCA-MSG
+                    MOVE ARCK0002-CAPLIC
+                      TO ARCV1031-NLICENCA-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+
+
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV1031-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV1031-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV1031-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

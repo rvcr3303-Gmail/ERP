@@ -1,0 +1,237 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI10602.
+      ******************************************************************
+      *     PROGRAMA ARI10602.
+      *
+      *     Utilizadores
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI10602         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD0100 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV1060.
+       COPY ARCV1061.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+CDT    COPY TGCL1000.
+CDT    COPY TGCL2000.
+CDT    COPY TGCK0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT0100                 PIC X(08) VALUE 'ARVT0100'.
+           05 WS-PROGNAME                  PIC X(08) VALUE 'ARI10602'.
+CDT        05 CON-CTABELA-CLINGUA          PIC X(05) VALUE 'AR001'.
+CDT        05 CON-CTABELA-ISTATUS          PIC X(05) VALUE 'AR007'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI10602         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV1060-MSG.
+           MOVE ARCV1060-ASE               TO ARCV1061-ASE.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 1100-VALIDACOES
+                 THRU 1199-VALIDACOES-EXIT
+           END-IF.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-VALIDACOES
+      *--------------------------------------------------------------
+       1100-VALIDACOES.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF FUNCTION UPPER-CASE(ARCV1060-GUSERNAME) EQUAL
+                 FUNCTION UPPER-CASE(VIAL0001-CUTILIZA-I)
+                 MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                                           TO ARCV1061-GUSERNAME-S
+                 MOVE ARCK0001-N-ALTERA-USER
+                                           TO ARCV1061-GUSERNAME-MSG
+              END-IF
+           END-IF.
+      *
+       1199-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           MOVE ARCV1060-ADE               TO ARCV1061-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+
+           MOVE ARCV1060-GUSERNAME         TO ARCD0100-GUSERNAME
+
+           EXEC SQL
+                 SELECT
+                       GUSERNAME
+                     , CNOME
+                     , CFUNCAO
+                     , CPERFIL
+                     , CLINGUA
+                     , GPASSWORD
+                     , ISTATUS
+                     , CEMPRESA
+                     , CCENTRO
+                     , CMOED
+                     , MCUSTMED
+                     , DDATINI
+                     , DDATFIM
+                     , CUSERID
+                     , HTIMEST
+                 INTO
+                       :ARCD0100-GUSERNAME
+                     , :ARCD0100-CNOME
+                     , :ARCD0100-CFUNCAO
+                     , :ARCD0100-CPERFIL
+                     , :ARCD0100-CLINGUA
+                     , :ARCD0100-GPASSWORD
+                     , :ARCD0100-ISTATUS
+                     , :ARCD0100-CEMPRESA
+                     , :ARCD0100-CCENTRO
+                     , :ARCD0100-CMOED
+                     , :ARCD0100-MCUSTMED
+                     , :ARCD0100-DDATINI
+                     , :ARCD0100-DDATFIM
+                     , :ARCD0100-CUSERID
+                     , :ARCD0100-HTIMEST
+                 FROM ARVT0100_UTILIZADOR
+                 WHERE UPPER(GUSERNAME) = UPPER(:ARCD0100-GUSERNAME)
+           END-EXEC
+
+           MOVE CON-ARVT0100               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND AND NOT VIAL0001-CRIACAO
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV1061-GUSERNAME-S
+                 MOVE ARCK0001-GUSERNAME-N-EXISTS
+                   TO ARCV1061-GUSERNAME-MSG
+              END-IF
+              IF DB2-OK
+                 MOVE ARCD0100-GUSERNAME   TO ARCV1061-GUSERNAME
+                 MOVE ARCD0100-CNOME       TO ARCV1061-CNOME
+                 MOVE ARCD0100-CFUNCAO     TO ARCV1061-CFUNCAO
+                 MOVE ARCD0100-CPERFIL     TO ARCV1061-CPERFIL
+                 MOVE ARCD0100-CLINGUA     TO ARCV1061-CLINGUA
+                 MOVE ARCD0100-ISTATUS     TO ARCV1061-ISTATUS
+                 MOVE ARCD0100-CEMPRESA    TO ARCV1061-CEMPRESA
+                 MOVE ARCD0100-CCENTRO     TO ARCV1061-CCENTRO
+                 MOVE ARCD0100-CMOED       TO ARCV1061-CMOED
+                 MOVE ARCD0100-MCUSTMED    TO ARCV1061-MCUSTMED
+                 MOVE ARCD0100-DDATINI     TO ARCV1061-DDATINI
+                 MOVE ARCD0100-DDATFIM     TO ARCV1061-DDATFIM
+              END-IF
+                 IF NOT VIAL0001-VISUALIZACAO
+                     IF ARCD0100-ISTATUS = ARCK0002-INACTIVE-STATUS
+                        MOVE VIAK0002-ERROS-FUNCAO
+                          TO VIAL0002-IND-ERROS
+                        MOVE ARCK0002-STATUS-ACTIVO
+                          TO ARCV1061-GUSERNAME-S
+                        MOVE ARCK0001-UTILIZ-INACTIVO
+                          TO ARCV1061-GUSERNAME-MSG
+                     END-IF
+                 END-IF
+           ELSE
+              IF NOT VIAL0001-CRIACAO
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV1061-GUSERNAME-S
+                 MOVE ARCK0001-GUSERNAME-N-EXISTS
+                   TO ARCV1061-GUSERNAME-MSG
+              END-IF
+           END-IF.
+
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV1061-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV1061-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV1061-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================

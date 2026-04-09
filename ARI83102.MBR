@@ -1,0 +1,553 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI83102.
+      ******************************************************************
+      *     PROGRAMA ARI83102.                                         *
+      *                                                                *
+      *     Manutenção de Feriados                                     *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI83102         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD7001 END-EXEC.
+           EXEC SQL INCLUDE COCD7001 END-EXEC.
+           EXEC SQL INCLUDE COCD5401 END-EXEC.
+           EXEC SQL INCLUDE COCD5301 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV8310.
+       COPY ARCV8311.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT7001 PIC X(08) VALUE 'ARVT7001'.
+           05 CON-COVT7001 PIC X(08) VALUE 'COVT7001'.
+           05 CON-COVT5301 PIC X(08) VALUE 'COVT5301'.
+           05 CON-COVT5401 PIC X(08) VALUE 'COVT5401'.
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-X                         PIC X(01) VALUE SPACES.
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'ARI83102'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+       01  WS-CURSOR-VARS.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+           EXEC SQL
+                DECLARE CURCOT70 CURSOR FOR
+                SELECT CIDEMP,
+                       DFERIAS
+                 FROM COVT7001
+                 WHERE DFERIAS  = :COCD7001-DFERIAS
+                 ORDER BY CIDEMP
+           END-EXEC.
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI83102         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV8310-MSG.
+           MOVE ARCV8310-ASE       TO ARCV8311-ASE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV8310-ADE       TO ARCV8311-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2050-VALIDACAO
+                 THRU 2050-VALIDACAO-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      * 2050-VALIDACAO
+      *--------------------------------------------------------------
+       2050-VALIDACAO.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2050-VALIDACAO    ' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- SE CRIACAO ---*
+           IF  VIAL0002-SEM-ERROS
+           AND VIAL0001-CRIACAO
+           AND ARCV8310-CPAIS   EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-CPAIS-S
+               MOVE ARCK0001-CAMPO-OBRIGAT TO ARCV8311-CPAIS-MSG
+               MOVE ARCK0002-CAPLIC        TO ARCV8311-CPAIS-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND VIAL0001-CRIACAO
+           AND ARCV8310-DDATA EQUAL ZEROS
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-DDATA-S
+               MOVE ARCK0001-CAMPO-OBRIGAT TO ARCV8311-DDATA-MSG
+               MOVE ARCK0002-CAPLIC TO ARCV8311-DDATA-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND VIAL0001-CRIACAO
+               PERFORM 2055-VER-FERIAS
+                  THRU 2055-VER-FERIAS-EXIT
+           END-IF.
+
+      *--- SE NÃO FOR CRIACAO ---*
+           IF  VIAL0002-SEM-ERROS
+           AND NOT VIAL0001-CRIACAO
+           AND ARCV8310-CPAIS EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-CPAIS-S
+               MOVE ARCK0001-CAMPO-OBRIGAT TO ARCV8311-CPAIS-MSG
+               MOVE ARCK0002-CAPLIC TO ARCV8311-CPAIS-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND NOT VIAL0001-CRIACAO
+           AND ARCV8310-DDATA EQUAL ZEROS
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-DDATA-S
+               MOVE ARCK0001-CAMPO-OBRIGAT TO ARCV8311-DDATA-MSG
+               MOVE ARCK0002-CAPLIC TO ARCV8311-DDATA-CAPLIC
+           END-IF.
+
+       2050-VALIDACAO-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2055-VER-FERIAS
+      *--------------------------------------------------------------
+       2055-VER-FERIAS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2055-VER-FERIAS ' TO VIAL0015-CALLER-ID
+              MOVE 'ARCV8310-CPAIS         ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCV8310-CPAIS           TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ARCV8310-DDATA         ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  ARCV8310-DDATA           TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM 2020-OPEN
+              THRU 2029-OPEN-EXIT
+
+           IF VIAL0002-SEM-ERROS
+             PERFORM 2030-FETCH
+                THRU 2039-FETCH-EXIT
+
+             IF VIAL0002-SEM-ERROS
+               IF DB2-OK
+                 PERFORM 2040-CONTINUA
+                    THRU 2049-CONTINUA-EXIT
+               END-IF
+             END-IF
+           END-IF.
+
+           PERFORM 2070-CLOSE
+              THRU 2079-CLOSE-EXIT.
+
+       2055-VER-FERIAS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2020-OPEN' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV8310-DDATA    TO COCD7001-DFERIAS.
+
+           EXEC SQL
+               OPEN CURCOT70
+           END-EXEC
+
+           MOVE CON-COVT7001               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2030-FETCH' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+              FETCH CURCOT70
+              INTO
+                  :COCD7001-CIDEMP
+                , :COCD7001-DFERIAS
+           END-EXEC
+      *
+           MOVE CON-COVT7001               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2040-CONTINUA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL NOT DB2-OK
+                OR NOT VIAL0002-SEM-ERROS.
+      *
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2050-TRATA-OCCURS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+      **R    IF COCD7001-CIDEMP NOT EQUAL COCD5301-NTRABALHADOR
+               PERFORM 2055-OBT-EMP
+                  THRU 2055-OBT-EMP-EXIT
+      **R    END-IF
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+      **R    IF COCD5301-CEMPRESA NOT EQUAL COCD5401-CEMPRESA
+               PERFORM 2055-VAL-PAIS
+                  THRU 2055-VAL-PAIS-EXIT
+      **R    END-IF
+           END-IF.
+      *
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+      *
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2070-CLOSE' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           EXEC SQL
+               CLOSE CURCOT70
+           END-EXEC.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2055-OBT-EMP
+      *--------------------------------------------------------------
+       2055-OBT-EMP.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2055-OBT-EMP          ' TO VIAL0015-CALLER-ID
+              MOVE 'COCD7001-CIDEMP       ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCD7001-CIDEMP         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCD5301-NTRABALHADOR ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCD5301-NTRABALHADOR   TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD7001-CIDEMP   TO COCD5301-NTRABALHADOR.
+
+           EXEC SQL
+                SELECT NTRABALHADOR,
+                       CEMPRESA
+                 INTO  :COCD5301-NTRABALHADOR
+                    ,  :COCD5301-CEMPRESA
+                 FROM COVT5301_PESSOAS
+                 WHERE NTRABALHADOR = :COCD5301-NTRABALHADOR
+           END-EXEC.
+
+           MOVE CON-COVT5301
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-DDATA-S
+                 MOVE ARCK0001-JA-TEM-FERIAS TO ARCV8311-DDATA-MSG
+                 MOVE ARCK0002-CAPLIC        TO ARCV8311-DDATA-CAPLIC
+              END-IF
+           END-IF.
+
+       2055-OBT-EMP-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2055-VAL-PAIS
+      *--------------------------------------------------------------
+       2055-VAL-PAIS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2055-VAL-PAIS     '   TO VIAL0015-CALLER-ID
+              MOVE 'COCD5301-CEMPRESA '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  COCD5301-CEMPRESA     TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCD5401-CEMPRESA '   TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCD5401-CEMPRESA     TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD5301-CEMPRESA TO COCD5401-CEMPRESA.
+
+           EXEC SQL
+                SELECT CEMPRESA,
+                       CPAIS
+                 INTO  :COCD5401-CEMPRESA
+                    ,  :COCD5401-CPAIS
+                 FROM COVT5402_EMPRESAS
+                 WHERE CEMPRESA = :COCD5401-CEMPRESA
+           END-EXEC.
+
+           MOVE CON-COVT5401
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                IF ARCV8310-CPAIS EQUAL COCD5401-CPAIS
+                  MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+                  MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-DDATA-S
+                  MOVE ARCK0001-JA-TEM-FERIAS TO ARCV8311-DDATA-MSG
+                  MOVE ARCK0002-CAPLIC        TO ARCV8311-DDATA-CAPLIC
+                END-IF
+              END-IF
+           END-IF.
+
+       2055-VAL-PAIS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              MOVE 'ARCV8310-CPAIS         ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCV8310-CPAIS           TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ARCV8310-DDATA         ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  ARCV8310-DDATA           TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV8310-CPAIS        TO ARCD7001-CPAIS.
+           MOVE ARCV8310-DDATA        TO ARCD7001-DDATA.
+
+           EXEC SQL
+                 SELECT
+                       CPAIS
+                     , DDATA
+                     , CDIASEM
+                     , CDESC
+                     , CTIPOFER
+                     , CUSERID
+                     , HTIMEST
+                     , CONTA
+                 INTO
+                       :ARCD7001-CPAIS
+                     , :ARCD7001-DDATA
+                     , :ARCD7001-CDIASEM
+                     , :ARCD7001-CDESC
+                     , :ARCD7001-CTIPOFER
+                     , :ARCD7001-CUSERID
+                     , :ARCD7001-HTIMEST
+                     , :ARCD7001-CONTA
+                  FROM  ARVT7001
+                 WHERE
+                        CPAIS  = :ARCD7001-CPAIS
+                   AND  DDATA  = :ARCD7001-DDATA
+           END-EXEC
+
+           MOVE CON-ARVT7001 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV8311-CPAIS-S
+                    MOVE ARCK0001-CPAIS-EXISTS
+                      TO ARCV8311-CPAIS-MSG
+                    MOVE ARCK0002-CAPLIC
+                      TO ARCV8311-CPAIS-CAPLIC
+                 ELSE
+                    MOVE ARCD7001-CPAIS
+                      TO ARCV8311-CPAIS
+                    MOVE ARCD7001-DDATA
+                      TO ARCV8311-DDATA
+                    MOVE ARCD7001-CDIASEM
+                      TO ARCV8311-CDIASEM
+                    MOVE ARCD7001-CDESC
+                      TO ARCV8311-CDESC
+                    MOVE ARCD7001-CTIPOFER
+                      TO ARCV8311-CTIPOFER
+                    MOVE ARCD7001-CONTA
+                      TO ARCV8311-CCONTA
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV8311-CPAIS-S
+                    MOVE ARCK0001-CPAIS-N-EXISTS
+                      TO ARCV8311-CPAIS-MSG
+                    MOVE ARCK0002-CAPLIC
+                      TO ARCV8311-CPAIS-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              MOVE 'ARCV8311-CPAIS       ' TO VIAL0015-CAMPO-NM(2)
+              MOVE  ARCV8311-CPAIS         TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV8311-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV8311-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV8311-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

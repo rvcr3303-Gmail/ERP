@@ -1,0 +1,511 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. ARB9060.
+      ******************************************************************
+      *   Passa VIAFMAIL a histórico VIAFMAILH
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+      *
+       CONFIGURATION SECTION.
+       SPECIAL-NAMES. DECIMAL-POINT IS COMMA.
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *              D A T A   D I V I S I O N                         *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                  WORKING STORAGE SECTION                       *
+      ******************************************************************
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARB9060        '.
+      ******************************************************************
+      *                  MENSAGENS                                     *
+      ******************************************************************
+      *
+      *
+      ******************************************************************
+      *                  FILE STATUS                                   *
+      ******************************************************************
+      *
+      *
+      ******************************************************************
+      *                  STATUS DAS TABELAS                            *
+      ******************************************************************
+      *
+      *
+      ******************************************************************
+      *                  CONSTANTES                                    *
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME                  PIC  X(10) VALUE 'ARB9060'.
+           05 WS-VIAFMAIL                  PIC  X(10) VALUE 'VIAFMAIL'.
+           05 WS-VIAFMAILH                 PIC  X(10) VALUE 'VIAFMAILH'.
+           05 WS-ENVIADO                   PIC  X(02) VALUE 'EV'.
+           05 WS-VAZIO                     PIC  X(50) VALUE SPACES.
+      ******************************************************************
+      *           VARIAVEIS                                            *
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-PARAGRAPH-NAME            PIC  X(30) VALUE SPACES.
+           05 WS-TOTAL-READ                PIC  9(10) VALUE ZEROES.
+           05 WS-TOTAL-REMOVE              PIC  9(10) VALUE ZEROES.
+           05 WS-TOTAL-KEEP                PIC  9(10) VALUE ZEROES.
+      *
+      ******************************************************************
+      *              DECLARACOES DE COPYBOOKS                          *
+      ******************************************************************
+           EXEC SQL INCLUDE VIACDMAIL END-EXEC.
+           EXEC SQL INCLUDE SQLCA     END-EXEC.
+      *
+       COPY VIAL0001.
+       COPY VIAL0055.
+       COPY VIAW0011.
+       COPY VIAW0012.
+       COPY VIAL0015.
+       COPY VIAW0030.
+       COPY AQCW0109.
+      *COPY AQCW0009.
+       COPY VIAL0100.
+       COPY ETCL1000.
+       COPY VIATK001.
+      *
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+      *
+           EXEC SQL
+                DECLARE CURVCT01 CURSOR FOR
+                 SELECT CSUBJECT
+                      , CBODY
+                      , CNOME
+                      , CFROM
+                      , CTO
+                      , CCC
+                      , CBCC
+                      , CASS
+                      , CCSS
+                      , CSITU
+                      , CNATTACH
+                      , CBATTACH
+                      , CUSERIDC
+                      , HTIMESTC
+                      , CUSERID
+                      , HTIMEST
+      *               , CCHAVE
+                   FROM VIAFMAIL
+                  WHERE CSITU = :VIACDMAIL-CSITU
+           END-EXEC.
+      *
+       01  FILLER                          PIC X(40) VALUE
+            'FIM DA WORKING-STORAGE ARB9060        '.
+      *
+      ******************************************************************
+      *                    LINKAGE SECTION                             *
+      ******************************************************************
+      *COPY VIAL0005.
+       LINKAGE SECTION.
+       COPY AQCW0009.
+      *
+      ******************************************************************
+      *                  PROCEDURE DIVISION                            *
+      ******************************************************************
+      *    EXEC SQL INCLUDE VIAP0014 END-EXEC.
+       PROCEDURE DIVISION USING AQCW0009-DATA.
+      *
+      ******************************************************************
+      *    PROCESSO                                                    *
+      ******************************************************************
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+      *
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+      *
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3099-FIM-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           GOBACK.
+      *
+      ******************************************************************
+      *                  1000-INICIO-PROGRAMA                          *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE '1000-INICIO-PROGRAMA'     TO WS-PARAGRAPH-NAME
+      *
+           SET  VIAW0012-SEM-ERROS
+                VIAL0002-SEM-ERROS         TO TRUE.
+           MOVE ZEROES                     TO VIAL0100-RCODE
+                                              AQCW0009-RCODE
+                                              WS-TOTAL-READ
+                                              WS-TOTAL-REMOVE
+                                              WS-TOTAL-KEEP.
+      *
+           IF VIAW0012-SEM-ERROS
+              PERFORM AQCP0100-REG-INICIO
+                 THRU AQCP0100-REG-INICIO-EXIT
+           END-IF.
+      *
+           IF VIAW0012-SEM-ERROS
+              PERFORM AQCP0100-OBT-DADOS-ARQ
+                 THRU AQCP0100-OBT-DADOS-ARQ-EXIT
+           END-IF.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *
+      ******************************************************************
+      *                  2000-PROC-PROGRAMA                            *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAW0012-SEM-ERROS
+              PERFORM 2100-OPEN
+                 THRU 2199-OPEN-EXIT
+           END-IF.
+      *
+           IF VIAW0012-SEM-ERROS
+              PERFORM 2200-FETCH
+                 THRU 2299-FETCH-EXIT
+           END-IF.
+      *
+           PERFORM 2300-TRATA-REGISTO
+              THRU 2399-TRATA-REGISTO-EXIT
+             UNTIL NOT VIAW0012-SEM-ERROS
+                OR DB2-NOTFND.
+      *
+           IF VIAW0012-SEM-ERROS
+              PERFORM 2900-CLOSE
+                 THRU 2999-CLOSE-EXIT
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *                     2100-OPEN
+      *--------------------------------------------------------------
+       2100-OPEN.
+      *
+           MOVE '2100-OPEN'                TO WS-PARAGRAPH-NAME
+      *
+           MOVE WS-ENVIADO                 TO VIACDMAIL-CSITU.
+      *
+           EXEC SQL
+              OPEN CURVCT01
+           END-EXEC.
+      *
+           MOVE WS-VIAFMAIL                TO VIAW0012-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF NOT DB2-OK
+              SET  VIAW0030-DB2-ERROR
+                   VIAW0012-ABEND-DB2      TO TRUE
+              MOVE WS-PROGNAME             TO VIAW0030-PGMNAME
+              MOVE WS-PARAGRAPH-NAME       TO VIAW0030-PARAGRAPH-NAME
+              MOVE VIAW0012-TABLE-NAME     TO VIAW0030-TABLE-NAME
+              MOVE VIAW0012-SQLCODE        TO VIAW0030-SQLCODE
+              MOVE SPACES                  TO VIAW0030-ACCESS-KEY
+              MOVE 'ERRO NO OPEN DO CURSOR DA'
+                                           TO VIAW0030-DESC1
+              MOVE 'TABELA DE FICHEIROS'   TO VIAW0030-DESC2
+      *
+              PERFORM VIAP0030-ESCREVE-SPOOL
+                 THRU VIAP0030-ESCREVE-SPOOL-EXIT
+      *
+              PERFORM 9990-ABEND
+                 THRU 9999-ABEND-EXIT
+      *
+              IF VIAL0100-RCODE = 16
+                 MOVE 2 TO AQCW0009-RCODE
+              END-IF
+      *
+           END-IF.
+      *
+       2199-OPEN-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                     2200-FETCH
+      *--------------------------------------------------------------
+       2200-FETCH.
+      *
+           MOVE '2200-FETCH'               TO WS-PARAGRAPH-NAME
+      *
+           EXEC SQL
+              FETCH CURVCT01
+               INTO :VIACDMAIL-CSUBJECT
+                  , :VIACDMAIL-CBODY
+                  , :VIACDMAIL-CNOME
+                  , :VIACDMAIL-CFROM
+                  , :VIACDMAIL-CTO
+                  , :VIACDMAIL-CCC
+                  , :VIACDMAIL-CBCC
+                  , :VIACDMAIL-CASS
+                  , :VIACDMAIL-CCSS
+                  , :VIACDMAIL-CSITU
+                  , :VIACDMAIL-CNATTACH
+                  , :VIACDMAIL-CBATTACH
+                  , :VIACDMAIL-CUSERIDC
+                  , :VIACDMAIL-HTIMESTC
+                  , :VIACDMAIL-CUSERID
+                  , :VIACDMAIL-HTIMEST
+      *           , :VIACDMAIL-CCHAVE
+           END-EXEC.
+      *
+           MOVE WS-VIAFMAIL                TO VIAW0012-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           EVALUATE TRUE
+              WHEN DB2-OK
+              WHEN DB2-NOTFND
+                 CONTINUE
+      *
+              WHEN OTHER
+                 SET  VIAW0030-DB2-ERROR
+                      VIAW0012-ABEND-DB2   TO TRUE
+                 MOVE WS-PROGNAME          TO VIAW0030-PGMNAME
+                 MOVE WS-PARAGRAPH-NAME    TO VIAW0030-PARAGRAPH-NAME
+                 MOVE VIAW0012-TABLE-NAME  TO VIAW0030-TABLE-NAME
+                 MOVE VIAW0012-SQLCODE     TO VIAW0030-SQLCODE
+                 MOVE SPACES               TO VIAW0030-ACCESS-KEY
+                 MOVE 'ERRO NO FETCH DO CURSOR DA'
+                                           TO VIAW0030-DESC1
+                 MOVE 'TABELA DE FICHEIROS'
+                                           TO VIAW0030-DESC2
+      *
+                 PERFORM VIAP0030-ESCREVE-SPOOL
+                    THRU VIAP0030-ESCREVE-SPOOL-EXIT
+      *
+                 PERFORM 9990-ABEND
+                    THRU 9999-ABEND-EXIT
+      *
+                 IF VIAL0100-RCODE = 16
+                    MOVE 2 TO AQCW0009-RCODE
+                 END-IF
+      *
+           END-EVALUATE.
+      *
+       2299-FETCH-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            2300-TRATA-REGISTO
+      *--------------------------------------------------------------
+       2300-TRATA-REGISTO.
+      *
+           ADD  +1                         TO WS-TOTAL-READ
+                                              WS-TOTAL-REMOVE.
+      *
+           IF VIAW0012-SEM-ERROS
+              PERFORM 2500-WRITE-REM-FILE
+                 THRU 2599-WRITE-REM-FILE-EXIT
+           END-IF.
+      *
+           IF VIAW0012-SEM-ERROS
+              PERFORM 2700-DELETE-RECORD
+                 THRU 2799-DELETE-RECORD-EXIT
+           END-IF.
+      *
+           IF VIAW0012-SEM-ERROS
+              PERFORM 2200-FETCH
+                 THRU 2299-FETCH-EXIT
+           END-IF.
+      *
+       2399-TRATA-REGISTO-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                  2500-WRITE-REM-FILE                           *
+      ******************************************************************
+       2500-WRITE-REM-FILE.
+      *
+           MOVE '2500-WRITE-REM-FILE'      TO WS-PARAGRAPH-NAME.
+      *
+           EXEC SQL
+              INSERT INTO VIAFMAILH
+                   ( CSUBJECT
+                   , CBODY
+                   , CNOME
+                   , CFROM
+                   , CTO
+                   , CCC
+                   , CBCC
+                   , CASS
+                   , CCSS
+                   , CSITU
+                   , CNATTACH
+                   , CBATTACH
+                   , CUSERIDC
+                   , HTIMESTC
+                   , CUSERID
+                   , HTIMEST
+      *            , CCHAVE
+                   )
+             VALUES
+                  ( :VIACDMAIL-CSUBJECT
+                  , :VIACDMAIL-CBODY
+                  , :VIACDMAIL-CNOME
+                  , :VIACDMAIL-CFROM
+                  , :VIACDMAIL-CTO
+                  , :VIACDMAIL-CCC
+                  , :VIACDMAIL-CBCC
+                  , :VIACDMAIL-CASS
+                  , :VIACDMAIL-CCSS
+                  , :VIACDMAIL-CSITU
+                  , :VIACDMAIL-CNATTACH
+                  , :VIACDMAIL-CBATTACH
+                  , :VIACDMAIL-CUSERIDC
+                  , :VIACDMAIL-HTIMESTC
+                  , :VIACDMAIL-CUSERID
+                  , :VIACDMAIL-HTIMEST
+      *           , :VIACDMAIL-CCHAVE
+                  )
+           END-EXEC.
+      *
+           MOVE WS-VIAFMAILH               TO VIAW0012-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           EVALUATE TRUE
+              WHEN DB2-OK
+                 CONTINUE
+      *
+              WHEN OTHER
+                 SET  VIAW0030-DB2-ERROR
+                      VIAW0012-ABEND-DB2   TO TRUE
+                 MOVE WS-PROGNAME          TO VIAW0030-PGMNAME
+                 MOVE WS-PARAGRAPH-NAME    TO VIAW0030-PARAGRAPH-NAME
+                 MOVE VIAW0012-TABLE-NAME  TO VIAW0030-TABLE-NAME
+                 MOVE VIAW0012-SQLCODE     TO VIAW0030-SQLCODE
+                 MOVE SPACES               TO VIAW0030-ACCESS-KEY
+                 MOVE 'ERRO NO INSERT DA'  TO VIAW0030-DESC1
+                 MOVE 'TABELA DE FICHEIROS'
+                                           TO VIAW0030-DESC2
+      *
+                 PERFORM VIAP0030-ESCREVE-SPOOL
+                    THRU VIAP0030-ESCREVE-SPOOL-EXIT
+      *
+                 PERFORM 9990-ABEND
+                    THRU 9999-ABEND-EXIT
+      *
+                 IF VIAL0100-RCODE = 16
+                    MOVE 2 TO AQCW0009-RCODE
+                 END-IF
+      *
+           END-EVALUATE.
+      *
+       2599-WRITE-REM-FILE-EXIT.
+           EXIT.
+      *
+      ******************************************************************
+      *                  2700-DELETE-RECORD                            *
+      ******************************************************************
+       2700-DELETE-RECORD.
+      *
+           EXEC SQL
+              DELETE
+                FROM VIAFMAIL
+               WHERE CURRENT OF CURVCT01
+           END-EXEC.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF NOT DB2-OK
+           AND NOT DB2-NOTFND
+              SET  VIAW0030-DB2-ERROR
+                   VIAW0012-ABEND-DB2      TO TRUE
+              MOVE WS-PROGNAME             TO VIAW0030-PGMNAME
+              MOVE WS-PARAGRAPH-NAME       TO VIAW0030-PARAGRAPH-NAME
+              MOVE VIAW0012-TABLE-NAME     TO VIAW0030-TABLE-NAME
+              MOVE VIAW0012-SQLCODE        TO VIAW0030-SQLCODE
+              MOVE SPACES                  TO VIAW0030-ACCESS-KEY
+              MOVE 'ERRO NA ELIMINAÇÃO '   TO VIAW0030-DESC1
+              MOVE 'DO REGISTO       '     TO VIAW0030-DESC2
+      *
+              PERFORM VIAP0030-ESCREVE-SPOOL
+                 THRU VIAP0030-ESCREVE-SPOOL-EXIT
+      *
+              PERFORM 9990-ABEND
+                 THRU 9999-ABEND-EXIT
+      *
+                 IF VIAL0100-RCODE = 16
+                    MOVE 2 TO AQCW0009-RCODE
+                 END-IF
+      *
+           END-IF.
+      *
+       2799-DELETE-RECORD-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *                     2900-CLOSE
+      *--------------------------------------------------------------
+       2900-CLOSE.
+      *
+           EXEC SQL
+               CLOSE CURVCT01
+           END-EXEC.
+      *
+       2999-CLOSE-EXIT.
+           EXIT.
+      *
+      ******************************************************************
+      *               3000-FIM-PROGRAMA                                *
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      *
+           IF VIAW0012-SEM-ERROS
+              EXEC SQL COMMIT   END-EXEC
+           ELSE
+              EXEC SQL ROLLBACK END-EXEC
+           END-IF.
+      *
+           MOVE '3000-FIM-PROGRAMA'        TO VIAL0015-CALLER-ID
+           MOVE '*** TOTAL LIDOS     : '   TO VIAL0015-CAMPO-NM(1)
+           MOVE WS-TOTAL-READ              TO VIAL0015-CAMPO-VLR(1)
+           MOVE '*** TOTAL REMOVIDOS : '   TO VIAL0015-CAMPO-NM(2)
+           MOVE WS-TOTAL-REMOVE            TO VIAL0015-CAMPO-VLR(2)
+      *
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT
+      *
+           IF VIAW0012-SEM-ERROS
+              PERFORM AQCP0100-REG-FIM
+                 THRU AQCP0100-REG-FIM-EXIT
+           END-IF.
+      *
+       3099-FIM-PROGRAMA-EXIT.
+           EXIT.
+      *
+      ******************************************************************
+      *                      PROCEDURES                                *
+      ******************************************************************
+              EXEC SQL INCLUDE VIAP9999 END-EXEC.
+       COPY VIAP0055.
+       COPY VIAP0012.
+       COPY VIAP0011.
+       COPY VIAP0030.
+JF    *COPY VIAP0015.
+JF    ******************************************************************
+JF    * Nao pode escrever no VIAF0015 porque esta a correr o backup    *
+JF    ******************************************************************
+JF     VIAP0015-TRATA-DEBUG.
+JF          CONTINUE.
+JF     VIAP0015-TRATA-DEBUG-EXIT.
+JF          EXIT.
+JF    ******************************************************************
+       COPY AQCP0109.
+       COPY ETCP1000.

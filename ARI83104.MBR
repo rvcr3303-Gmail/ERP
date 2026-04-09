@@ -1,0 +1,301 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI83104.
+      ******************************************************************
+      *     PROGRAMA ARI83104.                                         *
+      *                                                                *
+      *     Manutenção de Feriados                                     *
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI83104         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD7001 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+       01 WS-SQL-AUXILIARY.
+         05 IND-NULL                       PIC S9(04) BINARY.
+
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV8310.
+       COPY ARCV8311.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL1000.
+       COPY VIATW300.
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT7001 PIC X(08) VALUE 'ARVT7001'.
+           05 CON-99       PIC X(02) VALUE '99'.
+      *--------------------------------------------------------------
+      * PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'ARI83104'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI83104         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV8310-MSG.
+           MOVE ARCV8310-ASE               TO ARCV8311-ASE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV8310-ADE               TO ARCV8311-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-VALIDACOES
+                 THRU 2299-VALIDACOES-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2300-INSERE-DADOS
+                 THRU 2399-INSERE-DADOS-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-VALIDACOES
+      *--------------------------------------------------------------
+       2200-VALIDACOES.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF ARCV8310-CPAIS EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-CAPLIC        TO ARCV8311-CPAIS-CAPLIC
+               MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-CPAIS-S
+               MOVE ARCK0001-CAMPO-OBRIGAT TO ARCV8311-CPAIS-MSG
+             END-IF
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+             IF ARCV8310-DDATA     EQUAL ZEROS
+               MOVE VIAK0002-ERROS-FUNCAO    TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-CAPLIC          TO ARCV8311-DDATA-CAPLIC
+               MOVE ARCK0002-STATUS-ACTIVO   TO ARCV8311-DDATA-S
+               MOVE ARCK0001-CAMPO-OBRIGAT   TO ARCV8311-DDATA-MSG
+              END-IF
+            END-IF.
+      *
+      *    IF  VIAL0002-SEM-ERROS
+      *    AND ARCV8310-CDIASEM EQUAL SPACES
+      *        MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+      *        MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-CDIASEM-S
+      *        MOVE ARCK0001-CAMPO-OBRIGAT TO ARCV8311-CDIASEM-MSG
+      *        MOVE ARCK0002-CAPLIC        TO ARCV8311-CDIASEM-CAPLIC
+      *    END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ARCV8310-CDESC   EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-CDESC-S
+               MOVE ARCK0001-CAMPO-OBRIGAT TO ARCV8311-CDESC-MSG
+               MOVE ARCK0002-CAPLIC        TO ARCV8311-CDESC-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ARCV8310-CTIPOFER EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-CTIPOFER-S
+               MOVE ARCK0001-CAMPO-OBRIGAT TO ARCV8311-CTIPOFER-MSG
+               MOVE ARCK0002-CAPLIC        TO ARCV8311-CTIPOFER-CAPLIC
+           END-IF.
+
+           IF  VIAL0002-SEM-ERROS
+           AND ARCV8310-CCONTA EQUAL SPACES
+               MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-STATUS-ACTIVO TO ARCV8311-CCONTA-S
+               MOVE ARCK0001-CAMPO-OBRIGAT TO ARCV8311-CCONTA-MSG
+               MOVE ARCK0002-CAPLIC        TO ARCV8311-CCONTA-CAPLIC
+           END-IF.
+
+       2299-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2300-INSERE-DADOS.
+      *-------------------------------------------------------------
+       2300-INSERE-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2300-INSERE-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+      *--- Ler data para obter o dia de semana
+           INITIALIZE VIAL1000-AREA-COMUNICACAO.
+           MOVE CON-99         TO VIAL1000-COD-PROCESSO.
+           MOVE ARCV8310-DDATA TO VIATW300-DATA10.
+           PERFORM VIATP300-CONV-DATA108
+              THRU VIATP300-CONV-DATA108-EXIT.
+           MOVE VIATW300-DATA8 TO VIAL1000-DAT-INPUT1.
+
+           PERFORM VIAP1000-ROTINA-DATAS
+              THRU VIAP1000-EXIT.
+
+           MOVE ARCV8310-CPAIS           TO ARCD7001-CPAIS.
+           MOVE ARCV8310-DDATA           TO ARCD7001-DDATA.
+
+      *    MOVE ARCV8310-CDIASEM         TO ARCD7001-CDIASEM.
+           MOVE VIAL1000-DAT-RES-SEM     TO ARCD7001-CDIASEM.
+           MOVE VIAL1000-DAT-RES-SEM     TO ARCV8310-CDIASEM.
+
+           MOVE ARCV8310-CDESC           TO ARCD7001-CDESC.
+           MOVE ARCV8310-CTIPOFER        TO ARCD7001-CTIPOFER.
+           MOVE ARCV8310-CCONTA          TO ARCD7001-CONTA.
+           MOVE VIAL0001-CUTILIZA-I      TO ARCD7001-CUSERID.
+
+           IF VIAL0002-SEM-ERROS
+
+           EXEC SQL
+                INSERT INTO ARVT7001
+                (
+                   CPAIS
+                 , DDATA
+                 , CDIASEM
+                 , CDESC
+                 , CTIPOFER
+                 , CUSERID
+                 , HTIMEST
+                 , CONTA
+                )
+                VALUES (
+                       :ARCD7001-CPAIS
+                     , :ARCD7001-DDATA
+                     , :ARCD7001-CDIASEM
+                     , :ARCD7001-CDESC
+                     , :ARCD7001-CTIPOFER
+                     , :ARCD7001-CUSERID
+                     , CURRENT TIMESTAMP
+                     , :ARCD7001-CONTA
+                )
+           END-EXEC
+
+              MOVE CON-ARVT7001 TO VIAL0002-TABLE-NAME
+
+              PERFORM 9020-DB2CHECK
+                 THRU 9029-DB2CHECK-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-DUPREC
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                      MOVE ARCK0002-STATUS-ACTIVO
+                        TO ARCV8311-CPAIS-S
+                      MOVE ARCK0001-CPAIS-EXISTS
+                        TO ARCV8311-CPAIS-MSG
+                      MOVE ARCK0002-CAPLIC
+                        TO ARCV8311-CPAIS-CAPLIC
+                 ELSE
+                    IF NOT DB2-OK
+                       MOVE VIAK0002-ABEND-DB2
+                         TO VIAL0002-IND-ERROS
+                       MOVE VIAK0001-ERRO-DB2
+                         TO VIAL0002-COD-ERRO-GRAVE
+                    END-IF
+                 END-IF
+              END-IF
+           END-IF.
+
+       2399-INSERE-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV8311-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV8311-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV8311-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *==============================================================
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP1000.
+           COPY VIATP300.
+           COPY VIAP0010.
+           COPY VIAP0016.

@@ -1,0 +1,532 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI66900.
+      ******************************************************************
+      *     PROGRAMA ARI66900.                                    *
+      *                                                                *
+      *     Browse Documentos
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI66900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD4104 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV6690.
+       COPY ARCV6691.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+      *
+       COPY ARCL0039.
+       COPY ETCL0002.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT4104 PIC X(08) VALUE 'ARVT4104'.
+
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME     PIC  X(08) VALUE 'ARI66900'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+      *
+       01  WS-CURSOR-VARS.
+           05 WS-CFAMD                   PIC X(03) VALUE SPACES.
+           05 WS-CCHAVE-MIN              PIC X(50) VALUE SPACES.
+           05 WS-CCHAVE-MAX              PIC X(50) VALUE SPACES.
+
+           EXEC SQL
+                DECLARE CURART01 CURSOR FOR
+                 SELECT
+                       CCODDOC
+                     , CCHAVE
+                     , ZSEQ
+                     , NOPR
+                     , NOPRR
+                     , NCLI
+                     , DTCRIACAO
+                     , CNISERIES
+                     , CBIBLI
+                     , CNORIG
+                     , CUSERID
+                     , HTIMEST
+                     , CGRPDOC
+                     , CREFDOC
+                     , CCHAVER
+                     , ZSEQR
+                     , DINIVAL
+                     , DFIMVAL
+                     , MVALOR
+                     , CMOEDA
+                     , CSTATUS
+                     , CFAMD
+                 FROM ARVT4104
+                 WHERE CFAMD  =  :WS-CFAMD
+                   AND CCHAVE >= :WS-CCHAVE-MIN
+                   AND CCHAVE <= :WS-CCHAVE-MAX
+                   AND  (CCHAVE > :ARCD4104-CCHAVE
+                     OR (CCHAVE = :ARCD4104-CCHAVE
+                     AND ZSEQ >= :ARCD4104-ZSEQ))
+                 ORDER BY
+                       CFAMD
+                     , CCHAVE
+                     , ZSEQ
+           END-EXEC.
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI66900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV6690-MSG.
+           MOVE ARCV6690-ASE               TO ARCV6691-ASE.
+      *
+           MOVE ZEROES                     TO ARCV6691-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL ARCV6691-PAGINA-CHEIA.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+      *
+           ADD 1                       TO ARCV6691-INDICE.
+           MOVE SPACES
+             TO ARCV6691-D-CCODDOC(ARCV6691-INDICE)
+           MOVE SPACES
+             TO ARCV6691-D-CCHAVE(ARCV6691-INDICE)
+           MOVE ZEROES
+             TO ARCV6691-D-ZSEQ(ARCV6691-INDICE)
+           MOVE ZEROES
+             TO ARCV6691-D-NOPR(ARCV6691-INDICE)
+           MOVE ZEROES
+             TO ARCV6691-D-NOPRR(ARCV6691-INDICE)
+           MOVE ZEROES
+             TO ARCV6691-D-NCLI(ARCV6691-INDICE)
+           MOVE VIAK0002-DATA-MINIMA
+             TO ARCV6691-D-DTCRIACAO(ARCV6691-INDICE)
+           MOVE SPACES
+             TO ARCV6691-D-CGRPDOC(ARCV6691-INDICE)
+           MOVE SPACES
+             TO ARCV6691-D-CREFDOC(ARCV6691-INDICE)
+           MOVE VIAK0002-DATA-MINIMA
+             TO ARCV6691-D-DINIVAL(ARCV6691-INDICE)
+           MOVE VIAK0002-DATA-MINIMA
+             TO ARCV6691-D-DFIMVAL(ARCV6691-INDICE)
+           MOVE SPACES
+             TO ARCV6691-D-CMOEDA(ARCV6691-INDICE)
+           MOVE ZEROES
+             TO ARCV6691-D-MVALOR(ARCV6691-INDICE)
+           MOVE ZEROES
+             TO ARCV6691-D-SSALDO(ARCV6691-INDICE)
+           MOVE SPACES
+             TO ARCV6691-D-CSTATUS(ARCV6691-INDICE)
+           MOVE SPACES
+             TO ARCV6691-D-CNISERIES(ARCV6691-INDICE)
+           MOVE SPACES
+             TO ARCV6691-D-CBIBLI(ARCV6691-INDICE)
+           MOVE SPACES
+             TO ARCV6691-D-CNORIG(ARCV6691-INDICE)
+      *
+           .
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV6690-NOMEFXLS
+             TO ARCV6691-NOMEFXLS
+           MOVE ARCV6690-NMAXLIST
+             TO ARCV6691-NMAXLIST
+           MOVE ARCV6690-CCHAVE-PAG
+             TO ARCV6691-CCHAVE-PAG
+           MOVE ARCV6690-ZSEQ-PAG
+             TO ARCV6691-ZSEQ-PAG
+           MOVE ARCV6690-CFAMCON
+             TO ARCV6691-CFAMCON
+           MOVE ARCV6690-CCHAVE
+             TO ARCV6691-CCHAVE
+           MOVE ARCV6690-ZSEQ
+             TO ARCV6691-ZSEQ
+      *
+           PERFORM 2010-VALIDACOES
+              THRU 2019-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE ARCV6691-DIMINUI-LENGTH EQUAL
+                         ARCV6691-INDICE-INVERSO * ARCV6691-LENGTH-OCCUR
+                    COMPUTE ARCV6691-LENGTH EQUAL ARCV6691-LENGTH
+                         - ARCV6691-DIMINUI-LENGTH
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV6691-CCHAVE-S
+                    MOVE ARCK0001-CCHAVE-N-EXISTS
+                      TO ARCV6691-CCHAVE-MSG
+                    MOVE ARCK0002-CAPLIC
+                      TO ARCV6691-CCHAVE-CAPLIC
+                 END-IF
+              END-IF
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2010-VALIDACOES' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+       2019-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2020-OPEN' TO VIAL0015-CALLER-ID
+              MOVE 'ARCV6690-CCHAVE   '   TO VIAL0015-CAMPO-NM (1)
+              MOVE  ARCV6690-CCHAVE       TO VIAL0015-CAMPO-VLR (1)
+              MOVE 'ARCV6690-CFAMCON  '   TO VIAL0015-CAMPO-NM (2)
+              MOVE  ARCV6690-CFAMCON      TO VIAL0015-CAMPO-VLR (2)
+              MOVE 'ARCV6690-CCHAVE    '  TO VIAL0015-CAMPO-NM (3)
+              MOVE  ARCV6690-CCHAVE       TO VIAL0015-CAMPO-VLR (3)
+              MOVE 'ARCV6690-CCHAVE-PAG'  TO VIAL0015-CAMPO-NM (4)
+              MOVE  ARCV6690-CCHAVE-PAG   TO VIAL0015-CAMPO-VLR (4)
+              MOVE 'ARCV6690-ZSEQ-PAG  '  TO VIAL0015-CAMPO-NM (5)
+              MOVE  ARCV6690-ZSEQ-PAG     TO VIAL0015-CAMPO-VLR (5)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV6690-CFAMCON TO WS-CFAMD.
+
+           IF ARCV6690-CCHAVE-PAG EQUAL SPACES
+             IF ARCV6690-CCHAVE NOT EQUAL SPACES
+                MOVE ARCV6690-CCHAVE TO WS-CCHAVE-MIN
+                MOVE ARCV6690-CCHAVE TO WS-CCHAVE-MAX
+             ELSE
+                MOVE SPACES  TO WS-CCHAVE-MIN
+                MOVE ALL '9' TO WS-CCHAVE-MAX
+             END-IF
+           ELSE
+             MOVE SPACES  TO WS-CCHAVE-MIN
+             MOVE ALL '9' TO WS-CCHAVE-MAX
+           END-IF.
+
+           MOVE ARCV6690-CCHAVE-PAG
+             TO ARCD4104-CCHAVE
+           MOVE ARCV6690-ZSEQ-PAG
+             TO ARCD4104-ZSEQ
+
+           SET SW-CURSOR-NONE TO TRUE
+
+
+                    EXEC SQL
+                        OPEN CURART01
+                    END-EXEC
+
+           MOVE CON-ARVT4104               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2030-FETCH' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+                    EXEC SQL
+                       FETCH CURART01
+                       INTO
+                           :ARCD4104-CCODDOC
+                         , :ARCD4104-CCHAVE
+                         , :ARCD4104-ZSEQ
+                         , :ARCD4104-NOPR
+                         , :ARCD4104-NOPRR
+                         , :ARCD4104-NCLI
+                         , :ARCD4104-DTCRIACAO
+                         , :ARCD4104-CNISERIES
+                         , :ARCD4104-CBIBLI
+                         , :ARCD4104-CNORIG
+                         , :ARCD4104-CUSERID
+                         , :ARCD4104-HTIMEST
+                         , :ARCD4104-CGRPDOC
+                         , :ARCD4104-CREFDOC
+                         , :ARCD4104-CCHAVER
+                         , :ARCD4104-ZSEQR
+                         , :ARCD4104-DINIVAL
+                         , :ARCD4104-DFIMVAL
+                         , :ARCD4104-MVALOR
+                         , :ARCD4104-CMOEDA
+                         , :ARCD4104-CSTATUS
+                         , :ARCD4104-CFAMD
+                    END-EXEC
+
+
+           MOVE CON-ARVT4104               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2040-CONTINUA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ZEROES                     TO ARCV6691-INDICE.
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR ARCV6691-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT ARCV6691-PAGINA-CHEIA
+                    COMPUTE ARCV6691-INDICE-INVERSO EQUAL
+                         ARCV6691-INDICE-INVERSO - ARCV6691-INDICE
+                    COMPUTE ARCV6691-DIMINUI-LENGTH EQUAL
+                         ARCV6691-INDICE-INVERSO * ARCV6691-LENGTH-OCCUR
+                    COMPUTE ARCV6691-LENGTH EQUAL ARCV6691-LENGTH -
+                         ARCV6691-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+              IF DB2-NOTFND
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2050-TRATA-OCCURS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           ADD 1                       TO ARCV6691-INDICE.
+           MOVE ARCD4104-CCODDOC
+             TO ARCV6691-D-CCODDOC(ARCV6691-INDICE).
+           MOVE ARCD4104-CCHAVE
+             TO ARCV6691-D-CCHAVE(ARCV6691-INDICE).
+           MOVE ARCD4104-ZSEQ
+             TO ARCV6691-D-ZSEQ(ARCV6691-INDICE).
+           MOVE ARCD4104-NOPR
+             TO ARCV6691-D-NOPR(ARCV6691-INDICE).
+           MOVE ARCD4104-NOPRR
+             TO ARCV6691-D-NOPRR(ARCV6691-INDICE).
+           MOVE ARCD4104-NCLI
+             TO ARCV6691-D-NCLI(ARCV6691-INDICE).
+           MOVE ARCD4104-DTCRIACAO
+             TO ARCV6691-D-DTCRIACAO(ARCV6691-INDICE).
+           MOVE ARCD4104-CNISERIES
+             TO ARCV6691-D-CNISERIES(ARCV6691-INDICE).
+           MOVE ARCD4104-CBIBLI
+             TO ARCV6691-D-CBIBLI(ARCV6691-INDICE).
+           MOVE ARCD4104-CNORIG
+             TO ARCV6691-D-CNORIG(ARCV6691-INDICE).
+           MOVE ARCD4104-CGRPDOC
+             TO ARCV6691-D-CGRPDOC(ARCV6691-INDICE).
+           MOVE ARCD4104-CREFDOC
+             TO ARCV6691-D-CREFDOC(ARCV6691-INDICE).
+           MOVE ARCD4104-DINIVAL
+             TO ARCV6691-D-DINIVAL(ARCV6691-INDICE).
+           MOVE ARCD4104-DFIMVAL
+             TO ARCV6691-D-DFIMVAL(ARCV6691-INDICE).
+           MOVE ARCD4104-MVALOR
+             TO ARCV6691-D-MVALOR(ARCV6691-INDICE).
+           MOVE ARCD4104-CMOEDA
+             TO ARCV6691-D-CMOEDA(ARCV6691-INDICE).
+           MOVE ARCD4104-CSTATUS
+             TO ARCV6691-D-CSTATUS(ARCV6691-INDICE).
+      *
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+      *
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2070-CLOSE' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+                    EXEC SQL
+                        CLOSE CURART01
+                    END-EXEC.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ARCV6690-NMAXLIST EQUAL ZEROES
+              MOVE VIAL0001-CAPLIC         TO ARCL0039-CAPLIC
+              MOVE VIAL0001-COPCAO         TO ARCL0039-COPCAO
+              PERFORM ARCR0039-NMAXLIST
+                 THRU ARCR0039-NMAXLIST-EXIT
+
+              IF ETCL0002-ABEND-DB2
+                 MOVE ETCL0002-TABLE-NAME  TO VIAL0002-TABLE-NAME
+                 MOVE ETCL0002-SQLCA       TO VIAL0002-SQLCA
+              END-IF
+
+              MOVE ARCL0039-NMAXLIST       TO ARCV6691-NMAXLIST
+           ELSE
+              MOVE ARCV6690-NMAXLIST       TO ARCV6691-NMAXLIST
+           END-IF.
+
+           MOVE ARCV6691-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV6691-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV6691-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ARCV6691-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
+           COPY ARCR0039.
+

@@ -1,0 +1,302 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI66208.
+      ******************************************************************
+      *     PROGRAMA ARI66208.
+      *
+      *     Delete do registo de documentos uploaded
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI66208         '.
+      *
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD4104 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV6620.
+       COPY ARCV6621.
+      *
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY ETCL0002.
+       COPY ARCL7025.
+      *
+      *COPY ARCL0400.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT4104                 PIC  X(08) VALUE 'ARVT4104'.
+           05 IND-NZSEQ                    PIC S9(04) BINARY.
+      *
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 WS-CNISERIES                 PIC  X(10) VALUE SPACES.
+           05 WS-CBIBLI                    PIC  X(10) VALUE SPACES.
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME                  PIC  X(08) VALUE 'ARI66208'.
+           05 WS-INDICATOR                 PIC S9(04) BINARY.
+      *
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI66208         '.
+      *
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+      *
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+      *
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV6620-MSG.
+           MOVE ARCV6620-ASE               TO ARCV6621-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA'    TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV6620-ADE               TO ARCV6621-ADE.
+      *
+           PERFORM 2100-VALIDACOES
+              THRU 2199-VALIDACOES-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-APAGAR-DADOS
+                 THRU 2299-APAGAR-DADOS-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2300-APAGA-DOC
+                 THRU 2300-APAGA-DOC-EXIT
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES'       TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS   ' TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0002-IND-ERROS     TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV6620-CFAMCON           TO ARCD4104-CFAMD.
+           MOVE ARCV6620-CCHAVE            TO ARCD4104-CCHAVE.
+           MOVE ARCV6620-ZSEQ              TO ARCD4104-ZSEQ.
+      *
+           EXEC SQL
+              SELECT CNORIG
+                   , CNISERIES
+                   , CBIBLI
+                INTO :ARCD4104-CNORIG
+                   , :ARCD4104-CNISERIES
+                   , :ARCD4104-CBIBLI
+                FROM ARVT4104
+               WHERE CFAMD   =  :ARCD4104-CFAMD
+                 AND CCHAVE  =  :ARCD4104-CCHAVE
+                 AND ZSEQ    =  :ARCD4104-ZSEQ
+           END-EXEC.
+      *
+           MOVE CON-ARVT4104               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           EVALUATE TRUE
+              WHEN DB2-OK
+                 MOVE ARCD4104-CNISERIES TO WS-CNISERIES
+                 MOVE ARCD4104-CBIBLI    TO WS-CBIBLI
+              WHEN DB2-NOTFND
+              WHEN NOT VIAL0002-SEM-ERROS
+                 MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                                           TO ARCV6621-CCHAVE-S
+                 MOVE ARCK0001-CCHAVE-N-EXISTS
+                                           TO ARCV6621-CCHAVE-MSG
+                 MOVE ARCK0002-CAPLIC-AR   TO ARCV6621-CCHAVE-CAPLIC
+           END-EVALUATE.
+      *
+       2199-VALIDACOES-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *                   2200-APAGAR-DADOS
+      *--------------------------------------------------------------
+       2200-APAGAR-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-APAGAR-DADOS'     TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS   ' TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0002-IND-ERROS     TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV6620-CFAMCON           TO ARCD4104-CFAMD.
+           MOVE ARCV6620-CCHAVE            TO ARCD4104-CCHAVE.
+           MOVE ARCV6620-ZSEQ              TO ARCD4104-ZSEQ.
+      *
+           EXEC SQL
+              DELETE
+                FROM ARVT4104
+               WHERE CFAMD   =  :ARCD4104-CFAMD
+                 AND CCHAVE  =  :ARCD4104-CCHAVE
+                 AND ZSEQ    =  :ARCD4104-ZSEQ
+           END-EXEC.
+      *
+           MOVE CON-ARVT4104               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           EVALUATE TRUE
+              WHEN DB2-OK
+                 CONTINUE
+              WHEN DB2-NOTFND
+              WHEN NOT VIAL0002-SEM-ERROS
+                 MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                                           TO ARCV6621-CCHAVE-S
+                 MOVE ARCK0001-CCHAVE-N-EXISTS
+                                           TO ARCV6621-CCHAVE-MSG
+                 MOVE ARCK0002-CAPLIC-AR   TO ARCV6621-CCHAVE-CAPLIC
+           END-EVALUATE.
+      *
+       2299-APAGAR-DADOS-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      * 2300 APAGA DOCUMENTO
+      *--------------------------------------------------------------
+       2300-APAGA-DOC.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2300-APAGA-DOC   '     TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           SET  ARCL7025-RCODE-OK           TO TRUE.
+           MOVE WS-CBIBLI                   TO ARCL7025-BIBLI.
+           MOVE WS-CNISERIES                TO ARCL7025-FILEN.
+
+      * COMANDO CL PARA APAGAR UM FICHEIRO
+           PERFORM CALL-ARM70025
+              THRU CALL-ARM70025-EXIT.
+
+           IF NOT ARCL7025-SEM-ERROS
+                 MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                                           TO ARCV6621-CCHAVE-S
+                 MOVE ARCK0001-DOC-NAO-DEL
+                                           TO ARCV6621-CCHAVE-MSG
+                 MOVE ARCK0002-CAPLIC-AR   TO ARCV6621-CCHAVE-CAPLIC
+           END-IF.
+      *
+       2300-APAGA-DOC-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA'   TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0002-IND-ERROS   ' TO VIAL0015-CAMPO-NM (1)
+              MOVE  VIAL0002-IND-ERROS     TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV6621-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV6621-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV6621-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES                     TO VIAL0001-OCORRENCIAS.
+      *
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
+           COPY ARCP7025.
+      *    COPY ARCP0400.
+      *

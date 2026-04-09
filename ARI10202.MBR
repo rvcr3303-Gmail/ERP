@@ -1,0 +1,367 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI10202.
+      ******************************************************************
+      *     PROGRAMA ARI10202.
+      *
+      *     Geracao de licencas
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI10202         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD4600 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV1020.
+       COPY ARCV1021.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY ETCL0002.
+       COPY VIAL0035.
+       COPY AQCW0005.
+      *
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT4600 PIC X(08) VALUE 'ARVT4600'.
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'ARI10202'.
+           05 WS-DATA-8                PIC  X(08).
+           05 WS-LICENCA.
+              10 WS-DATA               PIC  X(08).
+              10 WS-CAPLIC             PIC  X(02).
+              10 WS-LIB                PIC  X(10).
+              10 WS-SRLNBR-A           PIC  X(08).
+              10 WS-SRLNBR-B           PIC  X(08).
+           05 WS-LICENCA-AUX REDEFINES WS-LICENCA.
+              10 WS-PARTE-1            PIC  X(12).
+              10 WS-PARTE-2            PIC  X(12).
+              10 WS-PARTE-3            PIC  X(12).
+           05 WS-LICENCA-HEX.
+              10 WS-GVALOR1            PIC  X(32).
+              10 WS-FILLER1            PIC  X(18).
+              10 WS-GVALOR2            PIC  X(32).
+              10 WS-FILLER2            PIC  X(18).
+              10 WS-GVALOR3            PIC  X(32).
+              10 WS-FILLER3            PIC  X(18).
+
+           05 WS-TIMESTAMP             PIC  X(26).
+
+           05 WS-FILLER.
+              10 WS-TAB-INT OCCURS 18 TIMES.
+                 15 WS-POS             PIC  X(01).
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI10202         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV1020-MSG.
+           MOVE ARCV1020-ASE       TO ARCV1021-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV1020-ADE       TO ARCV1021-ADE.
+
+           MOVE ARCV1020-DATA              TO AQCW0005-DTX10
+           PERFORM AQCP0005-CONV-DT10INDT8
+              THRU AQCP0005-CONV-DT10INDT8-EXIT
+           MOVE AQCW0005-DT98              TO WS-DATA.
+           MOVE ARCV1020-CAPLIC            TO WS-CAPLIC
+           MOVE ARCV1020-LIB               TO WS-LIB
+           MOVE ARCV1020-SRLNBR-A          TO WS-SRLNBR-A
+           MOVE ARCV1020-SRLNBR-B          TO WS-SRLNBR-B.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2200-ENCRIPTA-DADOS
+                 THRU 2299-ENCRIPTA-DADOS-EXIT
+           END-IF
+
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2300-FORMATA-FILLERS
+                 THRU 2399-FORMATA-FILLERS-EXIT
+           END-IF
+
+
+           IF ETCL0002-SEM-ERROS
+              STRING WS-GVALOR1 DELIMITED BY SIZE
+                     WS-FILLER1 DELIMITED BY SIZE
+                     WS-GVALOR2 DELIMITED BY SIZE
+                     WS-FILLER2 DELIMITED BY SIZE
+                     WS-GVALOR3 DELIMITED BY SIZE
+                     WS-FILLER3 DELIMITED BY SIZE
+                                INTO ARCV1021-NLICENCA
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-ENCRIPTA-DADOS
+      *--------------------------------------------------------------
+       2200-ENCRIPTA-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-ENCRIPTA-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              INITIALIZE VIAL0035-COMMAREA
+              SET VIAL0035-ENCRIPTA        TO TRUE
+              MOVE WS-PARTE-1              TO VIAL0035-INPUT
+              CALL VIAL0035-ROTINA    USING ETCL0002-COMMAREA
+                                            VIAL0035-COMMAREA
+              IF ETCL0002-SEM-ERROS
+
+                 MOVE 'VIAL0035-INPUT: '     TO VIAL0015-CAMPO-NM (1)
+                 MOVE  VIAL0035-INPUT        TO VIAL0015-CAMPO-VLR(1)
+                 MOVE 'VIAL0035-OUTPUT-HEX:' TO VIAL0015-CAMPO-NM (2)
+                 MOVE  VIAL0035-OUTPUT-HEX   TO VIAL0015-CAMPO-VLR(2)
+                 PERFORM VIAP0016-TRATA-DEBUG
+                    THRU VIAP0016-TRATA-DEBUG-EXIT
+
+                 MOVE VIAL0035-OUTPUT-HEX  TO WS-GVALOR1
+              ELSE
+                 MOVE ETCL0002-IND-ERROS
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV1021-CAPLIC-S
+                 MOVE ETCL0002-NR-ERRO
+                   TO ARCV1021-CAPLIC-MSG
+                 MOVE ETCL0002-CAPLIC-ERRO
+                   TO ARCV1021-CAPLIC-CAPLIC
+              END-IF
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+              INITIALIZE VIAL0035-COMMAREA
+              SET VIAL0035-ENCRIPTA        TO TRUE
+              MOVE WS-PARTE-2              TO VIAL0035-INPUT
+              CALL VIAL0035-ROTINA    USING ETCL0002-COMMAREA
+                                            VIAL0035-COMMAREA
+              IF ETCL0002-SEM-ERROS
+                 MOVE 'VIAL0035-INPUT: '     TO VIAL0015-CAMPO-NM (1)
+                 MOVE  VIAL0035-INPUT        TO VIAL0015-CAMPO-VLR(1)
+                 MOVE 'VIAL0035-OUTPUT-HEX:' TO VIAL0015-CAMPO-NM (2)
+                 MOVE  VIAL0035-OUTPUT-HEX   TO VIAL0015-CAMPO-VLR(2)
+                 PERFORM VIAP0016-TRATA-DEBUG
+                    THRU VIAP0016-TRATA-DEBUG-EXIT
+
+                 MOVE VIAL0035-OUTPUT-HEX  TO WS-GVALOR2
+              ELSE
+                 MOVE ETCL0002-IND-ERROS
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV1021-CAPLIC-S
+                 MOVE ETCL0002-NR-ERRO
+                   TO ARCV1021-CAPLIC-MSG
+                 MOVE ETCL0002-CAPLIC-ERRO
+                   TO ARCV1021-CAPLIC-CAPLIC
+              END-IF
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+              INITIALIZE VIAL0035-COMMAREA
+              SET VIAL0035-ENCRIPTA        TO TRUE
+              MOVE WS-PARTE-3              TO VIAL0035-INPUT
+              CALL VIAL0035-ROTINA    USING ETCL0002-COMMAREA
+                                            VIAL0035-COMMAREA
+              IF ETCL0002-SEM-ERROS              IF ETCL0002-SEM-ERROS
+                 MOVE 'VIAL0035-INPUT: '     TO VIAL0015-CAMPO-NM (1)
+                 MOVE  VIAL0035-INPUT        TO VIAL0015-CAMPO-VLR(1)
+                 MOVE 'VIAL0035-OUTPUT-HEX:' TO VIAL0015-CAMPO-NM (2)
+                 MOVE  VIAL0035-OUTPUT-HEX   TO VIAL0015-CAMPO-VLR(2)
+                 PERFORM VIAP0016-TRATA-DEBUG
+                    THRU VIAP0016-TRATA-DEBUG-EXIT
+
+                 MOVE VIAL0035-OUTPUT-HEX  TO WS-GVALOR3
+              ELSE
+                 MOVE ETCL0002-IND-ERROS
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV1021-CAPLIC-S
+                 MOVE ETCL0002-NR-ERRO
+                   TO ARCV1021-CAPLIC-MSG
+                 MOVE ETCL0002-CAPLIC-ERRO
+                   TO ARCV1021-CAPLIC-CAPLIC
+              END-IF
+           END-IF.
+
+       2299-ENCRIPTA-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2300-FORMATA-FILLERS
+      *--------------------------------------------------------------
+       2300-FORMATA-FILLERS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2300-FORMATA-FILLERS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+
+           EXEC SQL
+                SET :WS-TIMESTAMP = CURRENT_TIMESTAMP
+           END-EXEC
+
+           MOVE SPACES                   TO WS-FILLER
+
+           MOVE 'Z E R Y U P  L  B '     TO WS-FILLER
+
+           MOVE WS-TIMESTAMP(18:1)       TO WS-POS(02)
+           MOVE WS-TIMESTAMP(1:1)        TO WS-POS(04)
+           MOVE WS-TIMESTAMP(12:1)       TO WS-POS(06)
+           MOVE WS-TIMESTAMP(16:1)       TO WS-POS(08)
+           MOVE WS-TIMESTAMP(23:1)       TO WS-POS(10)
+           MOVE WS-TIMESTAMP(4:1)        TO WS-POS(12)
+           MOVE WS-TIMESTAMP(7:1)        TO WS-POS(13)
+           MOVE WS-TIMESTAMP(13:1)       TO WS-POS(15)
+           MOVE WS-TIMESTAMP(25:1)       TO WS-POS(16)
+           MOVE WS-TIMESTAMP(2:1)        TO WS-POS(18)
+
+           MOVE WS-FILLER                TO WS-FILLER1.
+
+           EXEC SQL
+                SET :WS-TIMESTAMP = CURRENT_TIMESTAMP
+           END-EXEC
+
+
+           MOVE SPACES                   TO WS-FILLER
+
+           MOVE ' C O A I  M H  J T'     TO WS-FILLER
+
+           MOVE WS-TIMESTAMP(18:1)       TO WS-POS(01)
+           MOVE WS-TIMESTAMP(1:1)        TO WS-POS(03)
+           MOVE WS-TIMESTAMP(12:1)       TO WS-POS(05)
+           MOVE WS-TIMESTAMP(16:1)       TO WS-POS(07)
+           MOVE WS-TIMESTAMP(23:1)       TO WS-POS(09)
+           MOVE WS-TIMESTAMP(4:1)        TO WS-POS(10)
+           MOVE WS-TIMESTAMP(7:1)        TO WS-POS(12)
+           MOVE WS-TIMESTAMP(13:1)       TO WS-POS(14)
+           MOVE WS-TIMESTAMP(25:1)       TO WS-POS(15)
+           MOVE WS-TIMESTAMP(2:1)        TO WS-POS(17)
+
+           MOVE WS-FILLER                TO WS-FILLER2.
+
+           EXEC SQL
+                SET :WS-TIMESTAMP = CURRENT_TIMESTAMP
+           END-EXEC
+
+
+           MOVE SPACES                   TO WS-FILLER
+
+           MOVE 'F G D W X N S  V  '     TO WS-FILLER
+
+           MOVE WS-TIMESTAMP(18:1)       TO WS-POS(02)
+           MOVE WS-TIMESTAMP(1:1)        TO WS-POS(04)
+           MOVE WS-TIMESTAMP(12:1)       TO WS-POS(06)
+           MOVE WS-TIMESTAMP(16:1)       TO WS-POS(08)
+           MOVE WS-TIMESTAMP(23:1)       TO WS-POS(10)
+           MOVE WS-TIMESTAMP(4:1)        TO WS-POS(12)
+           MOVE WS-TIMESTAMP(7:1)        TO WS-POS(14)
+           MOVE WS-TIMESTAMP(13:1)       TO WS-POS(15)
+           MOVE WS-TIMESTAMP(25:1)       TO WS-POS(17)
+           MOVE WS-TIMESTAMP(2:1)        TO WS-POS(18)
+
+           MOVE WS-FILLER                TO WS-FILLER3.
+
+       2399-FORMATA-FILLERS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV1021-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV1021-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV1021-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
+           COPY AQCP0005.

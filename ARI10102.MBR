@@ -1,0 +1,375 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI10102.
+      ******************************************************************
+      *     PROGRAMA ARI10102.
+      *
+      *     Utilizadores
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI10102         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD0102 END-EXEC.
+           EXEC SQL INCLUDE ARCD2000 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV1010.
+       COPY ARCV1011.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY VIAL0015.
+      *
+       COPY ARCL2505.
+       COPY ETCL0002.
+      *--------------------------------------------------------------
+      *            VARIAVEIS
+      *--------------------------------------------------------------
+       01  WS-VARIAVEIS.
+           05 AUX-CPERFIL            PIC X(12).
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT0102 PIC X(08) VALUE 'ARVT0102'.
+           05 CON-ARVT2000 PIC X(08) VALUE 'ARVT2000'.
+           05 WS-PROGNAME  PIC  X(08) VALUE 'ARI10102'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI10102         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2099-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV1010-MSG.
+           MOVE ARCV1010-ASE               TO ARCV1011-ASE.
+           MOVE ARCV1010-ADE               TO ARCV1011-ADE.
+      *
+           IF NOT VIAL0001-CRIACAO
+      * Obtem master do perfil do utilizador logado
+              IF VIAL0002-SEM-ERROS
+                 PERFORM 1200-OBT-MASTER-USER
+                    THRU 1200-OBT-MASTER-USER-EXIT
+              END-IF
+
+      * Obtem master do user introduzido de input
+              IF VIAL0002-SEM-ERROS
+                 PERFORM 1300-OBT-MASTER-PERFIL
+                    THRU 1300-OBT-MASTER-PERFIL-EXIT
+              END-IF
+
+      *Valida se ambos os perfis têm o mesmo master
+      *Compara se aux-perfil (master do user logado) é igual
+      *ao ARCL2505-CPERFILMAST que é o master do perfil de input
+
+              IF VIAL0002-SEM-ERROS
+                 IF AUX-CPERFIL NOT EQUAL TO ARCL2505-CPERFILMAST
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1011-CPERFIL-S
+                    MOVE ARCK0001-PERFIL-INVA
+                      TO ARCV1011-CPERFIL-MSG
+                    MOVE ARCK0002-CAPLIC-AR
+                      TO ARCV1011-CPERFIL-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   1200-OBT-MASTER-USER
+      *--------------------------------------------------------------
+       1200-OBT-MASTER-USER.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1200-OBT-MASTER-USER'  TO VIAL0015-CALLER-ID
+              MOVE 'VIAL0001-CUTILIZA-I '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  VIAL0001-CUTILIZA-I    TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE ARCL2505-COMMAREA REPLACING NUMERIC BY ZEROES
+                                             ALPHANUMERIC BY SPACES.
+
+           SET ETCL0002-SEM-ERROS TO TRUE.
+
+      **R 20170822
+           MOVE VIAL0001-I-DEBUG  TO ETCL0002-DEBUG.
+      **R 20170822
+
+           MOVE VIAL0001-CUTILIZA-I        TO ARCL2505-CUSERID.
+
+           CALL ARCL2505-ROTINA USING ETCL0002-COMMAREA
+                                      ARCL2505-COMMAREA.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1200-OBT-MASTER-USER-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'ETCL0002-IND-ERROS  '      TO VIAL0015-CAMPO-NM(1)
+              MOVE  ETCL0002-IND-ERROS         TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ETCL0002-NR-ERRO    '      TO VIAL0015-CAMPO-NM(2)
+              MOVE  ETCL0002-NR-ERRO           TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'ETCL0002-ST-ERRO    '      TO VIAL0015-CAMPO-NM(3)
+              MOVE  ETCL0002-ST-ERRO           TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              MOVE ARCL2505-CPERFILMAST TO AUX-CPERFIL
+           ELSE
+              MOVE ETCL0002-IND-ERROS
+                TO VIAL0002-IND-ERROS
+              MOVE ARCK0002-STATUS-ACTIVO
+                TO ARCV1011-CPERFIL-S
+              MOVE ETCL0002-ST-ERRO
+                TO ARCV1011-CPERFIL-MSG
+              MOVE ARCK0002-CAPLIC-AR
+                TO ARCV1011-CPERFIL-CAPLIC
+           END-IF.
+
+       1200-OBT-MASTER-USER-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   1300-OBT-MASTER-PERFIL.
+      *--------------------------------------------------------------
+       1300-OBT-MASTER-PERFIL.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1300-OBT-MASTER-PERFIL-USER' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE ARCL2505-COMMAREA REPLACING NUMERIC BY ZEROES
+                                             ALPHANUMERIC BY SPACES.
+
+           MOVE ARCV1010-GUSERNAME         TO ARCL2505-CUSERID.
+
+           CALL ARCL2505-ROTINA USING ETCL0002-COMMAREA
+                                      ARCL2505-COMMAREA.
+
+           IF NOT ETCL0002-SEM-ERROS
+              MOVE ETCL0002-IND-ERROS
+                TO VIAL0002-IND-ERROS
+              MOVE ARCK0002-STATUS-ACTIVO
+                TO ARCV1011-CPERFIL-S
+              MOVE ETCL0002-ST-ERRO
+                TO ARCV1011-CPERFIL-MSG
+              MOVE ARCK0002-CAPLIC-AR
+                TO ARCV1011-CPERFIL-CAPLIC
+           END-IF.
+
+       1300-OBT-MASTER-PERFIL-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           IF VIAL0002-SEM-ERROS
+                PERFORM 2100-OBTEM-DADOS
+                   THRU 2199-OBTEM-DADOS-EXIT
+           END-IF
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS        ' TO VIAL0015-CALLER-ID
+              MOVE 'ARCV1010-GUSERNAME      ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCV1010-GUSERNAME        TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV1010-GUSERNAME
+             TO ARCD0102-GUSERNAME
+
+           EXEC SQL
+                 SELECT
+                       GUSERNAME
+                     , CNOME
+                     , CFUNCAO
+                     , CPERFIL
+                     , CLINGUA
+                     , GPASSWORD
+                     , ISTATUS
+                     , CEMPRESA
+                     , CCENTRO
+                     , CMOED
+                     , MCUSTMED
+                     , DDATINI
+                     , DDATFIM
+                     , CUSERID
+                     , HTIMEST
+                     , CNIVEL
+                 INTO
+                       :ARCD0102-GUSERNAME
+                     , :ARCD0102-CNOME
+                     , :ARCD0102-CFUNCAO
+                     , :ARCD0102-CPERFIL
+                     , :ARCD0102-CLINGUA
+                     , :ARCD0102-GPASSWORD
+                     , :ARCD0102-ISTATUS
+                     , :ARCD0102-CEMPRESA
+                     , :ARCD0102-CCENTRO
+                     , :ARCD0102-CMOED
+                     , :ARCD0102-MCUSTMED
+                     , :ARCD0102-DDATINI
+                     , :ARCD0102-DDATFIM
+                     , :ARCD0102-CUSERID
+                     , :ARCD0102-HTIMEST
+                     , :ARCD0102-CNIVEL
+                 FROM ARVT0102
+                 WHERE
+                   UPPER(GUSERNAME) = UPPER(:ARCD0102-GUSERNAME)
+           END-EXEC
+
+
+           MOVE CON-ARVT0102
+             TO VIAL0002-TABLE-NAME.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS - DEPOI' TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE                 ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                   TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1011-GUSERNAME-S
+                    MOVE ARCK0001-GUSERNAME-EXISTS
+                      TO ARCV1011-GUSERNAME-MSG
+                 ELSE
+                    MOVE ARCD0102-GUSERNAME
+                      TO ARCV1011-GUSERNAME
+                    MOVE ARCD0102-CNOME
+                      TO ARCV1011-CNOME
+                    MOVE ARCD0102-CFUNCAO
+                      TO ARCV1011-CFUNCAO
+                    MOVE ARCD0102-CPERFIL
+                      TO ARCV1011-CPERFIL
+                    MOVE ARCD0102-CLINGUA
+                      TO ARCV1011-CLINGUA
+                    MOVE ARCD0102-ISTATUS
+                      TO ARCV1011-ISTATUS
+                    MOVE ARCD0102-CEMPRESA
+                      TO ARCV1011-CEMPRESA
+                    MOVE ARCD0102-CCENTRO
+                      TO ARCV1011-CCENTRO
+                    MOVE ARCD0102-CNIVEL
+                      TO ARCV1011-CNIVEL
+                    MOVE ARCD0102-CMOED
+                      TO ARCV1011-CMOED
+                    MOVE ARCD0102-MCUSTMED
+                      TO ARCV1011-MCUSTMED
+                    MOVE ARCD0102-DDATINI
+                      TO ARCV1011-DDATINI
+                    MOVE ARCD0102-DDATFIM
+                      TO ARCV1011-DDATFIM
+                    IF NOT VIAL0001-VISUALIZACAO
+                       IF ARCD0102-ISTATUS = ARCK0002-INACTIVE-STATUS
+                          MOVE VIAK0002-ERROS-FUNCAO
+                            TO VIAL0002-IND-ERROS
+                          MOVE ARCK0002-STATUS-ACTIVO
+                            TO ARCV1011-GUSERNAME-S
+                          MOVE ARCK0001-GUSERNAME-CANC
+                            TO ARCV1011-GUSERNAME-MSG
+                       END-IF
+                    END-IF
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1011-GUSERNAME-S
+                    MOVE ARCK0001-GUSERNAME-N-EXISTS
+                      TO ARCV1011-GUSERNAME-MSG
+                 END-IF
+              END-IF
+           END-IF.
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV1011-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV1011-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV1011-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+           COPY VIAP0015.
+           COPY VIAP0016.
+      *==============================================================
