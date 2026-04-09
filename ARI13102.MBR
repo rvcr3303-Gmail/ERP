@@ -1,0 +1,283 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI13102.
+      ******************************************************************
+      *     PROGRAMA ARI13102.
+      *
+      *     URL
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI13102         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD0400 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV1310.
+       COPY ARCV1311.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+ CDT   COPY TGCL1000.
+ CDT   COPY TGCL2000.
+       COPY VIAL0015.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT0400 PIC X(08) VALUE 'ARVT0400'.
+           05 WS-PROGNAME  PIC X(08) VALUE 'ARI13102'.
+ CDT       05 CON-CTABELA-CLINGUA  PIC X(05) VALUE 'AR001'.
+ CDT       05 CON-CTABELA-CPAGE  PIC X(05) VALUE 'AR006'.
+ CDT       05 CON-CTABELA-GCORESYS  PIC X(05) VALUE 'AR002'.
+ CDT       05 WS-CTABELA            PIC X(05) VALUE SPACES.
+ CDT       05 WS-CCOD               PIC X(40) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI13102         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV1310-MSG.
+           MOVE ARCV1310-ASE       TO ARCV1311-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           MOVE ARCV1310-ADE       TO ARCV1311-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF.
+
+ CDT  *    IF VIAL0002-SEM-ERROS
+ CDT  *       PERFORM 2100-DESC-CAMPOS
+ CDT  *          THRU 2100-DESC-CAMPOS-EXIT
+ CDT  *    END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-DESC-CAMPOS
+      *--------------------------------------------------------------
+       2100-DESC-CAMPOS.
+      *
+           MOVE '2100-DESC-CAMPOS' TO VIAL0015-CALLER-ID
+
+      *    IF VIAL0001-DEBUG-SIM
+      *       PERFORM VIAP0016-TRATA-DEBUG
+      *          THRU VIAP0016-TRATA-DEBUG-EXIT
+      *    END-IF.
+      *
+
+           IF  VIAL0002-SEM-ERROS
+           AND ARCV1311-XDESCCLINGUA EQUAL SPACES
+           AND ARCV1311-CLINGUA NOT EQUAL SPACES
+              MOVE CON-CTABELA-CLINGUA     TO WS-CTABELA
+              MOVE ARCV1311-CLINGUA        TO WS-CCOD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC        TO ARCV1311-XDESCCLINGUA
+              END-IF
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ARCV1311-XDESCCPAGE EQUAL SPACES
+           AND ARCV1311-CPAGE NOT EQUAL SPACES
+              MOVE CON-CTABELA-CPAGE     TO WS-CTABELA
+              MOVE ARCV1311-CPAGE        TO WS-CCOD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC        TO ARCV1311-XDESCCPAGE
+              END-IF
+           END-IF.
+           IF  VIAL0002-SEM-ERROS
+           AND ARCV1311-XDESCGCORESYS EQUAL SPACES
+           AND ARCV1311-GCORESYS NOT EQUAL SPACES
+              MOVE CON-CTABELA-GCORESYS     TO WS-CTABELA
+              MOVE ARCV1311-GCORESYS        TO WS-CCOD
+              PERFORM 2200-VAL-TAB-ART05
+                 THRU 2200-VAL-TAB-ART05-EXIT
+              IF VIAL0002-SEM-ERROS
+                 MOVE TGCL2000-GDESC        TO ARCV1311-XDESCGCORESYS
+              END-IF
+           END-IF.
+
+       2100-DESC-CAMPOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2200-VAL-TAB-ART05
+      *--------------------------------------------------------------
+       2200-VAL-TAB-ART05.
+      *
+           INITIALIZE TGCL2000-MSG       REPLACING  NUMERIC BY ZEROES
+                                               ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CTABELA                TO TGCL2000-CTABELA
+           MOVE WS-CCOD                   TO TGCL2000-CCOD
+
+           PERFORM CALL-TGCP2000
+              THRU CALL-TGCP2000-EXIT.
+
+       2200-VAL-TAB-ART05-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+
+           MOVE ARCV1310-CURL
+             TO ARCD0400-CURL
+           MOVE ARCV1310-CLINGUA
+             TO ARCD0400-CLINGUA
+
+           EXEC SQL
+                 SELECT
+                       CURL
+                     , CLINGUA
+                     , CPAGE
+                     , GDESC
+                     , GCORESYS
+                     , TIPNAVEG
+                     , CUSERID
+                     , HTIMEST
+                 INTO
+                       :ARCD0400-CURL
+                     , :ARCD0400-CLINGUA
+                     , :ARCD0400-CPAGE
+                     , :ARCD0400-GDESC
+                     , :ARCD0400-GCORESYS
+                     , :ARCD0400-TIPNAVEG
+                     , :ARCD0400-CUSERID
+                     , :ARCD0400-HTIMEST
+                 FROM ARVT0401_URL
+                 WHERE
+                    CURL = :ARCD0400-CURL
+                     AND CLINGUA = :ARCD0400-CLINGUA
+           END-EXEC
+
+
+           MOVE CON-ARVT0400
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1311-CURL-S
+                    MOVE ARCK0001-CURL-EXISTS
+                      TO ARCV1311-CURL-MSG
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1311-CLINGUA-S
+                    MOVE ARCK0001-CLINGUA-EXISTS
+                      TO ARCV1311-CLINGUA-MSG
+                 ELSE
+                    MOVE ARCD0400-CURL
+                      TO ARCV1311-CURL
+                    MOVE ARCD0400-CLINGUA
+                      TO ARCV1311-CLINGUA
+                    MOVE ARCD0400-CPAGE
+                      TO ARCV1311-CPAGE
+                    MOVE ARCD0400-GDESC
+                      TO ARCV1311-GDESC
+                    MOVE ARCD0400-GCORESYS
+                      TO ARCV1311-GCORESYS
+                    MOVE ARCD0400-TIPNAVEG
+                      TO ARCV1311-TIPNAVEG
+                    IF NOT VIAL0001-VISUALIZACAO
+                        CONTINUE
+                    END-IF
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1311-CURL-S
+                    MOVE ARCK0001-CURL-N-EXISTS
+                      TO ARCV1311-CURL-MSG
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1311-CLINGUA-S
+                    MOVE ARCK0001-CLINGUA-N-EXISTS
+                      TO ARCV1311-CLINGUA-MSG
+                 END-IF
+              END-IF
+           END-IF.
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV1311-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV1311-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV1311-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+CDT        COPY TGCP1000.
+CDT        COPY TGCP2000.

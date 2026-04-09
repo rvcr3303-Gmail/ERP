@@ -1,0 +1,237 @@
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. ARR00064.
+      ******************************************************************
+      *                 INTERFACE SISTEMAS EXTERNO                     *
+      ******************************************************************
+      * OBJECTIVO: Obtenção dados do utilizador                        *
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+       01  FILLER                      PIC  X(40) VALUE
+           'INICIO WORKING-STORAGE DO ARR00064   '.
+      ******************************************************************
+      * PROGRAM CONTROL (PGM)
+      ******************************************************************
+       01  WS-PRG-CTL.
+           05 WS-PRG-NAM               PIC  X(10) VALUE 'ARR00064'.
+      ******************************************************************
+      * VARIAVEIS DE TRABALHO (VARTRAB)
+      ******************************************************************
+       01  WS-VARTRAB.
+           05 WN-INDICE                PIC  9(03).
+           05 WS-CBAL-TXT              PIC  X(04).
+           05 FILLER REDEFINES WS-CBAL-TXT.
+             10 WS-CBAL                PIC  9(04).
+      ******************************************************************
+      * SWITCHES  (SWI)
+      ******************************************************************
+       01  WS-SWITCH.
+           05 WN-SWF                   PIC  9(01) VALUE 0.
+              88 WC-SWF-INI                       VALUE 0.
+              88 WC-SWF-FIM                       VALUE 8.
+              88 WC-SWF-ERR                       VALUE 9.
+              88 WC-SWF-TER                       VALUE 8 THRU 9.
+      ******************************************************************
+      * TABELAS
+      ******************************************************************
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WC-CONSTAN.
+           05 CON-ACTIVO               PIC  X(01) VALUE 'A'.
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+      *--- constantes de erro
+           COPY ETCK0001.
+      *--- constantes do modulo
+           COPY ETCK0002.
+      *---
+       77  WA-CODERRO                    PIC  X(07) VALUE SPACES.
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-IND                   PIC S9(04) COMP-3.
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+           EXEC SQL INCLUDE ARCD0100 END-EXEC.
+      ******************************************************************
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ONLINE         '.
+
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *--- Area de processamento de erros
+           COPY ETCL0002.
+      *--- Area de chamada à Rotina ARR00064
+           COPY ETCL0064.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                ETCL0064-DATA.
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+      *-
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2000-PROC-PROGRAMA-EXIT.
+      *-
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+      *-
+       0000-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      * 1000-INICIO-PROGRAMA
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+
+           INITIALIZE ETCL0002-DB2-LOG.
+           INITIALIZE ETCL0002-AREA-ERRO.
+           SET ETCL0002-RCODE-OK            TO TRUE
+           SET WC-SWF-INI                   TO TRUE
+
+           PERFORM 1100-PROC-INICIAL
+              THRU 1100-PROC-INICIAL-EXIT.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      * 1100-PROC-INICIAL                                             **
+      ******************************************************************
+       1100-PROC-INICIAL.
+
+           IF NOT ETCL0002-VERSAO-VIA
+              SET  ETCL0002-RCODE-VAL       TO TRUE
+              MOVE ETCK0002-APL-ET          TO ETCL0002-CAPLIC-ERRO
+              MOVE WS-PRG-NAM               TO ETCL0002-CPROGRAM
+              MOVE 'VERSAO ERRADA'          TO ETCL0002-GINFO-ERRO
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ETCK0001-VERSAO-BANKA    TO ETCL0002-NR-ERRO
+           END-IF.
+
+       1100-PROC-INICIAL-EXIT.
+           EXIT.
+      ******************************************************************
+      * 2000-PROC-PROGRAMA
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+
+           MOVE ETCL0064-USER              TO ARCD0100-GUSERNAME.
+
+           EXEC SQL
+              SELECT CNOME
+                   , CPERFIL
+                   , ISTATUS
+                   , CCENTRO
+                INTO :ARCD0100-CNOME
+                   , :ARCD0100-CPERFIL
+                   , :ARCD0100-ISTATUS
+                   , :ARCD0100-CCENTRO
+                FROM ARVT0100_UTILIZADOR
+               WHERE GUSERNAME = :ARCD0100-GUSERNAME
+           END-EXEC.
+
+           MOVE SQLCA                      TO ETCL0002-SQLCA   .
+
+           IF ETCL0002-SQL-OK
+              MOVE ARCD0100-CNOME          TO ETCL0064-NOME
+      **R     MOVE ARCD0100-CFUNCAO        TO ETCL0064-
+              MOVE ARCD0100-CPERFIL        TO ETCL0064-GRPR
+      **R     MOVE ARCD0100-CLINGUA        TO ETCL0064-
+      **R     MOVE ARCD0100-GPASSWORD      TO ETCL0064-
+              MOVE ARCD0100-ISTATUS        TO ETCL0064-SITU
+      **R     MOVE ARCD0100-CEMPRESA       TO ETCL0064-
+
+              MOVE ARCD0100-CCENTRO        TO WS-CBAL-TXT
+              IF WS-CBAL NOT NUMERIC
+                MOVE ZEROES TO WS-CBAL
+              END-IF
+
+              MOVE WS-CBAL                 TO ETCL0064-BAL
+
+      **R     MOVE ARCD0100-CCENTRO        TO ETCL0064-BAL
+      **R     MOVE ARCD0100-CMOED          TO ETCL0064-
+      **R     MOVE ARCD0100-MCUSTMED       TO ETCL0064-
+      **R     MOVE ARCD0100-DDATINI        TO ETCL0064-
+      **R     MOVE ARCD0100-DDATFIM        TO ETCL0064-
+      **R     MOVE ARCD0100-CUSERID        TO ETCL0064-
+      **R     MOVE ARCD0100-HTIMEEST       TO ETCL0064-
+              MOVE ZEROES                  TO ETCL0064-NSEG
+              MOVE SPACES                  TO ETCL0064-ECMD
+              MOVE ZEROES                  TO ETCL0064-NIVC
+              MOVE ZEROES                  TO ETCL0064-NFUN
+              MOVE ZEROES                  TO ETCL0064-QAUT
+              MOVE SPACES                  TO ETCL0064-GERC
+              MOVE SPACES                  TO ETCL0064-TUTL
+              MOVE ZEROES                  TO ETCL0064-CDGA
+              MOVE SPACES                  TO ETCL0064-USCR
+              MOVE ZEROES                  TO ETCL0064-DTCR
+              MOVE ZEROES                  TO ETCL0064-HOCR
+              MOVE SPACES                  TO ETCL0064-USDE
+              MOVE ZEROES                  TO ETCL0064-DTDE
+              MOVE ZEROES                  TO ETCL0064-HODE
+           ELSE
+              SET  ETCL0002-RCODE-VAL      TO TRUE
+              MOVE ETCK0002-APL-ET         TO ETCL0002-CAPLIC-ERRO
+              MOVE WS-PRG-NAM              TO ETCL0002-CPROGRAM
+              MOVE ETCK0001-SELECT-PPAEMP  TO ETCL0002-NR-ERRO
+              SET  ETCL0002-ERROS-FUNCAO   TO TRUE
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+      * 3000-FIM-PROGRAMA
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+
+           CONTINUE.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************

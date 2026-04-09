@@ -1,0 +1,216 @@
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. ARR02405.
+      ******************************************************************
+      *                          ARQUITECTURA                          *
+      ******************************************************************
+      * OBJECTIVO: Consulta ART24_DATAS                               *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+       01  FILLER                      PIC  X(40) VALUE
+           'INICIO WORKING-STORAGE DO ARR02405   '.
+      ******************************************************************
+      * PROGRAM CONTROL (PGM)
+      ******************************************************************
+
+      ******************************************************************
+      * VARIAVEIS DE TRABALHO (VARTRAB)
+      ******************************************************************
+
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WC-CONSTAN.
+           05 CON-ART24                PIC  X(10) VALUE 'ART24'.
+           05 WS-PROGNAME              PIC  X(10) VALUE 'ARR02405'.
+
+      ******************************************************************
+      * DATASTRUCTURE
+      ******************************************************************
+
+      ******************************************************************
+      * TABELAS
+      ******************************************************************
+           EXEC SQL INCLUDE ARCD2400 END-EXEC.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY ARCK0001.
+           COPY ARCK0002.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAW0005.
+           COPY VIAL0015.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ONLINE         '.
+
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+           COPY ETCL0002.
+           COPY ARCL2405.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                ARCL2405-COMMAREA.
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           INITIALIZE                     ETCL0002-COMMAREA.
+
+           SET  ETCL0002-SEM-ERROS      TO TRUE.
+           SET  ETCL0002-RCODE-OK       TO TRUE.
+
+           PERFORM 1100-VALIDA-DADOS-API
+              THRU 1100-VALIDA-DADOS-API-EXIT.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDA-DADOS-API.
+      ******************************************************************
+           IF ARCL2405-CAPLIC EQUAL SPACES
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ARCK0001-ERR-CAPLIC      TO ETCL0002-ST-ERRO
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+       1100-VALIDA-DADOS-API-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+           MOVE ARCL2405-CAPLIC         TO ARCD2400-CAPLIC.
+
+           EXEC SQL
+                SELECT CAPLIC
+                     , DOPERACAO
+                     , DCONTAB
+                     , DCREDITO
+                     , DDEBITO
+                     , CUSERID
+                     , HTIMEST
+                INTO  :ARCD2400-CAPLIC
+                     ,:ARCD2400-DOPERACAO
+                     ,:ARCD2400-DCONTAB
+                     ,:ARCD2400-DCREDITO
+                     ,:ARCD2400-DDEBITO
+                     ,:ARCD2400-CUSERID
+                     ,:ARCD2400-HTIMEST
+                FROM   ARVT2400_DATAS
+                WHERE  CAPLIC = :ARCD2400-CAPLIC
+           END-EXEC.
+
+           MOVE CON-ART24               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           MOVE 'SQLCODE 2000           '  TO VIAL0015-CALLER-ID
+           MOVE 'SQLCODE                '  TO VIAL0015-CAMPO-NM(1)
+           MOVE  SQLCODE                   TO VIAL0015-CAMPO-VLR(1)
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT
+
+           IF DB2-OK
+              MOVE ARCD2400-DOPERACAO   TO ARCL2405-DOPERACAO
+              MOVE ARCD2400-DCONTAB     TO ARCL2405-DCONTAB
+              MOVE ARCD2400-DCREDITO    TO ARCL2405-DCREDITO
+              MOVE ARCD2400-DDEBITO     TO ARCL2405-DDEBITO
+              MOVE ARCD2400-CUSERID     TO ARCL2405-CUSERID
+              MOVE ARCD2400-HTIMEST     TO ARCL2405-HTIMEST
+           ELSE
+             IF DB2-NOTFND
+                MOVE VIAK0002-ERROS-FUNCAO
+                                        TO ETCL0002-IND-ERROS
+                MOVE ARCK0001-REG-INEXISTENTE
+                                        TO ETCL0002-ST-ERRO
+                MOVE VIAK0002-APLIC-AR  TO ETCL0002-CAPLIC-ERRO
+             ELSE
+                MOVE VIAK0002-ABEND-DB2 TO ETCL0002-IND-ERROS
+                MOVE VIAK0001-ERRO-DB2  TO ETCL0002-ST-ERRO
+                MOVE VIAK0002-APLIC-AR  TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      * 3000-FIM-PROGRAMA
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+           CONTINUE.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+       COPY VIAP0015.
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.

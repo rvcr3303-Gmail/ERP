@@ -1,0 +1,405 @@
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. ARR00300.
+      ******************************************************************
+      *                          ARQUITECTURA                          *
+      ******************************************************************
+      * DESCRICAO: Rotina que replica permissoes de um URL caso tenha  *
+      *            um salto de hierarquias                             *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+       01  FILLER                      PIC  X(40) VALUE
+           'INICIO WORKING-STORAGE DO ARR00300   '.
+      ******************************************************************
+      * PROGRAM CONTROL (PGM)
+      ******************************************************************
+
+      ******************************************************************
+      * VARIAVEIS DE TRABALHO (VARTRAB)
+      ******************************************************************
+
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WC-CONSTAN.
+           05 CON-ARVT2002           PIC  X(10) VALUE 'ARVT2002'.
+           05 CON-ARVT1000           PIC  X(10) VALUE 'ARVT1000'.
+      ******************************************************************
+      * TABELAS
+      ******************************************************************
+           EXEC SQL INCLUDE ARCD2000 END-EXEC.
+           EXEC SQL INCLUDE ARCD1000 END-EXEC.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY ARCK0001.
+           COPY ARCK0002.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAW0005.
+
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ONLINE         '.
+
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+           COPY ETCL0002.
+           COPY ARCL0300.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                ARCL0300-COMMAREA.
+      ******************************************************************
+      * CURSORES                                                       *
+      ******************************************************************
+
+           EXEC SQL
+                DECLARE CURART01 CURSOR FOR
+                 SELECT
+                       CPERFIL
+                     , GDESCRICAO
+                     , INDPERM
+                     , CPERFILM
+                     , CUSERID
+                     , HTIMEST
+                 FROM ARVT2002_INFPERFIL
+                 WHERE  CPERFILM = :ARCD2000-CPERFILM
+                    AND INDPERM  = :ARCD2000-INDPERM
+           END-EXEC.
+
+
+      ******************************************************************
+       0000-MAINLINE.
+      *
+           IF ETCL0002-SEM-ERROS
+              PERFORM 1000-VALIDA-INPUT
+                 THRU 1000-VALIDA-INPUT-EXIT
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+      *
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-VALIDA-INPUT.
+      ******************************************************************
+
+           IF ARCL0300-PERFILMAST    EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO ETCL0002-IND-ERROS
+              MOVE ARCK0001-ERR-CPERFIL   TO ETCL0002-ST-ERRO
+              MOVE ARCK0002-CAPLIC-AR     TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+           IF ARCL0300-URL           EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO ETCL0002-IND-ERROS
+              MOVE ARCK0001-ERR-CURL      TO ETCL0002-ST-ERRO
+              MOVE ARCK0002-CAPLIC-AR     TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+           IF ARCL0300-OPT-BROWSE    EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO ETCL0002-IND-ERROS
+              MOVE ARCK0001-ERR-IBROWSE   TO ETCL0002-ST-ERRO
+              MOVE ARCK0002-CAPLIC-AR     TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+           IF ARCL0300-OPT-CREATE    EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO ETCL0002-IND-ERROS
+              MOVE ARCK0001-ERR-ICREATE   TO ETCL0002-ST-ERRO
+              MOVE ARCK0002-CAPLIC-AR     TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+           IF ARCL0300-OPT-MODIFY    EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO ETCL0002-IND-ERROS
+              MOVE ARCK0001-ERR-IMODIFY   TO ETCL0002-ST-ERRO
+              MOVE ARCK0002-CAPLIC-AR     TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+           IF ARCL0300-OPT-DELETE    EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO ETCL0002-IND-ERROS
+              MOVE ARCK0001-ERR-IDELETE   TO ETCL0002-ST-ERRO
+              MOVE ARCK0002-CAPLIC-AR     TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+           IF ARCL0300-PERFIS-DERIV  EQUAL SPACES
+              MOVE VIAK0002-ERROS-FUNCAO  TO ETCL0002-IND-ERROS
+              MOVE ARCK0001-ERR-COPCAO    TO ETCL0002-ST-ERRO
+              MOVE ARCK0002-CAPLIC-AR     TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+       1000-VALIDA-INPUT-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2020-ABRE-CURSOR
+                 THRU 2029-ABRE-CURSOR-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2040-TRATA-CURSOR
+                 THRU 2049-TRATA-CURSOR-EXIT
+              UNTIL NOT DB2-OK OR NOT ETCL0002-SEM-ERROS
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2070-FECHA-CURSOR
+                 THRU 2079-FECHA-CURSOR-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-ABRE-CURSOR
+      *--------------------------------------------------------------
+       2020-ABRE-CURSOR.
+      *
+           MOVE ARCL0300-PERFILMAST        TO ARCD2000-CPERFILM.
+           MOVE ARCK0002-N-PERFIL-MASTER   TO ARCD2000-INDPERM.
+
+           EXEC SQL
+               OPEN CURART01
+           END-EXEC
+
+           MOVE CON-ARVT2002               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ABEND-DB2   TO ETCL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2    TO ETCL0002-NR-ERRO
+                                              ETCL0002-ST-ERRO
+              END-IF
+           END-IF.
+
+       2029-ABRE-CURSOR-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+      *
+           EXEC SQL
+              FETCH CURART01
+              INTO
+                  :ARCD2000-CPERFIL
+                , :ARCD2000-GDESCRICAO
+                , :ARCD2000-INDPERM
+                , :ARCD2000-CPERFILM
+                , :ARCD2000-CUSERID
+                , :ARCD2000-HTIMEST
+           END-EXEC.
+
+           MOVE CON-ARVT2002               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-TRATA-CURSOR
+      *--------------------------------------------------------------
+       2040-TRATA-CURSOR.
+
+      *  Replica as mesmas permissões do perfil master para o perfil
+      *  associado. Se tiver a N no perfil master, põe a S no derivado
+
+           INITIALIZE DCLARCD1000.
+
+           MOVE ARCD2000-CPERFIL           TO ARCD1000-CPERFIL
+           MOVE ARCL0300-URL               TO ARCD1000-CURL
+           MOVE ARCL0300-USER              TO ARCD1000-CUSERID
+
+      * Se o acesso no master for X, move X para o associado
+      * Se não coloca permissão a S
+           IF ARCL0300-OPT-BROWSE EQUAL ARCK0002-ACTION-N-DISPON
+              MOVE ARCL0300-OPT-BROWSE     TO ARCD1000-IBROWSE
+           ELSE
+              MOVE ARCK0002-ACTION-ACESSO  TO ARCD1000-IBROWSE
+           END-IF.
+
+           IF ARCL0300-OPT-CREATE EQUAL ARCK0002-ACTION-N-DISPON
+              MOVE ARCL0300-OPT-CREATE     TO ARCD1000-ICREATE
+           ELSE
+              MOVE ARCK0002-ACTION-ACESSO  TO ARCD1000-ICREATE
+           END-IF.
+
+           IF ARCL0300-OPT-MODIFY EQUAL ARCK0002-ACTION-N-DISPON
+              MOVE ARCL0300-OPT-MODIFY     TO ARCD1000-IMODIFY
+           ELSE
+              MOVE ARCK0002-ACTION-ACESSO  TO ARCD1000-IMODIFY
+           END-IF.
+
+           IF ARCL0300-OPT-CREATE EQUAL ARCK0002-ACTION-N-DISPON
+              MOVE ARCL0300-OPT-DELETE     TO ARCD1000-IDELETE
+           ELSE
+              MOVE ARCK0002-ACTION-ACESSO  TO ARCD1000-IDELETE
+           END-IF.
+      *
+           IF ARCL0300-DO-INSERT
+              PERFORM 2050-INSERE-PERMISSOES
+                 THRU 2059-INSERE-PERMISSOES-EXIT
+           END-IF.
+
+           IF ARCL0300-DO-UPDATE
+              PERFORM 2060-ACTUALIZA-PERMISSOES
+                 THRU 2069-ACTUALIZA-PERMISSOES-EXIT
+           END-IF.
+      *
+           MOVE CON-ARVT1000               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF NOT DB2-OK
+                 MOVE VIAK0002-ABEND-DB2      TO ETCL0002-IND-ERROS
+                 MOVE VIAK0001-ERRO-DB2       TO ETCL0002-NR-ERRO
+                                                 ETCL0002-ST-ERRO
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+           END-IF.
+      *
+       2049-TRATA-CURSOR-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2050-INSERE-PERMISSOES
+      *--------------------------------------------------------------
+       2050-INSERE-PERMISSOES.
+      *
+           EXEC SQL
+              INSERT INTO ARVT1000_PERFIL_ACTIONS
+                    (CPERFIL
+                   , CURL
+                   , IBROWSE
+                   , ICREATE
+                   , IMODIFY
+                   , IDELETE
+                   , CUSERID
+                   , HTIMEST)
+              VALUES
+                    (:ARCD1000-CPERFIL
+                   , :ARCD1000-CURL
+                   , :ARCD1000-IBROWSE
+                   , :ARCD1000-ICREATE
+                   , :ARCD1000-IMODIFY
+                   , :ARCD1000-IDELETE
+                   , :ARCD1000-CUSERID
+                   , CURRENT TIMESTAMP)
+           END-EXEC.
+
+
+       2059-INSERE-PERMISSOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2060-ACTUALIZA-PERMISSOES
+      *--------------------------------------------------------------
+       2060-ACTUALIZA-PERMISSOES.
+      *
+           EXEC SQL
+              UPDATE
+              ARVT1000_PERFIL_ACTIONS
+              SET IBROWSE = :ARCD1000-IBROWSE
+                , ICREATE = :ARCD1000-ICREATE
+                , IMODIFY = :ARCD1000-IMODIFY
+                , IDELETE = :ARCD1000-IDELETE
+                , CUSERID = :ARCD1000-CUSERID
+                , HTIMEST = CURRENT TIMESTAMP
+              WHERE
+                  CPERFIL = :ARCD1000-CPERFIL
+                 AND CURL = :ARCD1000-CURL
+           END-EXEC.
+
+       2069-ACTUALIZA-PERMISSOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-FECHA-CURSOR
+      *--------------------------------------------------------------
+       2070-FECHA-CURSOR.
+      *
+           EXEC SQL
+              CLOSE CURART01
+           END-EXEC.
+
+       2079-FECHA-CURSOR-EXIT.
+           EXIT.
+      ******************************************************************
+      * 3000-FIM-PROGRAMA
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+           CONTINUE.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.

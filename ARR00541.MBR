@@ -1,0 +1,984 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.       ARR00541.
+      ****************************************************************
+      *  PROGRAMA : ARR00541
+      *
+      *           Apagar saltos de transações backoffice
+      *
+      ****************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+      *
+       COPY VIAL0015.
+       COPY VIAW0012.
+       COPY VIATK001.
+       COPY ARCK0001.
+       COPY ARCK0002.
+
+      ****************************************************************
+      *                   DECLARACOES DB2                            *
+      ****************************************************************
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+           EXEC SQL INCLUDE ARCD0200 END-EXEC.
+           EXEC SQL INCLUDE ARCD1000 END-EXEC.
+      ****************************************************************
+           EXEC SQL
+             DECLARE CURART02 CURSOR FOR
+              SELECT CPERFIL
+                   , CSEQUENCIA
+                   , CHIERAR1
+                   , CURL1
+                   , CHIERAR2
+                   , CURL2
+                   , CHIERAR3
+                   , CURL3
+                   , CHIERAR4
+                   , CURL4
+                   , CHIERAR5
+                   , CURL5
+                FROM ARVT0200_PERFIL
+               WHERE CPERFIL     = :ARCD0200-CPERFIL
+                 AND CHIERAR1    = :ARCD0200-CHIERAR1
+                 AND CHIERAR2    = :ARCD0200-CHIERAR2
+                 AND CHIERAR3    = :ARCD0200-CHIERAR3
+                 AND CHIERAR4    = :ARCD0200-CHIERAR4
+                 AND CHIERAR5    = :ARCD0200-CHIERAR5
+                 AND CSEQUENCIA <> :ARCD0200-CSEQUENCIA
+              ORDER BY CSEQUENCIA
+           END-EXEC.
+      ****************************************************************
+      *                   VARIABLES                                  *
+      ****************************************************************
+       01 WS-VARIAVEIS.
+           05 WS-CURL               PIC X(14) VALUE SPACES.
+      ****************************************************************
+      *                   CONSTANTES                                 *
+      ****************************************************************
+       01 CONSTANTES.
+           05 WS-PROGNAME           PIC X(10) VALUE 'ARR00541'.
+           05 CON-ARVT0200          PIC X(10) VALUE 'ARVT0200'.
+           05 CON-ARVT1000          PIC X(10) VALUE 'ARVT1000'.
+      ****************************************************************
+      *                   SWITCH                                     *
+      ****************************************************************
+       01  SW-PAI                   PIC X(01) VALUE SPACES.
+           88 SW-PAI-OK                       VALUE 'S'.
+           88 SW-PAI-NOK                      VALUE 'N'.
+      ****************************************************************
+       LINKAGE SECTION.
+      *
+       COPY ARCL0541.
+       COPY ETCL0002.
+      ****************************************************************
+       PROCEDURE DIVISION USING ARCL0541-COMMAREA
+                                ETCL0002-COMMAREA.
+      ****************************************************************
+      *           0000-MAINLINE                                      *
+      ****************************************************************
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+           AND SW-PAI-OK
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2099-PROC-PROGRAMA-EXIT
+                UNTIL NOT DB2-OK
+                   OR NOT ETCL0002-SEM-ERROS
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3099-FIM-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      *                       1000-INICIO-PROGRAMA                     *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA   '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           SET SW-PAI-NOK                  TO TRUE.
+      *
+           EVALUATE TRUE
+              WHEN ARCL0541-DELETE
+                 IF ETCL0002-SEM-ERROS
+                    PERFORM 1100-OBTEM-SEQUENCIA
+                       THRU 1100-OBTEM-SEQUENCIA-EXIT
+                 END-IF
+      *
+                 IF ETCL0002-SEM-ERROS
+                    PERFORM 1200-VALIDA-SEQUENCIA
+                       THRU 1200-VALIDA-SEQUENCIA-EXIT
+                 END-IF
+      *
+                 IF ETCL0002-SEM-ERROS
+                    PERFORM 1300-OPEN-CURSOR
+                       THRU 1300-OPEN-CURSOR-EXIT
+                 END-IF
+              WHEN ARCL0541-INSERT
+                 IF ETCL0002-SEM-ERROS
+                    PERFORM 1400-OBTEM-DADOS-MASTER
+                       THRU 1400-OBTEM-DADOS-MASTER-EXIT
+                 END-IF
+      *
+                 IF ETCL0002-SEM-ERROS
+                    PERFORM 1200-VALIDA-SEQUENCIA
+                       THRU 1200-VALIDA-SEQUENCIA-EXIT
+                 END-IF
+      *
+                 IF ETCL0002-SEM-ERROS
+                    IF ARCD0200-CSEQUENCIA
+                    NOT EQUAL ARCL0541-CSEQUENCIA
+                       PERFORM 1500-VALIDA-PAI
+                          THRU 1500-VALIDA-PAI-EXIT
+                    ELSE
+                       PERFORM 1600-VALIDA-ART02
+                          THRU 1600-VALIDA-ART02-EXIT
+      *
+                       IF ETCL0002-SEM-ERROS
+                          PERFORM 2100-FETCH-CURSOR
+                             THRU 2100-FETCH-CURSOR-EXIT
+                       END-IF
+      *
+                       IF ETCL0002-SEM-ERROS
+                          PERFORM 1700-VALIDA-CURL
+                             THRU 1700-VALIDA-CURL-EXIT
+                            UNTIL NOT DB2-OK
+                               OR NOT ETCL0002-SEM-ERROS
+                       END-IF
+                    END-IF
+                 END-IF
+              WHEN OTHER
+                 SET  ETCL0002-ERROS-FUNCAO
+                                           TO TRUE
+                 MOVE ARCK0001-OPER-N-PERMITIDA
+                                           TO ETCL0002-NR-ERRO
+                 MOVE ARCK0002-CAPLIC-AR   TO ETCL0002-CAPLIC-ERRO
+           END-EVALUATE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1100-OBTEM-SEQUENCIA                     *
+      ******************************************************************
+       1100-OBTEM-SEQUENCIA.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1100-OBTEM-SEQUENCIA'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE DCLARCD0200.
+      *
+           MOVE ARCL0541-CSEQUENCIA        TO ARCD0200-CSEQUENCIA.
+           MOVE ARCL0541-CPERFIL           TO ARCD0200-CPERFIL.
+      *
+           EXEC SQL
+              SELECT CPERFIL
+                   , CSEQUENCIA
+                   , CHIERAR1
+                   , CURL1
+                   , CHIERAR2
+                   , CURL2
+                   , CHIERAR3
+                   , CURL3
+                   , CHIERAR4
+                   , CURL4
+                   , CHIERAR5
+                   , CURL5
+                INTO :ARCD0200-CPERFIL
+                   , :ARCD0200-CSEQUENCIA
+                   , :ARCD0200-CHIERAR1
+                   , :ARCD0200-CURL1
+                   , :ARCD0200-CHIERAR2
+                   , :ARCD0200-CURL2
+                   , :ARCD0200-CHIERAR3
+                   , :ARCD0200-CURL3
+                   , :ARCD0200-CHIERAR4
+                   , :ARCD0200-CURL4
+                   , :ARCD0200-CHIERAR5
+                   , :ARCD0200-CURL5
+                FROM ARVT0200_PERFIL
+               WHERE CSEQUENCIA = :ARCD0200-CSEQUENCIA
+                 AND CPERFIL    = :ARCD0200-CPERFIL
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 1100        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF NOT DB2-OK
+              SET  ETCL0002-ERROS-FUNCAO
+                                           TO TRUE
+              MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                                           TO ETCL0002-NR-ERRO
+              MOVE ARCK0002-CAPLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       1100-OBTEM-SEQUENCIA-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       1200-VALIDA-SEQUENCIA                    *
+      ******************************************************************
+       1200-VALIDA-SEQUENCIA.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1200-VALIDA-SEQUENCIA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+              SELECT CSEQUENCIA
+                INTO :ARCD0200-CSEQUENCIA
+                FROM ARVT0200_PERFIL
+               WHERE CPERFIL    = :ARCD0200-CPERFIL
+                 AND CHIERAR1   = :ARCD0200-CHIERAR1
+                 AND CHIERAR2   = :ARCD0200-CHIERAR2
+                 AND CHIERAR3   = :ARCD0200-CHIERAR3
+                 AND CHIERAR4   = :ARCD0200-CHIERAR4
+                 AND CHIERAR5   = :ARCD0200-CHIERAR5
+              ORDER BY CSEQUENCIA
+              FETCH FIRST ROW ONLY
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 1200        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ARCD0200-CSEQUENCIA '  TO VIAL0015-CAMPO-NM(2)
+              MOVE  ARCD0200-CSEQUENCIA    TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'ARCL0541-CSEQUENCIA '  TO VIAL0015-CAMPO-NM(3)
+              MOVE  ARCL0541-CSEQUENCIA    TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EVALUATE TRUE
+              WHEN DB2-OK
+                 IF ARCL0541-DELETE
+                    IF ARCD0200-CSEQUENCIA EQUAL ARCL0541-CSEQUENCIA
+                       SET SW-PAI-OK       TO TRUE
+                    ELSE
+                       SET SW-PAI-NOK      TO TRUE
+                    END-IF
+                 END-IF
+              WHEN OTHER
+                 SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+                 MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                                           TO ETCL0002-NR-ERRO
+                 MOVE ARCK0002-CAPLIC-AR   TO ETCL0002-CAPLIC-ERRO
+           END-EVALUATE.
+      *
+       1200-VALIDA-SEQUENCIA-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       1300-OPEN-CURSOR                         *
+      ******************************************************************
+       1300-OPEN-CURSOR.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1300-OPEN-CURSOR    '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCL0541-CPERFIL           TO ARCD0200-CPERFIL.
+           MOVE ARCL0541-CSEQUENCIA        TO ARCD0200-CSEQUENCIA.
+      *
+           EXEC SQL
+              OPEN CURART02
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 1300        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF NOT DB2-OK
+              SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+              MOVE ARCK0001-ERR-OPEN
+                                           TO ETCL0002-NR-ERRO
+              MOVE ARCK0002-CAPLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       1300-OPEN-CURSOR-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       1400-OBTEM-DADOS-MASTER                  *
+      ******************************************************************
+       1400-OBTEM-DADOS-MASTER.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1400-OBTEM-DADOS-MASTER' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE DCLARCD0200.
+      *
+           MOVE ARCL0541-CSEQUENCIA        TO ARCD0200-CSEQUENCIA.
+           MOVE ARCL0541-CPERFMAS          TO ARCD0200-CPERFIL.
+      *
+           EXEC SQL
+              SELECT CPERFIL
+                   , CSEQUENCIA
+                   , CHIERAR1
+                   , CURL1
+                   , CHIERAR2
+                   , CURL2
+                   , CHIERAR3
+                   , CURL3
+                   , CHIERAR4
+                   , CURL4
+                   , CHIERAR5
+                   , CURL5
+                INTO :ARCD0200-CPERFIL
+                   , :ARCD0200-CSEQUENCIA
+                   , :ARCD0200-CHIERAR1
+                   , :ARCD0200-CURL1
+                   , :ARCD0200-CHIERAR2
+                   , :ARCD0200-CURL2
+                   , :ARCD0200-CHIERAR3
+                   , :ARCD0200-CURL3
+                   , :ARCD0200-CHIERAR4
+                   , :ARCD0200-CURL4
+                   , :ARCD0200-CHIERAR5
+                   , :ARCD0200-CURL5
+                FROM ARVT0200_PERFIL
+               WHERE CSEQUENCIA = :ARCD0200-CSEQUENCIA
+                 AND CPERFIL    = :ARCD0200-CPERFIL
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 1400        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF NOT DB2-OK
+              SET  ETCL0002-ERROS-FUNCAO
+                                           TO TRUE
+              MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                                           TO ETCL0002-NR-ERRO
+              MOVE ARCK0002-CAPLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       1400-OBTEM-DADOS-MASTER-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       1500-VALIDA-PAI                          *
+      ******************************************************************
+       1500-VALIDA-PAI.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1500-VALIDA-PAI     '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCL0541-CPERFIL           TO ARCD0200-CPERFIL.
+      *
+           EXEC SQL
+              SELECT CPERFIL
+                   , CSEQUENCIA
+                   , CHIERAR1
+                   , CURL1
+                   , CHIERAR2
+                   , CURL2
+                   , CHIERAR3
+                   , CURL3
+                   , CHIERAR4
+                   , CURL4
+                   , CHIERAR5
+                   , CURL5
+                INTO :ARCD0200-CPERFIL
+                   , :ARCD0200-CSEQUENCIA
+                   , :ARCD0200-CHIERAR1
+                   , :ARCD0200-CURL1
+                   , :ARCD0200-CHIERAR2
+                   , :ARCD0200-CURL2
+                   , :ARCD0200-CHIERAR3
+                   , :ARCD0200-CURL3
+                   , :ARCD0200-CHIERAR4
+                   , :ARCD0200-CURL4
+                   , :ARCD0200-CHIERAR5
+                   , :ARCD0200-CURL5
+                FROM ARVT0200_PERFIL
+               WHERE CSEQUENCIA = :ARCD0200-CSEQUENCIA
+                 AND CPERFIL    = :ARCD0200-CPERFIL
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 1500        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF NOT DB2-OK
+              SET  ETCL0002-ERROS-FUNCAO
+                                           TO TRUE
+              MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                                           TO ETCL0002-NR-ERRO
+              MOVE ARCK0002-CAPLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       1500-VALIDA-PAI-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       1600-VALIDA-ART02                        *
+      ******************************************************************
+       1600-VALIDA-ART02.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1600-VALIDA-ART02   '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCL0541-CPERFMAS          TO ARCD0200-CPERFIL.
+           MOVE ARCL0541-CSEQUENCIA        TO ARCD0200-CSEQUENCIA.
+      *
+           EXEC SQL
+              OPEN CURART02
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 1600        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF NOT DB2-OK
+              SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+              MOVE ARCK0001-ERR-OPEN
+                                           TO ETCL0002-NR-ERRO
+              MOVE ARCK0002-CAPLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       1600-VALIDA-ART02-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       1700-VALIDA-CURL                         *
+      ******************************************************************
+       1700-VALIDA-CURL.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1700-VALIDA-CURL    '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+              PERFORM 1800-OBTEM-ART10
+                 THRU 1800-OBTEM-ART10-EXIT
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2100-FETCH-CURSOR
+                 THRU 2100-FETCH-CURSOR-EXIT
+           END-IF.
+      *
+       1700-VALIDA-CURL-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       1800-OBTEM-ART10                         *
+      ******************************************************************
+       1800-OBTEM-ART10.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1800-OBTEM-ART10    '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF ARCD0200-CURL1 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL1          TO WS-CURL
+           END-IF.
+      *
+           IF ARCD0200-CURL2 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL2          TO WS-CURL
+           END-IF.
+      *
+           IF ARCD0200-CURL3 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL3          TO WS-CURL
+           END-IF.
+      *
+           IF ARCD0200-CURL4 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL4          TO WS-CURL
+           END-IF.
+      *
+           IF ARCD0200-CURL5 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL5          TO WS-CURL
+           END-IF.
+      *
+           INITIALIZE DCLARCD1000.
+      *
+           MOVE ARCL0541-CPERFIL           TO ARCD1000-CPERFIL.
+           MOVE WS-CURL                    TO ARCD1000-CURL.
+      *
+           EXEC SQL
+              SELECT CURL
+                INTO :ARCD1000-CURL
+                FROM ARVT1000_PERFIL_ACTIONS
+               WHERE CPERFIL = :ARCD1000-CPERFIL
+                 AND CURL    = :ARCD1000-CURL
+           END-EXEC.
+      *
+           MOVE CON-ARVT1000               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 1800        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EVALUATE TRUE
+              WHEN DB2-OK
+                 PERFORM 1900-INSERT-ART02
+                    THRU 1900-INSERT-ART02-EXIT
+              WHEN DB2-NOTFND
+                 CONTINUE
+              WHEN OTHER
+                 SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+                 MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                                           TO ETCL0002-NR-ERRO
+                 MOVE ARCK0002-CAPLIC-AR   TO ETCL0002-CAPLIC-ERRO
+           END-EVALUATE.
+      *
+       1800-OBTEM-ART10-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       1900-INSERT-ART02                        *
+      ******************************************************************
+       1900-INSERT-ART02.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '1900-INSERT-ART02   '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCL0541-CPERFIL           TO ARCD0200-CPERFIL.
+      *
+           EXEC SQL
+              INSERT INTO ARVT0200_PERFIL
+                 VALUES( :ARCD0200-CPERFIL
+                       , :ARCD0200-CSEQUENCIA
+                       , :ARCD0200-CHIERAR1
+                       , :ARCD0200-CURL1
+                       , :ARCD0200-CHIERAR2
+                       , :ARCD0200-CURL2
+                       , :ARCD0200-CHIERAR3
+                       , :ARCD0200-CURL3
+                       , :ARCD0200-CHIERAR4
+                       , :ARCD0200-CURL4
+                       , :ARCD0200-CHIERAR5
+                       , :ARCD0200-CURL5
+                       , :ARCD0200-CUSERID
+                       , CURRENT_TIMESTAMP)
+           END-EXEC.
+      *
+           MOVE CON-ARVT1000               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 1900        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF NOT DB2-OK
+              SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+              MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                                           TO ETCL0002-NR-ERRO
+              MOVE ARCK0002-CAPLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       1900-INSERT-ART02-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       2000-PROC-PROGRAMA                       *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA  '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2100-FETCH-CURSOR
+                 THRU 2100-FETCH-CURSOR-EXIT
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+           AND DB2-OK
+              PERFORM 2200-DELETE-ART02
+                 THRU 2200-DELETE-ART02-EXIT
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+           AND DB2-OK
+              PERFORM 2300-VALIDA-ART10
+                 THRU 2300-VALIDA-ART10-EXIT
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       2100-FETCH-CURSOR                        *
+      ******************************************************************
+       2100-FETCH-CURSOR.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2100-FETCH-CURSOR   '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+              FETCH CURART02
+               INTO :ARCD0200-CPERFIL
+                  , :ARCD0200-CSEQUENCIA
+                  , :ARCD0200-CHIERAR1
+                  , :ARCD0200-CURL1
+                  , :ARCD0200-CHIERAR2
+                  , :ARCD0200-CURL2
+                  , :ARCD0200-CHIERAR3
+                  , :ARCD0200-CURL3
+                  , :ARCD0200-CHIERAR4
+                  , :ARCD0200-CURL4
+                  , :ARCD0200-CHIERAR5
+                  , :ARCD0200-CURL5
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 2100        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EVALUATE TRUE
+              WHEN DB2-OK
+              WHEN DB2-NOTFND
+                 CONTINUE
+              WHEN OTHER
+                 SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+                 MOVE ARCK0001-ERR-OPEN
+                                           TO ETCL0002-NR-ERRO
+                 MOVE ARCK0002-CAPLIC-AR   TO ETCL0002-CAPLIC-ERRO
+           END-EVALUATE.
+      *
+       2100-FETCH-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       2200-DELETE-ART02                        *
+      ******************************************************************
+       2200-DELETE-ART02.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2200-DELETE-ART02   '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+              DELETE ARVT0200_PERFIL
+               WHERE CPERFIL    = :ARCD0200-CPERFIL
+                 AND CSEQUENCIA = :ARCD0200-CSEQUENCIA
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 2200        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF NOT DB2-OK
+              SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+              MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                                           TO ETCL0002-NR-ERRO
+              MOVE ARCK0002-CAPLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       2200-DELETE-ART02-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       2300-VALIDA-ART10                        *
+      ******************************************************************
+       2300-VALIDA-ART10.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2300-VALIDA-ART10   '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF ARCD0200-CURL1 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL1          TO WS-CURL
+           END-IF.
+      *
+           IF ARCD0200-CURL2 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL2          TO WS-CURL
+           END-IF.
+      *
+           IF ARCD0200-CURL3 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL3          TO WS-CURL
+           END-IF.
+      *
+           IF ARCD0200-CURL4 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL4          TO WS-CURL
+           END-IF.
+      *
+           IF ARCD0200-CURL5 NOT EQUAL SPACES
+              MOVE ARCD0200-CURL5          TO WS-CURL
+           END-IF.
+      *
+           EXEC SQL
+              SELECT CSEQUENCIA
+                INTO :ARCD0200-CSEQUENCIA
+                FROM ARVT0200_PERFIL
+               WHERE CPERFIL = :ARCD0200-CPERFIL
+                 AND (CURL1  = :WS-CURL
+                  OR  CURL2  = :WS-CURL
+                  OR  CURL3  = :WS-CURL
+                  OR  CURL4  = :WS-CURL
+                  OR  CURL5  = :WS-CURL )
+              FETCH FIRST ROW ONLY
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 2300        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EVALUATE TRUE
+              WHEN DB2-OK
+                 CONTINUE
+              WHEN DB2-NOTFND
+                 PERFORM 2400-DELETE-ART10
+                    THRU 2400-DELETE-ART10-EXIT
+              WHEN OTHER
+                 SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+                 MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                                           TO ETCL0002-NR-ERRO
+                 MOVE ARCK0002-CAPLIC-AR   TO ETCL0002-CAPLIC-ERRO
+           END-EVALUATE.
+      *
+       2300-VALIDA-ART10-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       2400-DELETE-ART10                        *
+      ******************************************************************
+       2400-DELETE-ART10.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2400-DELETE-ART10   '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE DCLARCD1000.
+      *
+           MOVE ARCL0541-CPERFIL           TO ARCD1000-CPERFIL.
+           MOVE WS-CURL                    TO ARCD1000-CURL.
+      *
+           EXEC SQL
+              DELETE ARVT1000_PERFIL_ACTIONS
+               WHERE CPERFIL = :ARCD1000-CPERFIL
+                 AND CURL    = :ARCD1000-CURL
+           END-EXEC.
+      *
+           MOVE CON-ARVT1000               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 2400        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF NOT DB2-OK
+              SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+              MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                                           TO ETCL0002-NR-ERRO
+              MOVE ARCK0002-CAPLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       2400-DELETE-ART10-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       3000-FIM-PROGRAMA                        *
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '3000-FIM-PROGRAMA   '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF ETCL0002-SEM-ERROS
+           AND SW-PAI-OK
+              PERFORM 3100-CLOSE-CURSOR
+                 THRU 3100-CLOSE-CURSOR-EXIT
+           END-IF.
+      *
+       3099-FIM-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+      *                       3100-CLOSE-CURSOR                        *
+      ******************************************************************
+       3100-CLOSE-CURSOR.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE '3100-CLOSE-CURSOR   '  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           EXEC SQL
+              CLOSE CURART02
+           END-EXEC.
+      *
+           MOVE CON-ARVT0200               TO ETCL0002-TABLE-NAME
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'SQLCODE 3100        '  TO VIAL0015-CALLER-ID
+              MOVE 'SQLCODE             '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  SQLCODE                TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF NOT DB2-OK
+              SET  ETCL0002-ABEND-DB2
+                                           TO TRUE
+              MOVE ARCK0001-ERR-CLOSE
+                                           TO ETCL0002-NR-ERRO
+              MOVE ARCK0002-CAPLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       3100-CLOSE-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       COPY VIAP0015.
+       COPY VIAP0012.
+

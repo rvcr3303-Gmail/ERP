@@ -1,0 +1,457 @@
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. ARM2705.
+      ******************************************************************
+      *                          ARQUITECTURA                          *
+      ******************************************************************
+      * OBJECTIVO: Prepara emails parametrizados para envio            *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+           SELECT VIAFMAIL
+                ASSIGN      TO DISK-VIAFMAIL
+                FILE STATUS IS VIAW0011-FSTATUS.
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       FILE SECTION.
+        FD  VIAFMAIL.
+        COPY VIACDMAIL.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+       01  FILLER                      PIC  X(40) VALUE
+           'INICIO WORKING-STORAGE DO ARM2705   '.
+      ******************************************************************
+      * PROGRAM CONTROL (PGM)
+      ******************************************************************
+       01  WS-PRG-CTL.
+           05 WS-PROGNAME              PIC  X(10) VALUE 'ARM2705'.
+      ******************************************************************
+      * VARIAVEIS DE TRABALHO (VARTRAB)
+      ******************************************************************
+       01  WS-VARTRAB.
+AR0510*    05 WS-NUMERICO                PIC  X(01).
+AR0510*       88 WS-NUMERICO-SIM         VALUE '0' THRU '9'.
+AR0510*    05 WS-VALIDO REDEFINES WS-NUMERICO.
+AR0510*       10 WS-INDICE               PIC 9(01).
+AR0510*    05 WS-NUMERICO                PIC  X(02).
+AR0510*       88 WS-NUMERICO-SIM         VALUE  00  THRU  99.
+AR0510*    05 WS-VALIDO REDEFINES WS-NUMERICO.
+AR0510*       10 WS-INDICE               PIC 9(02).
+           05 WS-NUMERICO.
+              10 WS-NUMERICO1            PIC  X(01).
+                 88 WS-NUMERICO1-SIM     VALUE 0 THRU 9.
+              10 WS-NUMERICO2            PIC  X(01).
+                 88 WS-NUMERICO2-SIM     VALUE 0 THRU 9.
+           05 WS-VALIDO REDEFINES WS-NUMERICO.
+              10 WS-INDICE               PIC 9(02).
+           05 WS-VALOR                   PIC  X(40)  VALUE SPACES.
+           05 WS-ANTERIOR                PIC  9(04)  VALUE ZEROES.
+           05 WS-INDEX                   PIC  9(04)  VALUE ZEROES.
+           05 WS-INDEX2                  PIC  9(04)  VALUE ZEROES.
+           05 WS-INDEX3                  PIC  9(04)  VALUE ZEROES.
+           05 WS-SEGUINTE                PIC  9(04)  VALUE ZEROES.
+           05 WS-BODYAUX                 PIC X(8000) VALUE SPACES.
+           05 WS-BODY.
+              10 WS-BODYCHAR             PIC X(1) OCCURS 8000 TIMES.
+PRA        05 WS-LEN                     PIC S9(04) COMP VALUE ZEROES.
+JF         05 WS-HTIMEST                 PIC  X(26)  VALUE SPACES.
+
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WC-CONSTAN.
+           05 CON-ART27                PIC  X(10) VALUE 'ART27'.
+      ******************************************************************
+      * DATASTRUCTURE
+      ******************************************************************
+
+      ******************************************************************
+      * TABELAS
+      ******************************************************************
+           EXEC SQL INCLUDE ARCD2700 END-EXEC.
+           EXEC SQL INCLUDE ARCD2800 END-EXEC.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY ETCL0002.
+           COPY ARCK0001.
+           COPY ARCK0002.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAW0005.
+           COPY VIAW0011.
+           COPY VIAL0015.
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ONLINE         '.
+
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *--- Area de processamento de erros
+           COPY ARCL2705.
+           COPY VIAL0002.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       PROCEDURE DIVISION USING ARCL2705-DATA
+                                VIAL0002-COMMAREA.
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+      *-
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+      *-
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+      *-
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           SET VIAL0015-DEBUG-SIM           TO TRUE
+
+           INITIALIZE                          VIAL0002-COMMAREA.
+           SET  VIAL0002-SEM-ERROS          TO TRUE                .
+           MOVE ARCK0002-CAPLIC-AR          TO VIAL0002-CAPLIC-ERRO.
+      *
+           PERFORM 1100-VALIDA-DADOS-API
+              THRU 1100-VALIDA-DADOS-API-EXIT.
+
+PRA        IF VIAL0002-SEM-ERROS
+PRA           PERFORM 1150-VALIDA-VARIAVEIS
+PRA              THRU 1150-VALIDA-VARIAVEIS-EXIT
+PRA        END-IF.
+PRA
+           IF VIAL0002-SEM-ERROS
+              PERFORM 1200-OPEN-FILE
+                 THRU 1200-OPEN-FILE-EXIT
+           END-IF.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDA-DADOS-API.
+      ******************************************************************
+
+           IF ARCL2705-CCOD EQUAL SPACES
+              SET  VIAL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ARCK0001-ERR-CCOD        TO VIAL0002-COD-ERRO-GRAVE
+              MOVE VIAK0002-APLIC-AR        TO VIAL0002-CAPLIC-ERRO
+           END-IF.
+
+       1100-VALIDA-DADOS-API-EXIT.
+           EXIT.
+
+PRA   ******************************************************************
+PRA    1150-VALIDA-VARIAVEIS.
+PRA   ******************************************************************
+PRA   *
+PRA        PERFORM VARYING WS-INDEX FROM +1 BY +1
+PRA          UNTIL WS-INDEX > 20
+PRA   *
+PRA           EVALUATE TRUE
+PRA              WHEN ARCL2705-TAMANHO( WS-INDEX ) > ZEROES
+PRA              WHEN ARCL2705-TAMANHO( WS-INDEX ) > 40
+                    MOVE 40 TO ARCL2705-TAMANHO( WS-INDEX )
+PRA              WHEN ARCL2705-VALOR( WS-INDEX )   = SPACES
+                    MOVE 1
+                      TO ARCL2705-TAMANHO( WS-INDEX )
+PRA              WHEN OTHER
+PRA                 MOVE FUNCTION TRIM( ARCL2705-VALOR( WS-INDEX ) )
+PRA                                        TO WS-VALOR
+PRA                 MOVE ZEROES            TO WS-LEN
+PRA                 INSPECT FUNCTION REVERSE( WS-VALOR )
+PRA                    TALLYING WS-LEN FOR LEADING SPACES
+PRA                 COMPUTE WS-LEN = LENGTH OF WS-VALOR - WS-LEN
+PRA                 MOVE WS-LEN
+PRA                   TO ARCL2705-TAMANHO( WS-INDEX )
+PRA           END-EVALUATE
+PRA   *
+PRA        END-PERFORM.
+PRA   *
+PRA        MOVE SPACES                     TO WS-VALOR.
+PRA   *
+PRA    1150-VALIDA-VARIAVEIS-EXIT.
+PRA        EXIT.
+PRA   *
+      ******************************************************************
+       1200-OPEN-FILE.
+      ******************************************************************
+
+      * OPEN FICHEIRO DE OUTPUT
+           OPEN EXTEND VIAFMAIL.
+
+           PERFORM 9030-FSCHECK
+              THRU 9039-FSCHECK-EXIT.
+
+           IF NOT FS-OK
+              MOVE VIAK0002-ERROS-FUNCAO    TO VIAL0002-IND-ERROS
+              MOVE ARCK0001-ERR-OPEN        TO VIAL0002-COD-ERRO-GRAVE
+              MOVE VIAK0002-APLIC-AR        TO VIAL0002-CAPLIC-ERRO
+           END-IF.
+
+       1200-OPEN-FILE-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+
+           MOVE ARCL2705-CCOD         TO ARCD2700-CCOD.
+
+           EXEC SQL
+                 SELECT
+                       CCOD
+                     , GDESC
+                     , CSUBJECT
+                     , CTITULO
+                     , CBODY
+                     , CNOME
+                     , CFROM
+                     , CTO
+                     , CCC
+                     , CBCC
+                     , CASS
+                     , CCSS
+                     , CUSERID
+                 INTO
+                       :ARCD2700-CCOD
+                     , :ARCD2700-GDESC
+                     , :ARCD2700-CSUBJECT
+                     , :ARCD2700-CTITULO
+                     , :ARCD2700-CBODY
+                     , :ARCD2700-CNOME
+                     , :ARCD2700-CFROM
+                     , :ARCD2700-CTO
+                     , :ARCD2700-CCC
+                     , :ARCD2700-CBCC
+                     , :ARCD2700-CASS
+                     , :ARCD2700-CCSS
+                     , :ARCD2700-CUSERID
+                 FROM ARVT2700_PARMAIL
+                 WHERE
+                    CCOD = :ARCD2700-CCOD
+           END-EXEC.
+
+           MOVE CON-ART27               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF DB2-OK
+              PERFORM 2100-SUBSTITUI-VARIAVEIS
+                 THRU 2100-SUBSTITUI-VARIAVEIS-EXIT
+              IF VIAL0002-SEM-ERROS
+                 PERFORM 2200-PROCESSA-ENDERECOS
+                    THRU 2200-PROCESSA-ENDERECOS-EXIT
+              END-IF
+              IF VIAL0002-SEM-ERROS
+                 PERFORM 2300-INSERE-EMAIL
+                    THRU 2300-INSERE-EMAIL-EXIT
+              END-IF
+           ELSE
+             IF DB2-NOTFND
+               MOVE VIAK0002-ERROS-FUNCAO    TO VIAL0002-IND-ERROS
+               MOVE ARCK0001-REG-INEXISTENTE TO VIAL0002-COD-ERRO-GRAVE
+               MOVE VIAK0002-APLIC-AR        TO VIAL0002-CAPLIC-ERRO
+             ELSE
+               MOVE VIAK0002-ABEND-DB2  TO VIAL0002-IND-ERROS
+               MOVE VIAK0001-ERRO-DB2   TO VIAL0002-COD-ERRO-GRAVE
+             END-IF
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      * 2100-SUBSTITUI-VARIAVEIS
+      ******************************************************************
+       2100-SUBSTITUI-VARIAVEIS.
+      *
+           MOVE ARCD2700-CBODY          TO WS-BODY
+           MOVE 0                       TO WS-ANTERIOR
+           MOVE 1                       TO WS-INDEX
+           MOVE 2                       TO WS-SEGUINTE
+           MOVE 3                       TO WS-INDEX2
+AR0510     MOVE 4                       TO WS-INDEX3
+      *
+           PERFORM VARYING WS-INDEX FROM 1 BY 1
+             UNTIL WS-INDEX EQUAL 8000
+               MOVE WS-BODYCHAR(WS-SEGUINTE)
+                                           TO WS-NUMERICO(1:1)
+AR0510         IF WS-INDEX2 < 8001
+AR0510            MOVE WS-BODYCHAR(WS-INDEX2)
+AR0510                                     TO WS-NUMERICO(2:1)
+AR0510         END-IF
+AR0510
+               IF WS-BODYCHAR(WS-INDEX) EQUAL '#'
+               AND WS-NUMERICO1-SIM
+               AND WS-NUMERICO2-SIM
+                  MOVE SPACES                    TO WS-BODYAUX
+                  MOVE ARCL2705-VALOR(WS-INDICE) TO WS-VALOR
+                  STRING WS-BODY(1:WS-ANTERIOR)
+                         WS-VALOR(1:ARCL2705-TAMANHO(WS-INDICE))
+AR0510                   WS-BODY(WS-INDEX3:) DELIMITED BY SIZE
+                    INTO WS-BODYAUX
+                  MOVE WS-BODYAUX                TO WS-BODY
+               END-IF
+               ADD 1                             TO WS-SEGUINTE
+                                                    WS-ANTERIOR
+                                                    WS-INDEX2
+AR0510                                              WS-INDEX3
+           END-PERFORM.
+      *
+       2100-SUBSTITUI-VARIAVEIS-EXIT.
+           EXIT.
+      ******************************************************************
+      * 2200-PROCESSA-ENDERECOS
+      ******************************************************************
+       2200-PROCESSA-ENDERECOS.
+      *
+           MOVE SPACES                     TO VIACDMAIL-CTO
+                                              VIACDMAIL-CCC
+                                              VIACDMAIL-CBCC.
+      * TO
+           EVALUATE TRUE
+              WHEN ARCL2705-CTO EQUAL SPACES
+                 MOVE ARCD2700-CTO         TO VIACDMAIL-CTO
+
+              WHEN ARCD2700-CTO EQUAL SPACES
+                 MOVE ARCL2705-CTO         TO VIACDMAIL-CTO
+
+              WHEN OTHER
+                 STRING ARCD2700-CTO  DELIMITED BY '  '
+                        ';'           DELIMITED BY SIZE
+                        ARCL2705-CTO  DELIMITED BY '  '
+                   INTO VIACDMAIL-CTO
+           END-EVALUATE.
+      *
+      * CC
+           EVALUATE TRUE
+              WHEN ARCD2700-CCC EQUAL SPACES
+                 MOVE ARCL2705-CCC         TO VIACDMAIL-CCC
+
+              WHEN ARCL2705-CCC EQUAL SPACES
+                 MOVE ARCD2700-CCC         TO VIACDMAIL-CCC
+
+              WHEN OTHER
+                 STRING ARCD2700-CCC  DELIMITED BY '  '
+                        ';'           DELIMITED BY SIZE
+                        ARCL2705-CCC  DELIMITED BY '  '
+                   INTO VIACDMAIL-CCC
+           END-EVALUATE.
+      *
+      * BC
+           EVALUATE TRUE
+              WHEN ARCD2700-CBCC EQUAL SPACES
+                 MOVE ARCL2705-CBCC        TO VIACDMAIL-CBCC
+
+              WHEN ARCL2705-CBCC EQUAL SPACES
+                 MOVE ARCD2700-CBCC        TO VIACDMAIL-CBCC
+
+              WHEN OTHER
+                 STRING ARCD2700-CBCC DELIMITED BY '  '
+                        ';'           DELIMITED BY SIZE
+                        ARCL2705-CBCC DELIMITED BY '  '
+                   INTO VIACDMAIL-CBCC
+           END-EVALUATE.
+      *
+       2200-PROCESSA-ENDERECOS-EXIT.
+           EXIT.
+      ******************************************************************
+      * 2300-INSERE-EMAIL
+      ******************************************************************
+       2300-INSERE-EMAIL.
+      *
+           MOVE ARCD2700-CSUBJECT           TO VIACDMAIL-CSUBJECT
+           MOVE WS-BODY                     TO VIACDMAIL-CBODY
+           MOVE ARCD2700-CNOME              TO VIACDMAIL-CNOME
+           MOVE ARCD2700-CFROM              TO VIACDMAIL-CFROM
+           MOVE ARCD2700-CASS               TO VIACDMAIL-CASS
+           MOVE ARCD2700-CCSS               TO VIACDMAIL-CCSS
+           MOVE ARCK0002-INSERIDO           TO VIACDMAIL-CSITU
+      *
+JF         EXEC SQL
+JF              SET :WS-HTIMEST = CURRENT TIMESTAMP
+JF         END-EXEC
+JF    *
+JF         MOVE WS-PROGNAME                 TO VIACDMAIL-CUSERIDC
+JF         MOVE WS-HTIMEST                  TO VIACDMAIL-HTIMESTC
+JF         MOVE WS-PROGNAME                 TO VIACDMAIL-CUSERID
+JF         MOVE WS-HTIMEST                  TO VIACDMAIL-HTIMEST
+JF    *
+           WRITE VIACDMAIL-DATA.
+      *
+           PERFORM 9030-FSCHECK
+              THRU 9039-FSCHECK-EXIT.
+
+           IF NOT FS-OK
+              MOVE VIAK0002-ERROS-FUNCAO    TO VIAL0002-IND-ERROS
+              MOVE ARCK0001-ERR-WRITE       TO VIAL0002-COD-ERRO-GRAVE
+              MOVE VIAK0002-APLIC-AR        TO VIAL0002-CAPLIC-ERRO
+           END-IF.
+      *
+       2300-INSERE-EMAIL-EXIT.
+           EXIT.
+
+      ******************************************************************
+      * 3000-FIM-PROGRAMA
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+
+           CLOSE VIAFMAIL.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+           COPY VIAP0011.
+           COPY VIAP0015.

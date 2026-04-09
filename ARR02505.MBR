@@ -1,0 +1,430 @@
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. ARR02505.
+      ******************************************************************
+      *                          ARQUITECTURA                          *
+      ******************************************************************
+      * OBJECTIVO:Saber o perfil do user logado e o respectivo master *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+       01  FILLER                      PIC  X(40) VALUE
+           'INICIO WORKING-STORAGE DO ARR02505   '.
+      ******************************************************************
+      * PROGRAM CONTROL (PGM)
+      ******************************************************************
+
+      ******************************************************************
+      * VARIAVEIS DE TRABALHO (VARTRAB)
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-CPERFIL             PIC X(12).
+
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTAN.
+           05 CON-ARVT0102           PIC X(08) VALUE 'ARVT0102'.
+           05 CON-ARVT3000           PIC X(08) VALUE 'ARVT3000'.
+           05 CON-ARVT2000           PIC X(08) VALUE 'ARVT2000'.
+           05 WS-PROGNAME            PIC X(08) VALUE 'ARR02505'.
+      ******************************************************************
+      * DATASTRUCTURE
+      ******************************************************************
+
+      ******************************************************************
+      * TABELAS
+      ******************************************************************
+           EXEC SQL INCLUDE ARCD3000 END-EXEC.
+           EXEC SQL INCLUDE ARCD2000 END-EXEC.
+           EXEC SQL INCLUDE ARCD0102 END-EXEC.
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+       COPY VIAL0001.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY VIAL0015.
+
+      *****************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ONLINE         '.
+
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+           COPY ETCL0002.
+           COPY ARCL2505.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                ARCL2505-COMMAREA.
+      ******************************************************************
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+      **R 20170822
+      **R  INITIALIZE                     ETCL0002-COMMAREA.
+      **R 20170822
+
+           INITIALIZE ETCL0002-AREA-ERRO REPLACING NUMERIC BY ZEROES
+                                              ALPHANUMERIC BY SPACES
+      **R 20170822
+
+           SET  ETCL0002-SEM-ERROS      TO TRUE.
+
+           PERFORM 1100-VALIDA-INPUT
+              THRU 1100-VALIDA-INPUT-EXIT.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+       1100-VALIDA-INPUT.
+      ******************************************************************
+
+           IF ARCL2505-CUSERID EQUAL SPACES AND
+              ARCL2505-CPERFIL EQUAL SPACES
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ARCK0001-CUSERID-VAZIO   TO ETCL0002-ST-ERRO
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+           IF ARCL2505-CUSERID NOT EQUAL SPACES AND
+              ARCL2505-CPERFIL NOT EQUAL SPACES
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ARCK0001-ERR-CUSERID     TO ETCL0002-ST-ERRO
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+       1100-VALIDA-INPUT-EXIT.
+           EXIT.
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+
+      * Obtem perfil do user passado em parametro
+           IF ETCL0002-SEM-ERROS AND ARCL2505-CUSERID NOT EQUAL SPACES
+              PERFORM 2120-OBT-PERFIL-USER
+                 THRU 2120-OBT-PERFIL-USER-EXIT
+           END-IF.
+
+           IF ARCL2505-CUSERID NOT EQUAL SPACES
+              MOVE ARCL2505-CPERFILUSER         TO WS-CPERFIL
+           ELSE
+              MOVE ARCL2505-CPERFIL             TO WS-CPERFIL
+           END-IF.
+      **R 20180301
+      * Obtem master do perfil do user passado em WS-CPERFIL
+      **R  IF ETCL0002-SEM-ERROS
+      **R     PERFORM 2130-OBT-MASTER
+      **R        THRU 2130-OBT-MASTER-EXIT
+      **R  END-IF.
+      **R
+      **R  IF ETCL0002-SEM-ERROS
+      **R     PERFORM 2140-OBT-INFO-MASTER
+      **R        THRU 2140-OBT-INFO-MASTER-EXIT
+      **R  END-IF.
+      **R 20180301
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+      **R 20170822
+      ***************************************************************
+       2120-OBT-PERFIL-USER.
+      ***************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2120-OBT-PERFIL-USER ' TO VIAL0015-CALLER-ID
+              MOVE 'ARCL2505-CUSERID     '  TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCL2505-CUSERID        TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCL2505-CUSERID           TO ARCD3000-GUSERNAME
+
+           EXEC SQL
+                 SELECT
+                       GUSERNAME
+                     , CPERFIL
+                     , CUSERID
+                     , HTIMEST
+                 INTO
+                       :ARCD3000-GUSERNAME
+                     , :ARCD3000-CPERFIL
+                     , :ARCD3000-CUSERID
+                     , :ARCD3000-HTIMEST
+                 FROM ARVT3000_PERFISUSER
+                 WHERE
+                    UPPER(GUSERNAME) = UPPER(:ARCD3000-GUSERNAME)
+                    FETCH FIRST ROW ONLY
+           END-EXEC
+
+           MOVE CON-ARVT3000               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE ARCD3000-CPERFIL     TO ARCL2505-CPERFILUSER
+              ELSE
+                IF DB2-NOTFND
+                   MOVE VIAK0002-ERROS-FUNCAO
+                     TO ETCL0002-IND-ERROS
+                   MOVE ARCK0001-GUSERNAME-N-EXISTS
+                     TO ETCL0002-ST-ERRO
+                   MOVE VIAK0002-APLIC-AR
+                   TO ETCL0002-CAPLIC-ERRO
+                ELSE
+                   MOVE VIAK0002-ABEND-DB2 TO ETCL0002-IND-ERROS
+                   MOVE VIAK0001-ERRO-DB2  TO ETCL0002-ST-ERRO
+                   MOVE VIAK0002-APLIC-AR  TO ETCL0002-CAPLIC-ERRO
+                END-IF
+              END-IF
+           END-IF.
+
+       2120-OBT-PERFIL-USER-EXIT.
+           EXIT.
+      **R 20170822
+      ***************************************************************
+      *2120-OBT-PERFIL-USER.
+      ***************************************************************
+      **R
+      **R  IF ETCL0002-DEBUG-SIM
+      **R     MOVE '2120-OBT-PERFIL-USER ' TO VIAL0015-CALLER-ID
+      **R     MOVE 'ARCL2505-CUSERID     '  TO VIAL0015-CAMPO-NM(1)
+      **R     MOVE  ARCL2505-CUSERID        TO VIAL0015-CAMPO-VLR(1)
+      **R     PERFORM VIAP0015-TRATA-DEBUG
+      **R        THRU VIAP0015-TRATA-DEBUG-EXIT
+      **R  END-IF.
+      **R
+      **R  MOVE ARCL2505-CUSERID           TO ARCD0102-GUSERNAME
+      **R
+      **R  EXEC SQL
+      **R        SELECT
+      **R              GUSERNAME
+      **R            , CPERFIL
+      **R            , CUSERID
+      **R            , HTIMEST
+      **R        INTO
+      **R              :ARCD0102-GUSERNAME
+      **R            , :ARCD0102-CPERFIL
+      **R            , :ARCD0102-CUSERID
+      **R            , :ARCD0102-HTIMEST
+      **R        FROM ARVT0102
+      **R        WHERE
+      **R           UPPER(GUSERNAME) = UPPER(:ARCD0102-GUSERNAME)
+      **R  END-EXEC
+      **R
+      **R  MOVE CON-ARVT0102               TO ETCL0002-TABLE-NAME.
+      **R
+      **R  PERFORM 9020-DB2CHECK
+      **R     THRU 9029-DB2CHECK-EXIT.
+      **R
+      **R  IF ETCL0002-SEM-ERROS
+      **R     IF DB2-OK
+      **R        MOVE ARCD0102-CPERFIL     TO ARCL2505-CPERFILUSER
+      **R     ELSE
+      **R       IF DB2-NOTFND
+      **R          MOVE VIAK0002-ERROS-FUNCAO
+      **R            TO ETCL0002-IND-ERROS
+      **R          MOVE ARCK0001-GUSERNAME-N-EXISTS
+      **R            TO ETCL0002-ST-ERRO
+      **R          MOVE VIAK0002-APLIC-AR
+      **R          TO ETCL0002-CAPLIC-ERRO
+      **R       ELSE
+      **R          MOVE VIAK0002-ABEND-DB2 TO ETCL0002-IND-ERROS
+      **R          MOVE VIAK0001-ERRO-DB2  TO ETCL0002-ST-ERRO
+      **R          MOVE VIAK0002-APLIC-AR  TO ETCL0002-CAPLIC-ERRO
+      **R       END-IF
+      **R     END-IF
+      **R  END-IF.
+      **R
+      *2120-OBT-PERFIL-USER-EXIT.
+      **R  EXIT.
+      ***************************************************************
+       2130-OBT-MASTER.
+      ***************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2130-OBT-MASTER      '    TO VIAL0015-CALLER-ID
+              MOVE 'WS-CPERFIL           '    TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-CPERFIL                TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ARCK0002-N-PERFIL-MASTER'  TO VIAL0015-CAMPO-NM(2)
+              MOVE  ARCK0002-N-PERFIL-MASTER   TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE DCLARCD2000 REPLACING NUMERIC BY ZEROES
+                                       ALPHANUMERIC BY SPACES.
+
+           MOVE WS-CPERFIL               TO ARCD2000-CPERFIL.
+           MOVE ARCK0002-N-PERFIL-MASTER TO ARCD2000-INDPERM.
+
+           EXEC SQL
+             SELECT   CPERFIL
+                    , INDPERM
+                    , CPERFILM
+               INTO  :ARCD2000-CPERFIL
+                    ,:ARCD2000-INDPERM
+                    ,:ARCD2000-CPERFILM
+               FROM ARVT2002_INFPERFIL
+              WHERE CPERFIL = :ARCD2000-CPERFIL
+                AND INDPERM = :ARCD2000-INDPERM
+           END-EXEC.
+
+           MOVE CON-ARVT2000               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE ARCD2000-CPERFILM    TO ARCL2505-CPERFILMAST
+              ELSE
+                 IF DB2-NOTFND
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO ETCL0002-IND-ERROS
+                    MOVE ARCK0001-REG-INEXISTENTE
+                      TO ETCL0002-ST-ERRO
+                    MOVE VIAK0002-APLIC-AR
+                      TO ETCL0002-CAPLIC-ERRO
+                 ELSE
+                    MOVE VIAK0002-ABEND-DB2 TO ETCL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2  TO ETCL0002-ST-ERRO
+                    MOVE VIAK0002-APLIC-AR  TO ETCL0002-CAPLIC-ERRO
+                 END-IF
+              END-IF
+           END-IF.
+
+       2130-OBT-MASTER-EXIT.
+           EXIT.
+      ***************************************************************
+       2140-OBT-INFO-MASTER.
+      ***************************************************************
+
+           IF ETCL0002-DEBUG-SIM
+              MOVE '2140-OBT-INFO-MASTER '    TO VIAL0015-CALLER-ID
+              MOVE 'ARCL2505-CPERFILMAST '    TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCL2505-CPERFILMAST      TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE DCLARCD2000 REPLACING NUMERIC BY ZEROES
+                                       ALPHANUMERIC BY SPACES.
+
+           MOVE ARCL2505-CPERFILMAST     TO ARCD2000-CPERFIL.
+
+           EXEC SQL
+             SELECT   INDPERM
+               INTO  :ARCD2000-INDPERM
+               FROM ARVT2002_INFPERFIL
+              WHERE CPERFIL = :ARCD2000-CPERFIL
+           END-EXEC.
+
+           MOVE CON-ARVT2000               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE ARCD2000-INDPERM     TO ARCL2505-INDPERM-MASTER
+              ELSE
+                 IF DB2-NOTFND
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO ETCL0002-IND-ERROS
+                    MOVE ARCK0001-REG-INEXISTENTE
+                      TO ETCL0002-ST-ERRO
+                    MOVE VIAK0002-APLIC-AR
+                      TO ETCL0002-CAPLIC-ERRO
+                 ELSE
+                    MOVE VIAK0002-ABEND-DB2 TO ETCL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2  TO ETCL0002-ST-ERRO
+                    MOVE VIAK0002-APLIC-AR  TO ETCL0002-CAPLIC-ERRO
+                 END-IF
+              END-IF
+           END-IF.
+
+       2140-OBT-INFO-MASTER-EXIT.
+           EXIT.
+      ******************************************************************
+      * 3000-FIM-PROGRAMA
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+
+           CONTINUE.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.
+      *****************************************************************
+       COPY VIAP0015.

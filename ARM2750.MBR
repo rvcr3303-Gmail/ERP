@@ -1,0 +1,529 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       PROGRAM-ID. ARM2750.
+      ******************************************************************
+      *                          ARQUITECTURA                          *
+      ******************************************************************
+      * OBJECTIVO: Prepara emails parametrizados para envio            *
+      *            Esta versao pode receber um ficheiro CSV para       *
+      *            anexar no final do email como uma tabela            *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       FILE-CONTROL.
+           SELECT   VIAFMAIL
+                    ASSIGN              TO DISK-VIAFMAIL
+                    FILE STATUS         IS VIAW0011-FSTATUS.
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       FD  VIAFMAIL.
+           COPY VIACDMAIL.
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       01  FILLER                      PIC  X(40) VALUE
+           'INICIO WORKING-STORAGE DO ARM2750   '.
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC  X(10) VALUE 'ARM2750'.
+           05 WS-ARVT2700               PIC  X(10) VALUE 'ART27'.
+
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-NUMERICO.
+              10 WS-NUMERICO1           PIC  X(01).
+                 88 WS-NUMERICO1-SIM                  VALUE 0 THRU 9.
+              10 WS-NUMERICO2           PIC  X(01).
+                 88 WS-NUMERICO2-SIM                  VALUE 0 THRU 9.
+           05 WS-VALIDO REDEFINES WS-NUMERICO.
+              10 WS-INDICE              PIC  9(02).
+           05 WS-VALOR                  PIC  X(250)   VALUE SPACES.
+           05 WS-ANTERIOR               PIC  9(05)    VALUE ZEROES.
+           05 WS-INDEX                  PIC  9(05)    VALUE ZEROES.
+           05 WS-INDEX2                 PIC  9(05)    VALUE ZEROES.
+           05 WS-INDEX3                 PIC  9(05)    VALUE ZEROES.
+           05 WS-SEGUINTE               PIC  9(05)    VALUE ZEROES.
+           05 WS-BODYAUX                PIC  X(30000) VALUE SPACES.
+           05 WS-BODY.
+              10 WS-BODYCHAR            PIC  X(01)    OCCURS 30000.
+           05 WS-LEN                    PIC  9(05)    VALUE ZEROES.
+           05 WS-HTIMEST                PIC  X(26)    VALUE SPACES.
+
+      ******************************************************************
+      * TABELAS
+      ******************************************************************
+           EXEC SQL INCLUDE ARCD2700 END-EXEC.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY ARCK0001.
+           COPY ARCK0002.
+           COPY VIAK0001.
+           COPY VIAK0002.
+      *    COPY VIAW0005.
+           COPY VIAW0011.
+           COPY VIAL0015.
+           COPY ETCK0001.
+           COPY ETCK0002.
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ONLINE         '.
+
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+           COPY ETCL0002.
+           COPY ARCL2750.
+
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                ARCL2750-COMMAREA.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           MOVE '1000-INICIO-PROGRAMA'      TO VIAL0015-CALLER-ID.
+
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE WS-VARIAVEIS.
+
+           PERFORM 1100-VALIDA-DADOS-API
+              THRU 1100-VALIDA-DADOS-API-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 1150-VALIDA-VARIAVEIS
+                 THRU 1150-VALIDA-VARIAVEIS-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 1200-OPEN-FILE
+                 THRU 1200-OPEN-FILE-EXIT
+           END-IF.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDA-DADOS-API.
+      ******************************************************************
+           MOVE '1100-VALIDA-DADOS-API'     TO VIAL0015-CALLER-ID.
+
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ARCL2750-CCOD EQUAL SPACES
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ARCK0001-ERR-CCOD        TO ETCL0002-NR-ERRO
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+       1100-VALIDA-DADOS-API-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1150-VALIDA-VARIAVEIS.
+      ******************************************************************
+           MOVE '1150-VALIDA-VARIAVEIS'     TO VIAL0015-CALLER-ID.
+
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           PERFORM 1160-PROCESSA-VARIAVEIS
+              THRU 1160-PROCESSA-VARIAVEIS-EXIT
+                   VARYING WS-INDEX FROM 1 BY 1
+                   UNTIL   WS-INDEX > 120.
+
+           MOVE SPACES                      TO WS-VALOR.
+
+       1150-VALIDA-VARIAVEIS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1160-PROCESSA-VARIAVEIS.
+      ******************************************************************
+           MOVE '1160-PROCESSA-VARIAVEIS'   TO VIAL0015-CALLER-ID.
+
+           EVALUATE TRUE
+
+           WHEN ARCL2750-TAMANHO( WS-INDEX ) > 250
+                MOVE 250
+                  TO ARCL2750-TAMANHO( WS-INDEX )
+
+           WHEN ARCL2750-TAMANHO( WS-INDEX ) > ZEROES
+                CONTINUE
+
+           WHEN ARCL2750-VALOR( WS-INDEX )   = SPACES
+                MOVE 1
+                  TO ARCL2750-TAMANHO( WS-INDEX )
+
+           WHEN OTHER
+                MOVE FUNCTION TRIM( ARCL2750-VALOR( WS-INDEX ) )
+                  TO WS-VALOR
+                MOVE ZEROES
+                  TO WS-LEN
+
+                INSPECT FUNCTION REVERSE( WS-VALOR )
+                        TALLYING WS-LEN FOR LEADING SPACES
+
+                COMPUTE WS-LEN = LENGTH OF WS-VALOR - WS-LEN
+
+                MOVE WS-LEN
+                  TO ARCL2750-TAMANHO( WS-INDEX )
+           END-EVALUATE.
+
+       1160-PROCESSA-VARIAVEIS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1200-OPEN-FILE.
+      ******************************************************************
+           MOVE '1200-OPEN-FILE'            TO VIAL0015-CALLER-ID.
+
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           OPEN EXTEND VIAFMAIL.
+
+           PERFORM 9030-FSCHECK
+              THRU 9039-FSCHECK-EXIT.
+
+           IF NOT FS-OK
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ARCK0001-ERR-OPEN        TO ETCL0002-NR-ERRO
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+       1200-OPEN-FILE-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+           MOVE '2000-PROC-PROGRAMA'        TO VIAL0015-CALLER-ID.
+
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCL2750-CCOD               TO ARCD2700-CCOD.
+
+           EXEC SQL
+                SELECT
+                        CCOD
+                     ,  GDESC
+                     ,  CSUBJECT
+                     ,  CTITULO
+                     ,  CBODY
+                     ,  CNOME
+                     ,  CFROM
+                     ,  CTO
+                     ,  CCC
+                     ,  CBCC
+                     ,  CASS
+                     ,  CCSS
+                     ,  CUSERID
+                 INTO
+                       :ARCD2700-CCOD
+                     , :ARCD2700-GDESC
+                     , :ARCD2700-CSUBJECT
+                     , :ARCD2700-CTITULO
+                     , :ARCD2700-CBODY
+                     , :ARCD2700-CNOME
+                     , :ARCD2700-CFROM
+                     , :ARCD2700-CTO
+                     , :ARCD2700-CCC
+                     , :ARCD2700-CBCC
+                     , :ARCD2700-CASS
+                     , :ARCD2700-CCSS
+                     , :ARCD2700-CUSERID
+                 FROM   ARVT2700_PARMAIL
+                 WHERE
+                        CCOD = :ARCD2700-CCOD
+           END-EXEC.
+
+           MOVE WS-ARVT2700                 TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           EVALUATE TRUE
+           WHEN ETCL0002-SQL-OK
+                CONTINUE
+           WHEN ETCL0002-SQL-NOTFND
+                SET  ETCL0002-ERROS-FUNCAO  TO TRUE
+                MOVE ARCK0001-REG-INEXISTENTE
+                                            TO ETCL0002-NR-ERRO
+                MOVE VIAK0002-APLIC-AR      TO ETCL0002-CAPLIC-ERRO
+           WHEN OTHER
+                SET ETCL0002-ABEND-DB2      TO TRUE
+                MOVE VIAK0001-ERRO-DB2      TO ETCL0002-NR-ERRO
+           END-EVALUATE.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2100-SUBSTITUI-VARIAVEIS
+                 THRU 2100-SUBSTITUI-VARIAVEIS-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2200-PROCESSA-ENDERECOS
+                 THRU 2200-PROCESSA-ENDERECOS-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2300-INSERE-EMAIL
+                 THRU 2300-INSERE-EMAIL-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2100-SUBSTITUI-VARIAVEIS.
+      ******************************************************************
+           MOVE '2100-SUBSTITUI-VARIAVEIS'  TO VIAL0015-CALLER-ID.
+
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCD2700-CBODY              TO WS-BODY.
+           MOVE 0                           TO WS-ANTERIOR.
+           MOVE 1                           TO WS-INDEX.
+           MOVE 2                           TO WS-SEGUINTE.
+           MOVE 3                           TO WS-INDEX2.
+           MOVE 4                           TO WS-INDEX3.
+
+           PERFORM 2110-PROCESSA-BODYCHAR
+              THRU 2110-PROCESSA-BODYCHAR
+                   VARYING WS-INDEX FROM 1 BY 1
+                     UNTIL WS-INDEX EQUAL 30000.
+
+       2100-SUBSTITUI-VARIAVEIS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2110-PROCESSA-BODYCHAR.
+      ******************************************************************
+           MOVE '2110-PROCESSA-BODYCHAR'    TO VIAL0015-CALLER-ID.
+
+           MOVE WS-BODYCHAR(WS-SEGUINTE)    TO WS-NUMERICO(1:1).
+
+           IF WS-INDEX2 < 30001
+              MOVE WS-BODYCHAR(WS-INDEX2)   TO WS-NUMERICO(2:1)
+           END-IF.
+
+           IF WS-BODYCHAR(WS-INDEX) EQUAL '#' AND
+              WS-NUMERICO1-SIM                AND
+              WS-NUMERICO2-SIM
+
+              MOVE SPACES                   TO WS-BODYAUX
+              MOVE ARCL2750-VALOR(WS-INDICE)
+                                            TO WS-VALOR
+
+              STRING WS-BODY(1:WS-ANTERIOR)
+      *              WS-VALOR(1:ARCL2750-TAMANHO(WS-INDICE))
+                     FUNCTION TRIM(WS-VALOR)
+                     WS-BODY(WS-INDEX3:) DELIMITED BY SIZE
+                INTO WS-BODYAUX
+
+              MOVE WS-BODYAUX               TO WS-BODY
+           END-IF.
+
+           ADD 1                            TO WS-SEGUINTE
+                                               WS-ANTERIOR
+                                               WS-INDEX2
+                                               WS-INDEX3.
+
+       2110-PROCESSA-BODYCHAR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2200-PROCESSA-ENDERECOS.
+      ******************************************************************
+           MOVE '2200-PROCESSA-ENDERECOS'   TO VIAL0015-CALLER-ID.
+
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE SPACES                      TO VIACDMAIL-CTO
+                                               VIACDMAIL-CCC
+                                               VIACDMAIL-CBCC.
+      * TO
+           EVALUATE TRUE
+              WHEN ARCL2750-CTO EQUAL SPACES
+                 MOVE ARCD2700-CTO         TO VIACDMAIL-CTO
+
+              WHEN ARCD2700-CTO EQUAL SPACES
+                 MOVE ARCL2750-CTO         TO VIACDMAIL-CTO
+
+              WHEN OTHER
+                 STRING ARCD2700-CTO  DELIMITED BY '  '
+                        ';'           DELIMITED BY SIZE
+                        ARCL2750-CTO  DELIMITED BY '  '
+                   INTO VIACDMAIL-CTO
+           END-EVALUATE.
+
+      * CC
+           EVALUATE TRUE
+              WHEN ARCD2700-CCC EQUAL SPACES
+                 MOVE ARCL2750-CCC         TO VIACDMAIL-CCC
+
+              WHEN ARCL2750-CCC EQUAL SPACES
+                 MOVE ARCD2700-CCC         TO VIACDMAIL-CCC
+
+              WHEN OTHER
+                 STRING ARCD2700-CCC  DELIMITED BY '  '
+                        ';'           DELIMITED BY SIZE
+                        ARCL2750-CCC  DELIMITED BY '  '
+                   INTO VIACDMAIL-CCC
+           END-EVALUATE.
+
+      * BC
+           EVALUATE TRUE
+              WHEN ARCD2700-CBCC EQUAL SPACES
+                 MOVE ARCL2750-CBCC        TO VIACDMAIL-CBCC
+
+              WHEN ARCL2750-CBCC EQUAL SPACES
+                 MOVE ARCD2700-CBCC        TO VIACDMAIL-CBCC
+
+              WHEN OTHER
+                 STRING ARCD2700-CBCC DELIMITED BY '  '
+                        ';'           DELIMITED BY SIZE
+                        ARCL2750-CBCC DELIMITED BY '  '
+                   INTO VIACDMAIL-CBCC
+           END-EVALUATE.
+
+       2200-PROCESSA-ENDERECOS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2300-INSERE-EMAIL.
+      ******************************************************************
+           MOVE '2300-INSERE-EMAIL'         TO VIAL0015-CALLER-ID.
+
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCD2700-CSUBJECT           TO VIACDMAIL-CSUBJECT.
+           MOVE WS-BODY                     TO VIACDMAIL-CBODY.
+           MOVE ARCD2700-CNOME              TO VIACDMAIL-CNOME.
+           MOVE ARCD2700-CFROM              TO VIACDMAIL-CFROM.
+           MOVE ARCD2700-CASS               TO VIACDMAIL-CASS.
+           MOVE ARCD2700-CCSS               TO VIACDMAIL-CCSS.
+           MOVE ARCK0002-INSERIDO           TO VIACDMAIL-CSITU.
+
+           EXEC SQL
+                SET :WS-HTIMEST = CURRENT TIMESTAMP
+           END-EXEC.
+
+           MOVE WS-PROGNAME                 TO VIACDMAIL-CUSERIDC.
+           MOVE WS-HTIMEST                  TO VIACDMAIL-HTIMESTC.
+           MOVE WS-PROGNAME                 TO VIACDMAIL-CUSERID.
+           MOVE WS-HTIMEST                  TO VIACDMAIL-HTIMEST.
+           MOVE ARCL2750-GNOMEFIC           TO VIACDMAIL-GNOMEFIC.
+
+           WRITE VIACDMAIL-DATA.
+
+           PERFORM 9030-FSCHECK
+              THRU 9039-FSCHECK-EXIT.
+
+           IF NOT FS-OK
+              MOVE VIAK0002-ERROS-FUNCAO    TO ETCL0002-IND-ERROS
+              MOVE ARCK0001-ERR-WRITE       TO ETCL0002-NR-ERRO
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+       2300-INSERE-EMAIL-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           MOVE '3000-FIM-PROGRAMA'         TO VIAL0015-CALLER-ID.
+
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           CLOSE VIAFMAIL.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+      *    EXEC SQL INCLUDE VIAP0003 END-EXEC.
+           COPY VIAP0011.
+           COPY VIAP0015.
+
+           COPY ETCP0021.

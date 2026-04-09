@@ -1,0 +1,388 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI42206.
+      ******************************************************************
+      *     PROGRAMA ARI42206.                                         *
+      *                                                                *
+      *     Ligar Servidor
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI42206         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD2900 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV4220.
+       COPY ARCV4221.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY ETCL0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT2900 PIC X(08) VALUE 'ARVT2900'.
+           05 WS-PROGNAME  PIC X(08) VALUE 'ARI42206'.
+      *--------------------------------------------------------------  *
+      * VARIAVEIS DE TRABALHO (VARTRAB)
+      *--------------------------------------------------------------  *
+       01  WS-VARTRAB.
+           05 WS-LINK.
+              10 WS-ACCAO                  PIC X(02) VALUE SPACES.
+                88 WS-ACCAO-CHECK                    VALUE 'CK'.
+                88 WS-ACCAO-ON                       VALUE 'ON'.
+                88 WS-ACCAO-OFF                      VALUE 'OF'.
+              10 WS-SNOME                PIC X(10) VALUE SPACES.
+              10 WS-DELAY                PIC 9(06) VALUE ZEROES.
+              10 WS-SITU                 PIC X(01) VALUE SPACES.
+                 88 WS-SITU-ACTIVO       PIC X(01) VALUE SPACES.
+                 88 WS-SITU-INACTIVO     PIC X(01) VALUE SPACES.
+              10 WS-RCODE                PIC X(01) VALUE SPACES.
+                 88 WS-RCODE-OK                    VALUE '0'.
+                 88 WS-RCODE-INF                   VALUE '1'.
+                 88 WS-RCODE-SEM-ERROS             VALUE '0' '1'.
+                 88 WS-RCODE-VAL                   VALUE '2'.
+TP1605        10 WS-CODLIBR              PIC X(10) VALUE SPACES.
+TP1605        10 WS-JBQUEUE              PIC X(10) VALUE SPACES.
+TP1605        10 WS-USERJOB              PIC X(10) VALUE SPACES.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI42206         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV4220-MSG.
+           MOVE ARCV4220-ASE               TO ARCV4221-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV4220-ADE               TO ARCV4221-ADE.
+
+           PERFORM 2100-VALIDACOES
+              THRU 2199-VALIDACOES-EXIT
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2150-ARRANCA-SERVIDOR
+                 THRU 2159-ARRANCA-SERVIDOR-EXIT
+           END-IF
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-MODIFICA-DADOS
+                 THRU 2299-MODIFICA-DADOS-EXIT
+           END-IF
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES' TO VIAL0015-CALLER-ID
+              MOVE 'ARCV4220-CSERVMAIL' TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCV4220-CSERVMAIL  TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+              MOVE '2100-VALIDACOES-1'  TO VIAL0015-CALLER-ID
+              MOVE 'ARCV4220-CSERVMAIL' TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCV4220-CSERVMAIL  TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'SQLCODE        '    TO VIAL0015-CAMPO-NM(2)
+              MOVE  SQLCODE             TO VIAL0015-CAMPO-VLR(2)
+           MOVE ARCV4220-CSERVMAIL
+             TO ARCD2900-CSERVMAIL
+      *
+              MOVE '2100-VALIDACOES-3'  TO VIAL0015-CALLER-ID
+              MOVE 'ARCD2900-CSERVMAIL' TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCD2900-CSERVMAIL  TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'SQLCODE        '    TO VIAL0015-CAMPO-NM(2)
+              MOVE  SQLCODE             TO VIAL0015-CAMPO-VLR(2)
+           EXEC SQL
+              SELECT IONOFFMAIL
+                  ,  NINTERV
+TP1605            ,  CJBQUEUE
+TP1605            ,  CUSERJOB
+TP1605            ,  CODLIBR
+                INTO :ARCD2900-IONOFFMAIL
+                  ,  :ARCD2900-NINTERV
+TP1605            ,  :ARCD2900-CJBQUEUE
+TP1605            ,  :ARCD2900-CUSERJOB
+TP1605            ,  :ARCD2900-CODLIBR
+                FROM ARVT2900_SERVMAIL
+               WHERE CSERVMAIL = :ARCD2900-CSERVMAIL
+           END-EXEC
+      *
+           MOVE CON-ARVT2900
+             TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+              MOVE '2100-VALIDACOES-2'  TO VIAL0015-CALLER-ID
+              MOVE 'ARCD2900-CSERVMAIL' TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCD2900-CSERVMAIL  TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'SQLCODE        '    TO VIAL0015-CAMPO-NM(2)
+              MOVE  SQLCODE             TO VIAL0015-CAMPO-VLR(2)
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+                 IF ARCD2900-IONOFFMAIL EQUAL ARCK0002-SERVIDOR-PRONTO
+                 OR ARCD2900-IONOFFMAIL EQUAL ARCK0002-SERVIDOR-ACTIVO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV4221-CSERVMAIL-S
+                    MOVE ARCK0001-SERV-A-ON
+                      TO ARCV4221-CSERVMAIL-MSG
+                 END-IF
+              ELSE
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV4221-CSERVMAIL-S
+                 MOVE ARCK0001-CSERVMAIL-N-EXISTS
+                   TO ARCV4221-CSERVMAIL-MSG
+              END-IF
+           END-IF.
+      *
+       2199-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2150-ARRANCA-SERVIDOR
+      *--------------------------------------------------------------
+       2150-ARRANCA-SERVIDOR.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2150-ARRANCA-SERVIDOR'   TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV4220-CSERVMAIL
+             TO ARCD2900-CSERVMAIL
+      *
+           SET  WS-ACCAO-ON            TO TRUE
+           MOVE ARCD2900-CSERVMAIL     TO WS-SNOME
+           MOVE ARCD2900-NINTERV       TO WS-DELAY
+           MOVE SPACES                 TO WS-SITU
+           MOVE ZEROES                 TO WS-RCODE
+TP1605     MOVE ARCD2900-CODLIBR       TO WS-CODLIBR
+TP1605     MOVE ARCD2900-CJBQUEUE      TO WS-JBQUEUE
+TP1605     MOVE ARCD2900-CUSERJOB      TO WS-USERJOB
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE 'DADOS_ARRANCA-SERVIDOR'   TO VIAL0015-CALLER-ID
+              MOVE 'WS-ACCAO       '          TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-ACCAO                  TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'WS-SNOME        '         TO VIAL0015-CAMPO-NM(2)
+              MOVE  WS-SNOME                  TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'WS-DELAY        '         TO VIAL0015-CAMPO-NM(3)
+              MOVE  WS-DELAY                  TO VIAL0015-CAMPO-VLR(3)
+              MOVE 'WS-SITU         '         TO VIAL0015-CAMPO-NM(4)
+              MOVE  WS-SITU                   TO VIAL0015-CAMPO-VLR(4)
+              MOVE 'WS-RCODE        '         TO VIAL0015-CAMPO-NM(5)
+              MOVE  WS-RCODE                  TO VIAL0015-CAMPO-VLR(5)
+              MOVE 'WS-CODLIBR      '         TO VIAL0015-CAMPO-NM(6)
+              MOVE  WS-CODLIBR                TO VIAL0015-CAMPO-VLR(6)
+              MOVE 'WS-JBQUEUE      '         TO VIAL0015-CAMPO-NM(7)
+              MOVE  WS-JBQUEUE                TO VIAL0015-CAMPO-VLR(7)
+              MOVE 'WS-USERJOB      '         TO VIAL0015-CAMPO-NM(8)
+              MOVE  WS-USERJOB                TO VIAL0015-CAMPO-VLR(8)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           CALL ARCK0002-ARB7005 USING WS-ACCAO
+                                       WS-SNOME
+                                       WS-DELAY
+                                       WS-SITU
+                                       WS-RCODE
+TP1605                                 WS-CODLIBR
+TP1605                                 WS-JBQUEUE
+TP1605                                 WS-USERJOB.
+      *
+           EVALUATE TRUE
+             WHEN WS-RCODE-OK
+               CONTINUE
+             WHEN WS-RCODE-VAL
+               MOVE VIAK0002-ERROS-FUNCAO
+                 TO VIAL0002-IND-ERROS
+               MOVE ARCK0002-STATUS-ACTIVO
+                 TO ARCV4221-CSERVMAIL-S
+               MOVE ARCK0001-SERVER-ERROR-ON
+                 TO ARCV4221-CSERVMAIL-MSG
+           END-EVALUATE.
+      *
+       2159-ARRANCA-SERVIDOR-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *                   2200-MODIFICA-DADOS
+      *--------------------------------------------------------------
+       2200-MODIFICA-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-MODIFICA-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV4220-CSERVMAIL
+             TO ARCD2900-CSERVMAIL
+           MOVE ARCV4220-GSERVMAIL
+             TO ARCD2900-GSERVMAIL
+           MOVE ARCV4220-CFILEMAIL
+             TO ARCD2900-CFILEMAIL
+           MOVE ARCV4220-IONOFFMAIL
+             TO ARCD2900-IONOFFMAIL
+           MOVE ARCV4220-NINTERV
+             TO ARCD2900-NINTERV
+           MOVE VIAL0001-CUTILIZA-I
+             TO ARCD2900-CUSERID
+
+           EXEC SQL
+                 UPDATE
+                ARVT2900_SERVMAIL
+                SET
+                       CSERVMAIL = :ARCD2900-CSERVMAIL
+                     , GSERVMAIL = :ARCD2900-GSERVMAIL
+                     , CFILEMAIL = :ARCD2900-CFILEMAIL
+                     , IONOFFMAIL = :ARCD2900-IONOFFMAIL
+                     , NINTERV = :ARCD2900-NINTERV
+                     , CUSERID = :ARCD2900-CUSERID
+                     , HTIMEST = CURRENT TIMESTAMP
+                 WHERE
+                    CSERVMAIL = :ARCD2900-CSERVMAIL
+           END-EXEC
+
+
+           MOVE CON-ARVT2900               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV4221-CSERVMAIL-S
+                    MOVE ARCK0001-CSERVMAIL-N-EXISTS
+                      TO ARCV4221-CSERVMAIL-MSG
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF
+
+
+           IF VIAL0002-SEM-ERROS
+                        CONTINUE
+           END-IF
+           .
+
+       2299-MODIFICA-DADOS-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV4221-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV4221-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV4221-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+           COPY VIAP0016.

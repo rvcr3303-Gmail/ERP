@@ -1,0 +1,116 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. ARM00039.
+      ****************************************************************
+      *                                                              *
+      *     PROGRAMA ARM00039.                                       *
+      *                                                              *
+      *     OBTEM NUMERO DE PAGINAS DOWNLOAD EXCEL                   *
+      *                                                              *
+      ****************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+      *
+       COPY VIAK0001.
+       COPY VIAK0002.
+      ****************************************************************
+      *                   STATUS DB2                                 *
+      ****************************************************************
+       COPY VIAW0005.
+      *COPY VIAL0007.
+      ****************************************************************
+      *                   DECLARACOES DB2                            *
+      ****************************************************************
+           EXEC SQL INCLUDE ARCD3901 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      ****************************************************************
+      *                             VARIABLES                        *
+      ****************************************************************
+
+      ****************************************************************
+      *                   CONSTANTES                                 *
+      ****************************************************************
+       01  CON-CONSTANTES.
+           05 CON-ARVT3901       PIC X(08) VALUE 'ARVT3901'.
+      ****************************************************************
+       LINKAGE SECTION.
+      *
+       COPY ETCL0002.
+       COPY ARCL0039.
+      *
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA ,
+                                ARCL0039-COMMAREA.
+      ****************************************************************
+      *           0000-MAINLINE                                      *
+      ****************************************************************
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2099-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3099-FIM-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           GOBACK.
+      ******************************************************************
+      *                       1000-INICIO-PROGRAMA                     *
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+
+           CONTINUE.
+
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       2000-PROC-PROGRAMA                       *
+      *                                                                *
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+
+           MOVE ARCL0039-CAPLIC          TO ARCD3901-CAPLIC.
+           MOVE ARCL0039-COPCAO          TO ARCD3901-COPCAO.
+
+           EXEC SQL
+             SELECT NMAXLIST
+               INTO :ARCD3901-NMAXLIST
+               FROM ARVT3901
+              WHERE CAPLIC = :ARCD3901-CAPLIC
+                AND COPCAO = :ARCD3901-COPCAO
+           END-EXEC.
+
+           MOVE CON-ARVT3901            TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF DB2-OK
+             MOVE ARCD3901-NMAXLIST     TO ARCL0039-NMAXLIST
+           ELSE
+             IF DB2-NOTFND
+               MOVE 1                     TO ARCL0039-NMAXLIST
+             ELSE
+               MOVE VIAK0002-ABEND-DB2  TO ETCL0002-IND-ERROS
+               MOVE VIAK0001-ERRO-DB2   TO ETCL0002-NR-ERRO
+             END-IF
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+      *                       3000-FIM-PROGRAMA                        *
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+
+           CONTINUE.
+
+       3099-FIM-PROGRAMA-EXIT.
+           EXIT.
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0099 END-EXEC.

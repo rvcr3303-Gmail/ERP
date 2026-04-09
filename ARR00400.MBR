@@ -1,0 +1,343 @@
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. ARR00400.
+      ******************************************************************
+      *                                                                *
+      *                        - ARQUITETURA -                         *
+      *                                                                *
+      ******************************************************************
+      *    Este módulo devolve a biblioteca e ficheiro para destino    *
+      *               nos FTP para o iSeries (central).                *
+      ******************************************************************
+      *                                                                *
+      *     Este método constrói uma cadeia de caracteres para ser     *
+      *      utilizado na construção de nomes de ficheiros para o      *
+      *          iSeries (têm que ter no máximo 10 posições).          *
+      *                                                                *
+      *                     Modo de funcionamento:                     *
+      *                                                                *
+      *        A data é agrupada em sequencias de dois digitos.        *
+      *                                                                *
+      *   Cada par é convertido na posição correspondente da matriz:   *
+      *                                                                *
+      *                     1         2         3                      *
+      *              123456789012345678901234567890123456              *
+      *             "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"             *
+      *                                                                *
+      *    O "A" corresponde à 1a posição, o "B" à 2a posição, etc.    *
+      *   O "0" corresponde à 27a posição teminando no caracter "9"    *
+      *                   na 36a posição da matriz.                    *
+      *                                                                *
+      *                          Por exemplo:                          *
+      *                            20170428                            *
+      *                            | | | |                             *
+      *                            v v v v                             *
+      *                            T Q D 1                             *
+      *                                                                *
+      *   Os restantes caracteres são preenchidos com um sequencial    *
+      *    que é gerado (e guardaro) a cada invocação deste módulo.    *
+      *                                                                *
+      *   O exemplo anterior, na primeira invocação, seria devolvido   *
+      *   a cadeia TQD100001. Assim fica garantido que os ficheiros    *
+      *       carregados no central terão sempre um nome único.        *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+      *                    WORKING STORGRE SECTION                     *
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WS-CONSTANTES.
+           05 WS-PROGNAME               PIC  X(10)  VALUE 'ARR00400'.
+           05 WS-FTPISERIES             PIC  X(10)  VALUE 'FTPISERIES'.
+           05 WS-LETRAS                 PIC  X(36)  VALUE
+             'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.
+           05 WS-LETRA                  REDEFINES WS-LETRAS
+                                        OCCURS 36 TIMES
+                                        PIC  X(01).
+      ******************************************************************
+      * VARIAVEIS
+      ******************************************************************
+       01  WS-VARIAVEIS.
+           05 WS-DATA-PROCESSO.
+              10 WS-DATA-SEC            PIC  9(02).
+              10 WS-DATA-ANO            PIC  9(02).
+              10 WS-DATA-MES            PIC  9(02).
+              10 WS-DATA-DIA            PIC  9(02).
+           05 WS-LIBRARY                PIC  X(10).
+           05 WS-FILENAME.
+              10 WS-FILENAME-POS1       PIC  X(01).
+              10 WS-FILENAME-POS2       PIC  X(01).
+              10 WS-FILENAME-POS3       PIC  X(01).
+              10 WS-FILENAME-POS4       PIC  X(01).
+              10 WS-FILENAME-NSEQ       PIC  9(05).
+           05 WS-NSEQ-DATA.
+              10 WS-DATA                PIC  9(12).
+              10 WS-NSEQ                PIC  9(05).
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+       COPY ETCK0002.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY VIAL0015.
+       COPY AQCW0005.
+       COPY VIAL0032.
+       COPY ARCL2205.
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA     END-EXEC.
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *                        LINKGRE SECTION                         *
+      ******************************************************************
+           COPY ETCL0002.
+           COPY ARCL0400.
+      *****************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA
+                                ARCL0400-COMMAREA.
+      *****************************************************************
+      *              P R O C E D U R E   D I V I S I O N
+      *****************************************************************
+       0000-MAINLINE.
+
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           MOVE '1000-INICIO-PROGRAMA     ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 1100-PROCESSOS-INICIAIS
+                 THRU 1100-PROCESSOS-INICIAIS-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 1200-VALIDA-INPUTS
+                 THRU 1200-VALIDA-INPUTS-EXIT
+           END-IF.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-PROCESSOS-INICIAIS.
+      ******************************************************************
+           MOVE '1100-PROCESSOS-INICIAIS  ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE WS-VARIAVEIS          REPLACING NUMERIC BY ZEROES
+                                                 ALPHANUMERIC BY SPACES.
+
+       1100-PROCESSOS-INICIAIS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1200-VALIDA-INPUTS.
+      ******************************************************************
+           MOVE '1200-VALIDA-INPUTS       ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-APLICACAO EQUAL SPACES
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-APLICACAO
+           END-IF.
+
+           IF ETCL0002-DATA-PROCESSO EQUAL SPACES
+              MOVE FUNCTION CURRENT-DATE    TO AQCW0005-DT98-O
+              PERFORM AQCP0005-CONV-DT8INDT10
+                 THRU AQCP0005-CONV-DT8INDT10-EXIT
+              MOVE AQCW0005-DTX10           TO ETCL0002-DATA-PROCESSO
+           END-IF.
+
+           MOVE ETCL0002-DATA-PROCESSO      TO AQCW0005-DTX10.
+           PERFORM AQCP0005-CONV-DT10INDT8
+              THRU AQCP0005-CONV-DT10INDT8-EXIT.
+           MOVE AQCW0005-DT98               TO WS-DATA-PROCESSO
+
+       1200-VALIDA-INPUTS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+           MOVE '2000-PROC-PROGRAMA       ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2100-LER-PARAMETROS
+                 THRU 2100-LER-PARAMETROS-EXIT
+           END-IF.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2100-OBTER-SEQ-DATA
+                 THRU 2100-OBTER-SEQ-DATA-EXIT
+           END-IF.
+
+      * Executa conversão e formata os campos de saída
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2100-FORMATAR-SAIDA
+                 THRU 2100-FORMATAR-SAIDA-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2100-LER-PARAMETROS.
+      ******************************************************************
+           MOVE '2100-LER-PARAMETROS      ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE ARCL2205-DATA         REPLACING NUMERIC BY ZEROES
+                                                 ALPHANUMERIC BY SPACES.
+
+           MOVE WS-FTPISERIES               TO ARCL2205-CPARAM.
+           MOVE ETCL0002-APLICACAO          TO ARCL2205-CAPLIC.
+
+           PERFORM CALL-ARM2206
+              THRU CALL-ARM2206-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              MOVE ARCL2205-GVALOR1         TO WS-LIBRARY
+           END-IF.
+
+       2100-LER-PARAMETROS-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2100-OBTER-SEQ-DATA.
+      ******************************************************************
+           MOVE '2100-OBTER-SEQ-DATA      ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE VIAL0032-COMMAREA     REPLACING NUMERIC BY ZEROES
+                                                 ALPHANUMERIC BY SPACES.
+
+           SET  VIAL0032-DATA-SEQ           TO TRUE.
+      * NAO PRECISA!...
+      * ...mas a sequência é calculada por base na biblioteca
+           MOVE WS-FTPISERIES               TO VIAL0032-CSEQUEN(01:10).
+           MOVE WS-LIBRARY                  TO VIAL0032-CSEQUEN(11:10).
+
+           PERFORM CALL-VIAR0032
+              THRU CALL-VIAR0032-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+             MOVE VIAL0032-NSEQ-DATA        TO WS-NSEQ-DATA
+           END-IF.
+
+       2100-OBTER-SEQ-DATA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2100-FORMATAR-SAIDA.
+      ******************************************************************
+           MOVE '2100-FORMATAR-SAIDA      ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE WS-LETRA(WS-DATA-SEC)       TO WS-FILENAME-POS1.
+           MOVE WS-LETRA(WS-DATA-ANO)       TO WS-FILENAME-POS2.
+           MOVE WS-LETRA(WS-DATA-MES)       TO WS-FILENAME-POS3.
+           MOVE WS-LETRA(WS-DATA-DIA)       TO WS-FILENAME-POS4.
+           MOVE WS-NSEQ                     TO WS-FILENAME-NSEQ.
+
+           MOVE WS-LIBRARY                  TO ARCL0400-CLIB.
+           MOVE WS-FILENAME                 TO ARCL0400-CFILE.
+           MOVE WS-FILENAME                 TO ARCL0400-CMBR.
+
+       2100-FORMATAR-SAIDA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      ******************************************************************
+           MOVE '3000-FIM-PROGRAMA        ' TO VIAL0015-CALLER-ID.
+           IF ETCL0002-DEBUG-SIM
+              MOVE 'ARCL0400-CLIB      '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  ARCL0400-CLIB          TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'ARCL0400-CFILE     '   TO VIAL0015-CAMPO-NM(2)
+              MOVE  ARCL0400-CFILE         TO VIAL0015-CAMPO-VLR(2)
+              MOVE 'ARCL0400-CMBR      '   TO VIAL0015-CAMPO-NM(3)
+              MOVE  ARCL0400-CMBR          TO VIAL0015-CAMPO-VLR(3)
+              PERFORM VIAP0015-TRATA-DEBUG
+                 THRU VIAP0015-TRATA-DEBUG-EXIT
+           END-IF.
+
+           CONTINUE.
+
+       3000-FIM-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       COPY ETCP0021.
+       COPY VIAP0015.
+       COPY AQCP0005.
+       COPY VIAP0032.
+       COPY ARCR2206.

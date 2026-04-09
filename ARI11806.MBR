@@ -1,0 +1,378 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI11806.
+      ******************************************************************
+      *     PROGRAMA ARI11806.                                         *
+      *                                                                *
+      *     Mudar Password
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI11806         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD0100 END-EXEC.
+           EXEC SQL INCLUDE WACD3300 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV1180.
+       COPY ARCV1181.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY WACK0001.
+       COPY WACK0002.
+       COPY ARCL0050.
+       COPY ETCL0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT0100                 PIC X(08) VALUE 'ARVT0100'.
+           05 CON-WAVT3300                 PIC X(08) VALUE 'WAVT3300'.
+           05 WS-PROGNAME                  PIC X(08) VALUE 'ARI11806'.
+           05 CON-P                        PIC X(01) VALUE 'P'.
+           05 CON-OK                       PIC X(01) VALUE 'O'.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI11806         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV1180-MSG.
+           MOVE ARCV1180-ASE               TO ARCV1181-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA'    TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV1180-ADE               TO ARCV1181-ADE.
+
+           PERFORM 2100-VALIDACOES
+              THRU 2199-VALIDACOES-EXIT
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2110-VALIDA-OTP
+                 THRU 2119-VALIDA-OTP-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2120-UPDATE-OTP
+                 THRU 2129-UPDATE-OTP-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-VALIDA-PASSWORD
+                 THRU 2299-VALIDA-PASSWORD-EXIT
+           END-IF
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2300-MODIFICA-DADOS
+                 THRU 2399-MODIFICA-DADOS-EXIT
+           END-IF.
+      *
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-VALIDACOES'       TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           IF ARCV1180-GPASSWORD NOT EQUAL ARCV1180-GPASSWORD1
+              MOVE VIAK0002-ERROS-FUNCAO
+                TO VIAL0002-IND-ERROS
+              MOVE ARCK0002-STATUS-ACTIVO
+                TO ARCV1181-GPASSWORD1-S
+              MOVE ARCK0001-PASSWORD-INVA
+                TO ARCV1181-GPASSWORD1-MSG
+           END-IF.
+      *
+       2199-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2110-VALIDA-OTP
+      *--------------------------------------------------------------
+       2110-VALIDA-OTP.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2110-VALIDA-OTP '      TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE DCLWACD3300          REPLACING NUMERIC BY ZEROES
+      *                                         ALPHANUMERIC BY SPACES.
+           MOVE ARCV1180-GUSERNAME         TO WACD3300-GLOGIN
+           MOVE ARCV1180-NOTP              TO WACD3300-NOTP
+           MOVE CON-P                      TO WACD3300-ISTATUS
+      *
+           EXEC SQL
+             SELECT NOTP
+               INTO :WACD3300-NOTP
+               FROM WAVT3300
+              WHERE UPPER(GLOGIN) = UPPER(:WACD3300-GLOGIN)
+                AND NOTP    = :WACD3300-NOTP
+                AND ISTATUS = :WACD3300-ISTATUS
+           END-EXEC.
+      *
+           MOVE CON-WAVT3300               TO VIAL0002-TABLE-NAME.
+      *
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+      *
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                    CONTINUE
+              ELSE
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV1181-GUSERNAME-S
+                 MOVE WACK0002-CAPLIC
+                   TO ARCV1181-GUSERNAME-CAPLIC
+                 MOVE WACK0001-OTP-NEXISTS
+                   TO ARCV1181-GUSERNAME-MSG
+              END-IF
+           END-IF.
+      *
+       2119-VALIDA-OTP-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2120-UPDATE-OTP
+      *--------------------------------------------------------------
+       2120-UPDATE-OTP.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2120-UPDATE-OTP    '   TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV1180-NOTP              TO WACD3300-NOTP
+           MOVE ARCV1180-GUSERNAME         TO WACD3300-GLOGIN
+           MOVE CON-OK                     TO WACD3300-ISTATUS
+           MOVE VIAL0001-CUTILIZA-I        TO WACD3300-CUSERID
+      *
+           EXEC SQL
+              UPDATE
+                WAVT3300
+                  SET ISTATUS = :WACD3300-ISTATUS
+                    , CUSERID = :ARCD0100-CUSERID
+                    , HTIMEST = CURRENT TIMESTAMP
+                 WHERE UPPER(GLOGIN) = UPPER(:WACD3300-GLOGIN)
+                   AND NOTP          = :WACD3300-NOTP
+           END-EXEC
+
+
+           MOVE CON-WAVT3300               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV1181-GUSERNAME-S
+                 MOVE ARCK0001-GUSERNAME-N-EXISTS
+                   TO ARCV1181-GUSERNAME-MSG
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+      *
+       2129-UPDATE-OTP-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-VALIDA-PASSWORD
+      *--------------------------------------------------------------
+       2200-VALIDA-PASSWORD.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2200-VALIDA-PASSWORD'  TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           INITIALIZE ETCL0002-COMMAREA.
+           INITIALIZE ARCL0050-COMMAREA.
+
+           MOVE ARCV1180-GUSERNAME         TO ARCL0050-GUSERNAME
+           MOVE ARCV1180-GPASSWORD         TO ARCL0050-GPASSWORD
+           MOVE VIAL0001-DTIMEZONE         TO ARCL0050-DATA
+           MOVE VIAL0001-HTIMEZONE         TO ARCL0050-HORA
+           MOVE VIAL0001-CUTILIZA-I        TO ARCL0050-CUSERID
+           MOVE VIAL0001-I-DEBUG           TO ETCL0002-DEBUG
+
+           CALL ARCL0050-NM-ROTINA         USING ETCL0002-COMMAREA
+                                                 ARCL0050-COMMAREA.
+
+           IF NOT ETCL0002-SEM-ERROS
+              MOVE ETCL0002-IND-ERROS      TO VIAL0002-IND-ERROS
+              SET ARCV1181-GPASSWORD-1     TO TRUE
+              MOVE ETCL0002-NR-ERRO        TO ARCV1181-GPASSWORD-MSG
+              MOVE ETCL0002-CAPLIC-ERRO    TO ARCV1181-GPASSWORD-CAPLIC
+           END-IF.
+
+       2299-VALIDA-PASSWORD-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2300-MODIFICA-DADOS
+      *--------------------------------------------------------------
+       2300-MODIFICA-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2300-MODIFICA-DADOS'   TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE ARCV1180-GUSERNAME         TO ARCD0100-GUSERNAME
+           MOVE ARCV1180-GPASSWORD1        TO ARCD0100-GPASSWORD
+           MOVE VIAL0001-CUTILIZA-I        TO ARCD0100-CUSERID
+           MOVE ARCK0002-ACTIVE-STATUS     TO ARCD0100-ISTATUS
+      *
+           EXEC SQL
+              UPDATE
+                ARVT0100_UTILIZADOR
+                SET
+                       GPASSWORD = :ARCD0100-GPASSWORD
+                     , ISTATUS   = :ARCD0100-ISTATUS
+                     , CUSERID   = :ARCD0100-CUSERID
+                     , HTIMEST   = CURRENT TIMESTAMP
+                 WHERE
+                    UPPER(GUSERNAME) = UPPER(:ARCD0100-GUSERNAME)
+           END-EXEC
+
+
+           MOVE CON-ARVT0100               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                 MOVE ARCK0002-STATUS-ACTIVO
+                   TO ARCV1181-GUSERNAME-S
+                 MOVE ARCK0001-GUSERNAME-N-EXISTS
+                   TO ARCV1181-GUSERNAME-MSG
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+      *
+       2399-MODIFICA-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE ARCV1181-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV1181-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV1181-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+           COPY VIAP0016.

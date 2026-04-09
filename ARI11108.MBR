@@ -1,0 +1,212 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    ARI11108.
+      ******************************************************************
+      *     PROGRAMA ARI11108.                                         *
+      *                                                                *
+      *     Perfis
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE ARI11108         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE ARCD0200 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY ARCV1110.
+       COPY ARCV1111.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY ARCK0001.
+       COPY ARCK0002.
+       COPY ETCK0001.
+       COPY ETCK0002.
+      * Acesso a rotinas
+       COPY ARCL0205.
+       COPY ETCL0002.
+       COPY AQCW0005.
+       COPY VIAL0015.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-ARVT0200 PIC X(08) VALUE 'ARVT0200'.
+           05 WS-PROGNAME  PIC X(08) VALUE 'ARI11108'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ARI11108         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO ARCV1110-MSG.
+           MOVE ARCV1110-ASE               TO ARCV1111-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           MOVE ARCV1110-ADE               TO ARCV1111-ADE.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-ELIMINA-DADOS
+                 THRU 2299-ELIMINA-DADOS-EXIT
+           END-IF.
+      *
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2300-ELIMINA-PERFIS-DERIV
+                 THRU 2399-ELIMINA-PERFIS-DERIV-EXIT
+           END-IF.
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-ELIMINA-DADOS
+      *--------------------------------------------------------------
+       2200-ELIMINA-DADOS.
+
+           MOVE ARCV1110-CPERFIL           TO ARCD0200-CPERFIL
+           MOVE ARCV1110-CSEQUENCIA        TO ARCD0200-CSEQUENCIA
+
+           EXEC SQL
+                 DELETE FROM
+                ARVT0200_PERFIL
+                 WHERE
+                    CPERFIL = :ARCD0200-CPERFIL
+                     AND CSEQUENCIA = :ARCD0200-CSEQUENCIA
+           END-EXEC
+
+           MOVE CON-ARVT0200               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1111-CPERFIL-S
+                    MOVE ARCK0001-CPERFIL-N-EXISTS
+                      TO ARCV1111-CPERFIL-MSG
+                    MOVE ARCK0002-STATUS-ACTIVO
+                      TO ARCV1111-CSEQUENCIA-S
+                    MOVE ARCK0001-CSEQUENCIA-N-EXISTS
+                      TO ARCV1111-CSEQUENCIA-MSG
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF.
+
+       2299-ELIMINA-DADOS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            2300-ELIMINA-PERFIS-DERIV
+      *--------------------------------------------------------------
+       2300-ELIMINA-PERFIS-DERIV.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2300-ELIMINA-PERFIS-DERIV' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           INITIALIZE ETCL0002-COMMAREA.
+           SET ETCL0002-SEM-ERROS          TO TRUE.
+
+           SET ARCL0205-MANUT-DELETE       TO TRUE.
+           MOVE ARCV1110-CPERFIL           TO ARCL0205-PERFILMAST.
+           MOVE ARCV1110-CSEQUENCIA        TO ARCL0205-CSEQUENCIA.
+
+           CALL ARCL0205-ROTINA         USING ETCL0002-COMMAREA
+                                              ARCL0205-COMMAREA.
+
+           PERFORM ETCP0002-STD-END
+              THRU ETCP0002-STD-END-EXIT.
+
+           IF NOT ETCL0002-SEM-ERROS
+              MOVE ARCK0002-STATUS-ACTIVO  TO ARCV1111-CPERFIL-S
+              MOVE ETCL0002-ST-ERRO        TO ARCV1111-CPERFIL-MSG
+              MOVE ETCL0002-CAPLIC-ERRO    TO ARCV1111-CPERFIL-CAPLIC
+           END-IF.
+
+      *
+       2399-ELIMINA-PERFIS-DERIV-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE ARCV1111-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE ARCV1111-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE ARCV1111-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.
+           COPY ETCP0002.
+           COPY AQCP0005.
+           COPY VIAP0016.

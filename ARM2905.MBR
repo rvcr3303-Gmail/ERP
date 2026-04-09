@@ -1,0 +1,443 @@
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. ARM2905.
+      ******************************************************************
+      *                          ARQUITECTURA                          *
+      ******************************************************************
+      * OBJECTIVO: Trata Servidores VIA                                *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+       01  FILLER                      PIC  X(40) VALUE
+           'INICIO WORKING-STORAGE DO ARM2905   '.
+      ******************************************************************
+      * PROGRAM CONTROL (PGM)
+      ******************************************************************
+       01  WS-PRG-CTL.
+           05 WS-PROGNAME              PIC  X(10) VALUE 'ARM2905'.
+      ******************************************************************
+      * VARIAVEIS DE TRABALHO (VARTRAB)
+      ******************************************************************
+       01  WS-VARTRAB.
+           05 WS-NUMERICO                PIC  X(02).
+              88 WS-NUMERICO-SIM         VALUE '00' THRU '99'.
+           05 WS-VALIDO REDEFINES WS-NUMERICO.
+              10 WS-INDICE               PIC 9(02).
+           05 WS-VALOR                   PIC  X(40)  VALUE SPACES.
+           05 WS-LINK.
+              10 WS-ACCAO                  PIC X(02) VALUE SPACES.
+                88 WS-ACCAO-CHECK                    VALUE 'CK'.
+                88 WS-ACCAO-ON                       VALUE 'ON'.
+                88 WS-ACCAO-OFF                      VALUE 'OF'.
+              10 WS-SNOME                PIC X(10) VALUE SPACES.
+              10 WS-DELAY                PIC 9(06) VALUE ZEROES.
+              10 WS-SITU                 PIC X(01) VALUE SPACES.
+                 88 WS-SITU-ACTIVO       PIC X(01) VALUE SPACES.
+                 88 WS-SITU-INACTIVO     PIC X(01) VALUE SPACES.
+              10 WS-RCODE                PIC X(01) VALUE SPACES.
+                 88 WS-RCODE-OK                    VALUE '0'.
+                 88 WS-RCODE-INF                   VALUE '1'.
+                 88 WS-RCODE-SEM-ERROS             VALUE '0' '1'.
+                 88 WS-RCODE-VAL                   VALUE '2'.
+              10 WS-LIB_CK               PIC X(10) VALUE SPACES.
+TP1605        10 WS-JBQUEUE              PIC X(10) VALUE SPACES.
+TP1605        10 WS-USERJOB              PIC X(10) VALUE SPACES.
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WC-CONSTAN.
+           05 CON-ART29                PIC  X(10) VALUE 'ART29'.
+      ******************************************************************
+      * DATASTRUCTURE
+      ******************************************************************
+
+      ******************************************************************
+      * TABELAS
+      ******************************************************************
+           EXEC SQL INCLUDE ARCD2900 END-EXEC.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY ARCK0001.
+           COPY ARCK0002.
+           COPY AQCW0011.
+           COPY AQCK0001.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAW0005.
+           COPY VIAW0011.
+           COPY VIAW0030.
+           COPY VIAL0015.
+           COPY ETCL0002.
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+      ******************************************************************
+           EXEC SQL
+                DECLARE CRS_SERV CURSOR FOR
+                SELECT  CSERVMAIL
+                     ,  GSERVMAIL
+                     ,  CFILEMAIL
+                     ,  IONOFFMAIL
+                     ,  NINTERV
+TP1605               ,  CAPLIC
+>>                   ,  COPCAO
+                     ,  CALLERID
+                     ,  CBALM
+                     ,  CUSEREXTR
+                     ,  CUTILIZA
+                     ,  CORIGEM
+                     ,  CJBQUEUE
+    <<               ,  CUSERJOB
+TP1605               ,  CODLIBR
+                  FROM  ARVT2900_SERVMAIL
+                 WHERE  CSERVMAIL  = :ARCD2900-CSERVMAIL
+                   FOR  UPDATE OF IONOFFMAIL
+           END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ONLINE         '.
+
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *--- Area de processamento de erros
+           COPY AQCW0009.
+       01 LK-SERVIDOR                        PIC X(10).
+       01 LK-DELAY                           PIC 9(06).
+       01 LK-SITUACAO                        PIC X(01).
+TP1605     COPY VIAL0200.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       PROCEDURE DIVISION USING AQCW0009-DATA
+                                LK-SERVIDOR
+                                LK-DELAY
+                                LK-SITUACAO
+TP1605                          VIAL0200-COMMAREA.
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+      *-
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+      *-
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+      *-
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+           SET VIAL0015-DEBUG-SIM           TO TRUE.
+      *
+           PERFORM 1100-VALIDA-DADOS-API
+              THRU 1100-VALIDA-DADOS-API-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 1200-OPEN-CURSOR
+                 THRU 1200-OPEN-CURSOR-EXIT
+           END-IF.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDA-DADOS-API.
+      ******************************************************************
+
+           CONTINUE.
+
+       1100-VALIDA-DADOS-API-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1200-OPEN-CURSOR.
+      ******************************************************************
+
+           MOVE LK-SERVIDOR                  TO ARCD2900-CSERVMAIL.
+
+           EXEC SQL
+                OPEN CRS_SERV
+           END-EXEC
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              CONTINUE
+           ELSE
+              SET  AQCW0009-RCODE-APL        TO TRUE
+              SET  VIAW0030-DB2-ERROR        TO TRUE
+              MOVE WS-PROGNAME               TO VIAW0030-PGMNAME
+              MOVE '1200-OPEN-CURSOR'        TO VIAW0030-PARAGRAPH-NAME
+              MOVE CON-ART29                 TO VIAW0030-TABLE-NAME
+              MOVE SQLCODE                   TO VIAW0030-SQLCODE
+              MOVE 'ERRO AO ABRIR O CURSOR DA ART29  '
+                                             TO VIAW0030-DESC1
+              PERFORM VIAP0030-ESCREVE-SPOOL
+                 THRU VIAP0030-ESCREVE-SPOOL-EXIT
+           END-IF.
+
+       1200-OPEN-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+      *
+TBP        MOVE '0000-MAINLINE       '  TO VIAL0015-CALLER-ID
+TBP        MOVE 'LK-SITUACAO         '  TO VIAL0015-CAMPO-NM(1)
+TBP        MOVE  LK-SITUACAO            TO VIAL0015-CAMPO-VLR(1)
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT
+      *-
+           IF LK-SITUACAO EQUAL SPACES
+              PERFORM 2005-TRATA-CURSOR
+                 THRU 2005-TRATA-CURSOR-EXIT
+           ELSE
+              PERFORM 2800-UPDATE-SITUACAO
+                 THRU 2800-UPDATE-SITUACAO-EXIT
+           END-IF.
+      *
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+      * 2005-TRATA-CURSOR.
+      ******************************************************************
+       2005-TRATA-CURSOR.
+      *
+           PERFORM 2200-FETCH
+              THRU 2200-FETCH-EXIT.
+
+           PERFORM 2100-PROC-CURSOR
+              THRU 2100-PROC-CURSOR-EXIT
+                UNTIL NOT AQCW0009-SEM-ERROS
+                   OR NOT AQCW0011-OK.
+
+           EXEC SQL
+               CLOSE CRS_SERV
+           END-EXEC.
+      *
+       2005-TRATA-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+      * 2100-PROC-CURSOR
+      ******************************************************************
+       2100-PROC-CURSOR.
+      *
+           MOVE ARCD2900-NINTERV             TO LK-DELAY
+TP1605     MOVE ARCD2900-CAPLIC              TO VIAL0200-CAPLIC
+>>         MOVE ARCD2900-COPCAO              TO VIAL0200-COPCAO
+           MOVE ARCD2900-CALLERID            TO VIAL0200-CALLERID
+           MOVE ARCD2900-CBALM               TO VIAL0200-CBALM
+           MOVE ARCD2900-CUSEREXTR           TO VIAL0200-CUSER-EXTRN
+    <<     MOVE ARCD2900-CUTILIZA            TO VIAL0200-CUTILIZA-I
+TP1605     MOVE ARCD2900-CORIGEM             TO VIAL0200-ORIGEM
+
+           IF ARCD2900-IONOFFMAIL EQUAL ARCK0002-SERVIDOR-PRONTO
+           OR ARCD2900-IONOFFMAIL EQUAL ARCK0002-SERVIDOR-INACTIVO
+              MOVE ARCK0002-SERVIDOR-ACTIVO   TO ARCD2900-IONOFFMAIL
+              PERFORM 2700-ACTUALIZA-ESTADO
+                 THRU 2700-ACTUALIZA-ESTADO-EXIT
+           END-IF
+
+           IF ARCD2900-IONOFFMAIL EQUAL ARCK0002-SERVIDOR-STANDBY
+           OR ARCD2900-IONOFFMAIL EQUAL ARCK0002-SERVIDOR-ERRO
+           OR ARCD2900-IONOFFMAIL EQUAL ARCK0002-SERVIDOR-INACTIVO
+              MOVE ARCD2900-IONOFFMAIL          TO LK-SITUACAO
+           END-IF
+
+           IF AQCW0009-SEM-ERROS
+              PERFORM 2200-FETCH
+                 THRU 2200-FETCH-EXIT
+           END-IF.
+      *
+       2100-PROC-CURSOR-EXIT.
+           EXIT.
+
+      ******************************************************************
+      * 2200-FETCH.
+      ******************************************************************
+       2200-FETCH.
+      *
+           EXEC SQL
+                FETCH  CRS_SERV
+                 INTO  :ARCD2900-CSERVMAIL
+                    ,  :ARCD2900-GSERVMAIL
+                    ,  :ARCD2900-CFILEMAIL
+                    ,  :ARCD2900-IONOFFMAIL
+                    ,  :ARCD2900-NINTERV
+TP1605              ,  :ARCD2900-CAPLIC
+>>                  ,  :ARCD2900-COPCAO
+                    ,  :ARCD2900-CALLERID
+                    ,  :ARCD2900-CBALM
+                    ,  :ARCD2900-CUSEREXTR
+                    ,  :ARCD2900-CUTILIZA
+                    ,  :ARCD2900-CORIGEM
+                    ,  :ARCD2900-CJBQUEUE
+    <<              ,  :ARCD2900-CUSERJOB
+TP1605              ,  :ARCD2900-CODLIBR
+           END-EXEC.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              CONTINUE
+           ELSE
+              SET  AQCW0009-RCODE-APL        TO TRUE
+              SET  VIAW0030-DB2-ERROR        TO TRUE
+              MOVE WS-PROGNAME               TO VIAW0030-PGMNAME
+              MOVE '1200-OPEN-CURSOR'        TO VIAW0030-PARAGRAPH-NAME
+              MOVE CON-ART29                 TO VIAW0030-TABLE-NAME
+              MOVE SQLCODE                   TO VIAW0030-SQLCODE
+              MOVE 'ERRO NO FETCH DO CURSOR DA ART29  '
+                                             TO VIAW0030-DESC1
+              PERFORM VIAP0030-ESCREVE-SPOOL
+                 THRU VIAP0030-ESCREVE-SPOOL-EXIT
+           END-IF.
+      *
+       2200-FETCH-EXIT.
+           EXIT.
+
+      ******************************************************************
+      * 2700-ACTUALIZA-ESTADO.
+      ******************************************************************
+       2700-ACTUALIZA-ESTADO.
+      *
+
+           EXEC SQL
+             UPDATE ARVT2900_SERVMAIL
+                SET IONOFFMAIL = :ARCD2900-IONOFFMAIL
+              WHERE CURRENT OF CRS_SERV
+           END-EXEC.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              CONTINUE
+           ELSE
+              SET  AQCW0009-RCODE-APL        TO TRUE
+              SET  VIAW0030-DB2-ERROR        TO TRUE
+              MOVE WS-PROGNAME               TO VIAW0030-PGMNAME
+              MOVE '2700-ACTUALIZA-ESTADO'   TO VIAW0030-PARAGRAPH-NAME
+              MOVE CON-ART29                 TO VIAW0030-TABLE-NAME
+              MOVE SQLCODE                   TO VIAW0030-SQLCODE
+              MOVE 'ERRO NO UPDATE DA TABELA ART29  '
+                                             TO VIAW0030-DESC1
+              PERFORM VIAP0030-ESCREVE-SPOOL
+                 THRU VIAP0030-ESCREVE-SPOOL-EXIT
+           END-IF.
+      *
+       2700-ACTUALIZA-ESTADO-EXIT.
+           EXIT.
+
+      ******************************************************************
+      * 2800-UPDATE-SITUACAO.
+      ******************************************************************
+       2800-UPDATE-SITUACAO.
+      *
+           IF LK-SITUACAO EQUAL ARCK0002-SERVIDOR-STANDBY
+              MOVE ARCK0002-SERVIDOR-INACTIVO  TO ARCD2900-IONOFFMAIL
+           ELSE
+              MOVE LK-SITUACAO                 TO ARCD2900-IONOFFMAIL
+           END-IF
+           MOVE LK-SERVIDOR                 TO ARCD2900-CSERVMAIL
+      *
+           EXEC SQL
+             UPDATE ARVT2900_SERVMAIL
+                SET IONOFFMAIL = :ARCD2900-IONOFFMAIL
+              WHERE CSERVMAIL  = :ARCD2900-CSERVMAIL
+           END-EXEC.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF AQCW0009-SEM-ERROS
+              CONTINUE
+           ELSE
+              SET  AQCW0009-RCODE-APL        TO TRUE
+              SET  VIAW0030-DB2-ERROR        TO TRUE
+              MOVE WS-PROGNAME               TO VIAW0030-PGMNAME
+              MOVE '2700-ACTUALIZA-ESTADO'   TO VIAW0030-PARAGRAPH-NAME
+              MOVE CON-ART29                 TO VIAW0030-TABLE-NAME
+              MOVE SQLCODE                   TO VIAW0030-SQLCODE
+              MOVE 'ERRO NO UPDATE DA TABELA ART29  '
+                                             TO VIAW0030-DESC1
+              PERFORM VIAP0030-ESCREVE-SPOOL
+                 THRU VIAP0030-ESCREVE-SPOOL-EXIT
+           END-IF.
+      *
+       2800-UPDATE-SITUACAO-EXIT.
+           EXIT.
+
+      ******************************************************************
+      * 3000-FIM-PROGRAMA
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+      *
+           IF AQCW0009-SEM-ERROS
+              EXEC SQL COMMIT END-EXEC
+           ELSE
+              EXEC SQL ROLLBACK END-EXEC
+           END-IF.
+      *
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+      *    EXEC SQL INCLUDE VIAP0003 END-EXEC.
+           COPY AQCP0011.
+           COPY VIAP0015.
+           COPY VIAP0030.

@@ -1,0 +1,273 @@
+      ******************************************************************
+      *           I D E N T I F I C A T I O N   D I V I S I O N        *
+      ******************************************************************
+       IDENTIFICATION DIVISION.
+      ******************************************************************
+      * PROGRAM NAME
+      ******************************************************************
+       PROGRAM-ID. ARM2206.
+      ******************************************************************
+      *                          ARQUITECTURA                          *
+      ******************************************************************
+      * OBJECTIVO: Consulta ART22_PARAM                                *
+      ******************************************************************
+      *           L O G     D E     A L T E R A C O E S                *
+      ******************************************************************
+      *  INICIO  * AUTOR  * FIM    *  C O M E N T A R I O S            *
+      *          *        *        *                                   *
+      ******************************************************************
+      *           E N V I R O N M E N T         D I V I S I O N        *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      ******************************************************************
+      *                     CONFIGURATION SECTION                      *
+      ******************************************************************
+       CONFIGURATION SECTION.
+      ******************************************************************
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+      ******************************************************************
+      *                      INPUT-OUTPUT SECTION                      *
+      ******************************************************************
+       INPUT-OUTPUT SECTION.
+      ******************************************************************
+       FILE-CONTROL.
+      ******************************************************************
+      *                   D A T A   D I V I S I O N                    *
+      ******************************************************************
+       DATA DIVISION.
+      ******************************************************************
+      *                          FILE SECTION                          *
+      ******************************************************************
+       FILE SECTION.
+      ******************************************************************
+      *                    WORKING STORAGE SECTION                     *
+      ******************************************************************
+       WORKING-STORAGE SECTION.
+      ******************************************************************
+       01  FILLER                      PIC  X(40) VALUE
+           'INICIO WORKING-STORAGE DO ARM2206   '.
+      ******************************************************************
+      * PROGRAM CONTROL (PGM)
+      ******************************************************************
+       01  WS-PRG-CTL.
+      *    05 WS-PRG-NAM               PIC  X(10) VALUE 'ARM2206'.
+           05 WS-PROGNAME              PIC  X(10) VALUE 'ARM2206'.
+      ******************************************************************
+      * VARIAVEIS DE TRABALHO (VARTRAB)
+      ******************************************************************
+       01  WS-VARTRAB.
+           05 WS-INDICE                PIC  9(03).
+
+      ******************************************************************
+      * CONSTANTES
+      ******************************************************************
+       01  WC-CONSTAN.
+           05 CON-ART22                PIC  X(10) VALUE 'ART22'.
+           05 CON-TIMESTAMP            PIC  X(26) VALUE
+              '0001-01-01-00.00.00.000000'.
+      ******************************************************************
+      * DATASTRUCTURE
+      ******************************************************************
+
+      ******************************************************************
+      * TABELAS
+      ******************************************************************
+           EXEC SQL INCLUDE ARCD2200 END-EXEC.
+
+      ******************************************************************
+      * COPYS
+      ******************************************************************
+           COPY ARCK0001.
+           COPY ARCK0002.
+           COPY VIAK0001.
+           COPY VIAK0002.
+           COPY VIAW0005.
+           COPY VIAL0015.
+           COPY VIAL0002.
+      ******************************************************************
+      * DB2
+      ******************************************************************
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+      ******************************************************************
+       01  FILLER                      PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE ONLINE         '.
+
+      ******************************************************************
+      *                        LINKAGE SECTION                         *
+      ******************************************************************
+       LINKAGE SECTION.
+      ******************************************************************
+      *--- Area de processamento de erros
+           COPY ETCL0002.
+           COPY ARCL2205.
+      ******************************************************************
+      *              P R O C E D U R E   D I V I S I O N               *
+      ******************************************************************
+       PROCEDURE DIVISION USING ETCL0002-COMMAREA,
+                                ARCL2205-DATA.
+      ******************************************************************
+       0000-MAINLINE.
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1000-INICIO-PROGRAMA-EXIT.
+      *-
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2000-PROC-PROGRAMA
+                 THRU 2000-PROC-PROGRAMA-EXIT
+           END-IF.
+      *-
+           PERFORM 3000-FIM-PROGRAMA
+              THRU 3000-FIM-PROGRAMA-EXIT.
+      *-
+       0000-MAINLINE-EXIT.
+           GOBACK.
+
+      ******************************************************************
+       1000-INICIO-PROGRAMA.
+      ******************************************************************
+
+           MOVE ARCK0002-CAPLIC-AR          TO ETCL0002-CAPLIC-ERRO.
+      *
+           MOVE SPACES                      TO ARCL2205-GDESC.
+           MOVE SPACES                      TO ARCL2205-GVALOR1.
+           MOVE SPACES                      TO ARCL2205-GVALOR2.
+           MOVE SPACES                      TO ARCL2205-GVALOR3.
+           MOVE SPACES                      TO ARCL2205-CUSERID.
+           MOVE CON-TIMESTAMP               TO ARCL2205-HTIMEST.
+      *
+           PERFORM 1100-VALIDA-DADOS-API
+              THRU 1100-VALIDA-DADOS-API-EXIT.
+
+       1000-INICIO-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       1100-VALIDA-DADOS-API.
+      ******************************************************************
+
+           IF ARCL2205-CPARAM EQUAL SPACES
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ARCK0001-ERR-CPARAM      TO ETCL0002-NR-ERRO
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+           IF ARCL2205-CAPLIC EQUAL SPACES
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ARCK0001-ERR-CAPLIC      TO ETCL0002-NR-ERRO
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+       1100-VALIDA-DADOS-API-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2000-PROC-PROGRAMA.
+      ******************************************************************
+
+           PERFORM 2100-OBTEM-PARAMETRO
+              THRU 2100-OBTEM-PARAMETRO-EXIT.
+
+           IF ETCL0002-SEM-ERROS
+              PERFORM 2100-VALIDA-PARAMETRO
+                 THRU 2100-VALIDA-PARAMETRO-EXIT
+           END-IF.
+
+       2000-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+      ******************************************************************
+       2100-OBTEM-PARAMETRO.
+      ******************************************************************
+
+           MOVE ARCL2205-CPARAM        TO ARCD2200-CPARAM.
+           MOVE ARCL2205-CAPLIC        TO ARCD2200-CAPLIC.
+
+           MOVE 'DADOS 2100          '   TO VIAL0015-CALLER-ID
+           MOVE 'ARCD2200-CPARAM     '   TO VIAL0015-CAMPO-NM(1)
+           MOVE  ARCD2200-CPARAM         TO VIAL0015-CAMPO-VLR(1)
+           MOVE 'ARCD2200-CAPLIC     '   TO VIAL0015-CAMPO-NM(2)
+           MOVE  ARCD2200-CAPLIC         TO VIAL0015-CAMPO-VLR(2)
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT
+
+           EXEC SQL
+             SELECT CPARAM
+                  , CAPLIC
+                  , GDESC
+                  , GVALOR1
+                  , GVALOR2
+                  , GVALOR3
+                  , CUSERID
+                  , HTIMEST
+               INTO :ARCD2200-CPARAM
+                  , :ARCD2200-CAPLIC
+                  , :ARCD2200-GDESC
+                  , :ARCD2200-GVALOR1
+                  , :ARCD2200-GVALOR2
+                  , :ARCD2200-GVALOR3
+                  , :ARCD2200-CUSERID
+                  , :ARCD2200-HTIMEST
+               FROM ARVT2200_PARAM
+              WHERE CPARAM = :ARCD2200-CPARAM
+                AND CAPLIC = :ARCD2200-CAPLIC
+           END-EXEC.
+
+           MOVE CON-ART22               TO ETCL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           MOVE 'SQLCODE 2100        '   TO VIAL0015-CALLER-ID
+           MOVE 'SQLCODE             '   TO VIAL0015-CAMPO-NM(1)
+           MOVE  SQLCODE                 TO VIAL0015-CAMPO-VLR(1)
+           PERFORM VIAP0015-TRATA-DEBUG
+              THRU VIAP0015-TRATA-DEBUG-EXIT
+
+           IF DB2-OK
+             MOVE ARCD2200-GDESC        TO ARCL2205-GDESC
+             MOVE ARCD2200-CAPLIC       TO ARCL2205-CAPLIC
+             MOVE ARCD2200-GVALOR1      TO ARCL2205-GVALOR1
+             MOVE ARCD2200-GVALOR2      TO ARCL2205-GVALOR2
+             MOVE ARCD2200-GVALOR3      TO ARCL2205-GVALOR3
+             MOVE ARCD2200-CUSERID      TO ARCL2205-CUSERID
+             MOVE ARCD2200-HTIMEST      TO ARCL2205-HTIMEST
+           ELSE
+             IF DB2-NOTFND
+               MOVE VIAK0002-ERROS-FUNCAO    TO ETCL0002-IND-ERROS
+               MOVE ARCK0001-REG-INEXISTENTE TO ETCL0002-NR-ERRO
+               MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+             ELSE
+               MOVE VIAK0002-ABEND-DB2       TO ETCL0002-IND-ERROS
+               MOVE VIAK0001-ERRO-DB2        TO ETCL0002-NR-ERRO
+               MOVE VIAK0002-APLIC-AT        TO ETCL0002-CAPLIC-ERRO
+             END-IF
+           END-IF.
+
+       2100-OBTEM-PARAMETRO-EXIT.
+           EXIT.
+      ******************************************************************
+      * 2100-VALIDA-PARAMETRO
+      ******************************************************************
+       2100-VALIDA-PARAMETRO.
+
+           IF ARCL2205-GVALOR1 EQUAL SPACES
+              SET  ETCL0002-ERROS-FUNCAO    TO TRUE
+              MOVE ARCK0001-ERR-GVALOR1     TO ETCL0002-NR-ERRO
+              MOVE VIAK0002-APLIC-AR        TO ETCL0002-CAPLIC-ERRO
+           END-IF.
+
+       2100-VALIDA-PARAMETRO-EXIT.
+           EXIT.
+      ******************************************************************
+      * 3000-FIM-PROGRAMA
+      ******************************************************************
+       3000-FIM-PROGRAMA.
+           CONTINUE.
+
+       3000-FIM-PROGRAMA-EXIT.
+            EXIT.
+      ******************************************************************
+      *                       AREA DE PROCEDURES                       *
+      ******************************************************************
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+           COPY VIAP0015.
