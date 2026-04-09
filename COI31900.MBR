@@ -1,0 +1,371 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI31900.
+      ******************************************************************
+      *     PROGRAMA COI31900.                                         *
+      *                                                                *
+      *     Browse Seguros
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI31900         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD2200 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV3190.
+       COPY COCV3191.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+      *
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+      *--------------------------------------------------------------
+      *            SWITCH
+      *--------------------------------------------------------------
+       01  SW-SWITCH.
+           05 SW-CURSOR                  PIC X(01) VALUE SPACES.
+              88 SW-CURSOR-NONE                    VALUE '0'.
+              88 SW-CURSOR-1                       VALUE '1'.
+              88 SW-CURSOR-2                       VALUE '2'.
+              88 SW-CURSOR-3                       VALUE '3'.
+              88 SW-CURSOR-4                       VALUE '3'.
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT2200 PIC X(08) VALUE 'COVT2200'.
+      *--------------------------------------------------------------
+      *              DECLARACOES DE CURSORES DB2                     *
+      *--------------------------------------------------------------
+      *
+       01  WS-CURSOR-VARS.
+           05 FILLER                     PIC X(01) VALUE SPACES.
+           EXEC SQL
+                DECLARE CURCOT01 CURSOR FOR
+                 SELECT
+                       CIDCOLAB
+                     , CTIPSEG
+                     , NSEQSEG
+                     , DINITREG
+                     , DFIMREG
+                     , MSEGURO
+                     , CPERPAG
+                     , CUSERID
+                     , HTIMEST
+                 FROM COVT2200_SEGUROS
+                 WHERE
+                    CIDCOLAB > :COCD2200-CIDCOLAB
+                     OR (CIDCOLAB = :COCD2200-CIDCOLAB
+                     AND CTIPSEG > :COCD2200-CTIPSEG)
+                     OR (CIDCOLAB = :COCD2200-CIDCOLAB
+                     AND CTIPSEG = :COCD2200-CTIPSEG
+                     AND NSEQSEG > :COCD2200-NSEQSEG)
+                     OR (CIDCOLAB = :COCD2200-CIDCOLAB
+                     AND CTIPSEG = :COCD2200-CTIPSEG
+                     AND NSEQSEG = :COCD2200-NSEQSEG
+                     AND DINITREG >= :COCD2200-DINITREG)
+                 ORDER BY
+                       CIDCOLAB
+                     , CTIPSEG
+                     , NSEQSEG
+                     , DINITREG
+           END-EXEC
+
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI31900         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV3190-MSG.
+           MOVE COCV3190-ASE               TO COCV3191-ASE.
+      *
+           MOVE ZEROES                     TO COCV3191-INDICE.
+           PERFORM 1100-LIMPA-OCCURS
+              THRU 1199-LIMPA-OCCURS-EXIT
+             UNTIL COCV3191-PAGINA-CHEIA.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            1100-LIMPA-OCCURS
+      *--------------------------------------------------------------
+       1100-LIMPA-OCCURS.
+      *
+           ADD 1                       TO COCV3191-INDICE.
+           MOVE SPACES
+             TO COCV3191-D-CIDCOLAB(COCV3191-INDICE)
+           MOVE SPACES
+             TO COCV3191-D-CTIPSEG(COCV3191-INDICE)
+           MOVE ZEROES
+             TO COCV3191-D-NSEQSEG(COCV3191-INDICE)
+           MOVE VIAK0002-DATA-MINIMA
+             TO COCV3191-D-DINITREG(COCV3191-INDICE)
+           MOVE VIAK0002-DATA-MINIMA
+             TO COCV3191-D-DFIMREG(COCV3191-INDICE)
+           MOVE ZEROES
+             TO COCV3191-D-MSEGURO(COCV3191-INDICE)
+           MOVE SPACES
+             TO COCV3191-D-CPERPAG(COCV3191-INDICE)
+      *
+           .
+       1199-LIMPA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           MOVE COCV3190-CIDCOLAB
+             TO COCV3191-CIDCOLAB
+           MOVE COCV3190-CTIPSEG
+             TO COCV3191-CTIPSEG
+           MOVE COCV3190-NSEQSEG
+             TO COCV3191-NSEQSEG
+           MOVE COCV3190-DINITREG
+             TO COCV3191-DINITREG
+      *
+           PERFORM 2010-VALIDACOES
+              THRU 2019-VALIDACOES-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2020-OPEN
+                 THRU 2029-OPEN-EXIT
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2030-FETCH
+                 THRU 2039-FETCH-EXIT
+
+              IF VIAL0002-SEM-ERROS
+                 IF DB2-OK
+                    PERFORM 2040-CONTINUA
+                       THRU 2049-CONTINUA-EXIT
+                 ELSE
+                    COMPUTE COCV3191-DIMINUI-LENGTH EQUAL
+                         COCV3191-INDICE-INVERSO * COCV3191-LENGTH-OCCUR
+                    COMPUTE COCV3191-LENGTH EQUAL COCV3191-LENGTH
+                         - COCV3191-DIMINUI-LENGTH
+                    MOVE VIAK0002-ERROS-FUNCAO
+                                           TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV3191-CIDCOLAB-S
+                    MOVE COCK0001-CIDCOLAB-N-EXISTS
+                      TO COCV3191-CIDCOLAB-MSG
+                 END-IF
+              END-IF
+              PERFORM 2070-CLOSE
+                 THRU 2079-CLOSE-EXIT
+           END-IF.
+
+
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *                   2010-VALIDACOES
+      *--------------------------------------------------------------
+       2010-VALIDACOES.
+
+
+           CONTINUE.
+
+       2019-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2020-OPEN
+      *--------------------------------------------------------------
+       2020-OPEN.
+
+           MOVE COCV3190-CIDCOLAB
+             TO COCD2200-CIDCOLAB
+           MOVE COCV3190-CTIPSEG
+             TO COCD2200-CTIPSEG
+           MOVE COCV3190-NSEQSEG
+             TO COCD2200-NSEQSEG
+           MOVE COCV3190-DINITREG
+             TO COCD2200-DINITREG
+
+           SET SW-CURSOR-NONE TO TRUE
+
+
+           IF SW-CURSOR-NONE
+              SET SW-CURSOR-1 TO TRUE
+           END-IF
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        OPEN CURCOT01
+                    END-EXEC
+           END-EVALUATE.
+
+           MOVE CON-COVT2200               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2029-OPEN-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2030-FETCH
+      *--------------------------------------------------------------
+       2030-FETCH.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                       FETCH CURCOT01
+                       INTO
+                           :COCD2200-CIDCOLAB
+                         , :COCD2200-CTIPSEG
+                         , :COCD2200-NSEQSEG
+                         , :COCD2200-DINITREG
+                         , :COCD2200-DFIMREG
+                         , :COCD2200-MSEGURO
+                         , :COCD2200-CPERPAG
+                         , :COCD2200-CUSERID
+                         , :COCD2200-HTIMEST
+                    END-EXEC
+
+
+           END-EVALUATE.
+
+           MOVE CON-COVT2200               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+       2039-FETCH-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                       2040-CONTINUA
+      *--------------------------------------------------------------
+       2040-CONTINUA.
+
+           MOVE ZEROES                     TO COCV3191-INDICE.
+           PERFORM 2050-TRATA-OCCURS
+              THRU 2059-TRATA-OCCURS-EXIT
+             UNTIL DB2-NOTFND
+                OR COCV3191-PAGINA-CHEIA
+                OR NOT VIAL0002-SEM-ERROS.
+
+           IF VIAL0002-SEM-ERROS
+              IF NOT COCV3191-PAGINA-CHEIA
+                    COMPUTE COCV3191-INDICE-INVERSO EQUAL
+                         COCV3191-INDICE-INVERSO - COCV3191-INDICE
+                    COMPUTE COCV3191-DIMINUI-LENGTH EQUAL
+                         COCV3191-INDICE-INVERSO * COCV3191-LENGTH-OCCUR
+                    COMPUTE COCV3191-LENGTH EQUAL COCV3191-LENGTH -
+                         COCV3191-DIMINUI-LENGTH
+                    SET  VIAL0002-FIM-CONSULTA TO TRUE
+              END-IF
+           END-IF.
+
+       2049-CONTINUA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2050-TRATA-OCCURS
+      *--------------------------------------------------------------
+       2050-TRATA-OCCURS.
+      *
+           ADD 1                       TO COCV3191-INDICE.
+           MOVE COCD2200-CIDCOLAB
+             TO COCV3191-D-CIDCOLAB(COCV3191-INDICE).
+           MOVE COCD2200-CTIPSEG
+             TO COCV3191-D-CTIPSEG(COCV3191-INDICE).
+           MOVE COCD2200-NSEQSEG
+             TO COCV3191-D-NSEQSEG(COCV3191-INDICE).
+           MOVE COCD2200-DINITREG
+             TO COCV3191-D-DINITREG(COCV3191-INDICE).
+           MOVE COCD2200-DFIMREG
+             TO COCV3191-D-DFIMREG(COCV3191-INDICE).
+           MOVE COCD2200-MSEGURO
+             TO COCV3191-D-MSEGURO(COCV3191-INDICE).
+           MOVE COCD2200-CPERPAG
+             TO COCV3191-D-CPERPAG(COCV3191-INDICE).
+      *
+           PERFORM 2030-FETCH
+              THRU 2039-FETCH-EXIT.
+      *
+       2059-TRATA-OCCURS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                     2070-CLOSE
+      *--------------------------------------------------------------
+       2070-CLOSE.
+
+           EVALUATE TRUE
+               WHEN SW-CURSOR-1
+                    EXEC SQL
+                        CLOSE CURCOT01
+                    END-EXEC
+           END-EVALUATE.
+
+       2079-CLOSE-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE COCV3191-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV3191-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV3191-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE COCV3191-INDICE            TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+      *
+

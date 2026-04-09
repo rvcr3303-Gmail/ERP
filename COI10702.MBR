@@ -1,0 +1,225 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI10702.
+      ******************************************************************
+      *     PROGRAMA COI10702.
+      *
+      *     Manutenção de Tipos de Movimentos
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI10702         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD2700 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV1070.
+       COPY COCV1071.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+      *
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT2700 PIC X(08) VALUE 'COVT2700'.
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'COI10702'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI10702         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV1070-MSG.
+           MOVE COCV1070-ASE       TO COCV1071-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1070-ADE       TO COCV1071-ADE.
+
+
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF
+
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+
+           MOVE COCV1070-CTIPMOV
+             TO COCD2700-CTIPMOV
+
+           EXEC SQL
+                 SELECT
+                       CTIPMOV
+                     , GDESC
+                     , CSINAL
+                     , NCONTADB
+                     , NCONTACR
+                 INTO
+                       :COCD2700-CTIPMOV
+                     , :COCD2700-GDESC
+                     , :COCD2700-CSINAL
+                     , :COCD2700-NCONTADB
+                     , :COCD2700-NCONTACR
+                 FROM COVT2700_TIPMOV
+                 WHERE
+                     CTIPMOV  = :COCD2700-CTIPMOV
+           END-EXEC
+
+
+           MOVE CON-COVT2700
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV1071-CTIPMOV-S
+                    MOVE COCK0001-SEM-CTIPMOV
+                      TO COCV1071-CTIPMOV-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV1071-CTIPMOV-CAPLIC
+                 ELSE
+                    MOVE COCD2700-CTIPMOV
+                      TO COCV1071-CTIPMOV
+                    MOVE COCD2700-GDESC
+                      TO COCV1071-GDESC
+                    MOVE COCD2700-CSINAL
+                      TO COCV1071-CSINAL
+                    MOVE COCD2700-NCONTADB
+                      TO COCV1071-NCONTADB
+                    MOVE COCD2700-NCONTACR
+                      TO COCV1071-NCONTACR
+                    IF NOT VIAL0001-VISUALIZACAO
+                        CONTINUE
+                    END-IF
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV1071-CTIPMOV-S
+                    MOVE COCK0001-SEM-CTIPMOV
+                      TO COCV1071-CTIPMOV-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV1071-CTIPMOV-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1071-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV1071-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV1071-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.

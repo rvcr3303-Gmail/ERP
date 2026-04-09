@@ -1,0 +1,219 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI31106.
+      ******************************************************************
+      *     PROGRAMA COI31106.                                         *
+      *                                                                *
+      *     Seguros
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI31106         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD2200 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV3110.
+       COPY COCV3111.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0010.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT2200 PIC X(08) VALUE 'COVT2200'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI31106         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV3110-MSG.
+           MOVE COCV3110-ASE               TO COCV3111-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+
+           MOVE COCV3110-ADE               TO COCV3111-ADE.
+
+           PERFORM 2100-VALIDACOES
+              THRU 2199-VALIDACOES-EXIT
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2200-MODIFICA-DADOS
+                 THRU 2299-MODIFICA-DADOS-EXIT
+           END-IF
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-VALIDACOES
+      *--------------------------------------------------------------
+       2100-VALIDACOES.
+
+
+
+           CONTINUE
+           .
+
+       2199-VALIDACOES-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2200-MODIFICA-DADOS
+      *--------------------------------------------------------------
+       2200-MODIFICA-DADOS.
+
+           MOVE COCV3110-CIDCOLAB
+             TO COCD2200-CIDCOLAB
+           MOVE COCV3110-CTIPSEG
+             TO COCD2200-CTIPSEG
+           MOVE COCV3110-NSEQSEG
+             TO COCD2200-NSEQSEG
+           MOVE COCV3110-DINITREG
+             TO COCD2200-DINITREG
+           MOVE COCV3110-DFIMREG
+             TO COCD2200-DFIMREG
+           MOVE COCV3110-MSEGURO
+             TO COCD2200-MSEGURO
+           MOVE COCV3110-CPERPAG
+             TO COCD2200-CPERPAG
+           MOVE VIAL0001-CUTILIZA-I
+             TO COCD2200-CUSERID
+
+           EXEC SQL
+                 UPDATE
+                COVT2200_SEGUROS
+                SET
+                       CIDCOLAB = :COCD2200-CIDCOLAB
+                     , CTIPSEG = :COCD2200-CTIPSEG
+                     , NSEQSEG = :COCD2200-NSEQSEG
+                     , DINITREG = :COCD2200-DINITREG
+                     , DFIMREG = :COCD2200-DFIMREG
+                     , MSEGURO = :COCD2200-MSEGURO
+                     , CPERPAG = :COCD2200-CPERPAG
+                     , HTIMEST = CURRENT TIMESTAMP
+                 WHERE
+                    CIDCOLAB = :COCD2200-CIDCOLAB
+                     AND CTIPSEG = :COCD2200-CTIPSEG
+                     AND NSEQSEG = :COCD2200-NSEQSEG
+                     AND DINITREG = :COCD2200-DINITREG
+           END-EXEC
+
+
+           MOVE CON-COVT2200               TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-NOTFND
+                 MOVE VIAK0002-ERROS-FUNCAO
+                   TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV3111-CIDCOLAB-S
+                    MOVE COCK0001-CIDCOLAB-N-EXISTS
+                      TO COCV3111-CIDCOLAB-MSG
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV3111-CTIPSEG-S
+                    MOVE COCK0001-CTIPSEG-N-EXISTS
+                      TO COCV3111-CTIPSEG-MSG
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV3111-NSEQSEG-S
+                    MOVE COCK0001-NSEQSEG-N-EXISTS
+                      TO COCV3111-NSEQSEG-MSG
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV3111-DINITREG-S
+                    MOVE COCK0001-DINITREG-N-EXISTS
+                      TO COCV3111-DINITREG-MSG
+              ELSE
+                 IF NOT DB2-OK
+                    MOVE VIAK0002-ABEND-DB2
+                      TO VIAL0002-IND-ERROS
+                    MOVE VIAK0001-ERRO-DB2
+                      TO VIAL0002-COD-ERRO-GRAVE
+                 END-IF
+              END-IF
+           ELSE
+              MOVE VIAK0002-ABEND-DB2
+                TO VIAL0002-IND-ERROS
+              MOVE VIAK0001-ERRO-DB2
+                TO VIAL0002-COD-ERRO-GRAVE
+           END-IF
+
+
+           IF VIAL0002-SEM-ERROS
+                        CONTINUE
+           END-IF
+           .
+
+       2299-MODIFICA-DADOS-EXIT.
+           EXIT.
+
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+
+           MOVE COCV3111-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV3111-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV3111-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0010.

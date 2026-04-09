@@ -1,0 +1,376 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.    COI15102.
+      ******************************************************************
+      *     PROGRAMA COI15102.
+      *
+      *     Opportunities
+      ******************************************************************
+      *     LOG ALTERACOES:                                            *
+      *   USER     / DATA     /   REFERENCIA / OBSERVACOES             *
+      *                                                                *
+      *                                                                *
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+      *--------------------------------------------------------------
+       WORKING-STORAGE SECTION.
+      *--------------------------------------------------------------
+       01  FILLER                          PIC X(40) VALUE
+           'INICIO WORKING-STORAGE COI15102         '.
+      *--------------------------------------------------------------
+      *            DECLARACOES DE DB2
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE COCD5401 END-EXEC.
+           EXEC SQL INCLUDE COCD0606 END-EXEC.
+           EXEC SQL INCLUDE SQLCA    END-EXEC.
+      *--------------------------------------------------------------
+      *            MENSAGEM DE INPUT E  OUTPUT
+      *--------------------------------------------------------------
+       COPY COCV1510.
+       COPY COCV1511.
+      *--------------------------------------------------------------
+      *            AREAS DE TRABALHO
+      *--------------------------------------------------------------
+       COPY VIAL0015.
+       COPY VIAW0005.
+       COPY VIAK0001.
+       COPY VIAK0002.
+       COPY COCK0001.
+       COPY COCK0002.
+      *
+      *
+      *--------------------------------------------------------------
+      *            CONSTANTES
+      *--------------------------------------------------------------
+       01  WS-CONSTANTES.
+           05 CON-COVT5401 PIC X(08) VALUE 'COVT5401'.
+           05 CON-COVT0606 PIC X(08) VALUE 'COVT0606'.
+           05 CON-0        PIC X(02) VALUE '00'.
+
+       01  WS-VARIAVEIS.
+           05 WS-COPPORTUNITY.
+             10 WS-CLIENT PIC X(03).
+             10 WS-YEAR PIC 9(04).
+             10 WS-SEQ   PIC 9(03).
+      *--------------------------------------------------------------
+      *            PROGRAM CONTROL
+      *--------------------------------------------------------------
+       01  WS-PROGRAM-CONTROL.
+           05 WS-PROGNAME            PIC  X(08) VALUE 'COI15102'.
+      *--------------------------------------------------------------
+       01  FILLER                        PIC X(40) VALUE
+           'FIM DA WORKING-STORAGE COI15102         '.
+      *--------------------------------------------------------------
+       LINKAGE SECTION.
+      *--------------------------------------------------------------
+      *
+       COPY VIAL0004.
+      *
+            EXEC SQL INCLUDE VIAP0009 END-EXEC.
+      *
+      *--------------------------------------------------------------
+      *            0000-MAINLINE
+      *--------------------------------------------------------------
+       0000-MAINLINE.
+      *
+           PERFORM 1000-INICIO-PROGRAMA
+              THRU 1099-INICIO-PROGRAMA-EXIT.
+
+           PERFORM 2000-PROC-PROGRAMA
+              THRU 2099-PROC-PROGRAMA-EXIT.
+
+           PERFORM 3000-FINAL-PROGRAMA
+              THRU 3099-FINAL-PROGRAMA-EXIT.
+      *
+       0099-MAINLINE-EXIT.
+           COPY VIAP0004.
+      *--------------------------------------------------------------
+      *            1000-INICIO-PROGRAMA
+      *--------------------------------------------------------------
+       1000-INICIO-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '1000-INICIO-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+      *
+           MOVE VIAL0001-MENSAGEM-INPUT    TO COCV1510-MSG.
+           MOVE COCV1510-ASE       TO COCV1511-ASE.
+      *
+       1099-INICIO-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *            2000-PROC-PROGRAMA
+      *--------------------------------------------------------------
+       2000-PROC-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2000-PROC-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1510-ADE       TO COCV1511-ADE.
+
+              MOVE 'COCV1510-COPPORTUNITY' TO VIAL0015-CAMPO-NM (1)
+              MOVE  COCV1510-COPPORTUNITY  TO VIAL0015-CAMPO-VLR (1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+
+      *Validacao da chave
+           MOVE COCV1510-COPPORTUNITY TO WS-COPPORTUNITY
+
+           IF WS-YEAR IS NOT NUMERIC
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1511-COPPORTUNITY-S
+              MOVE COCK0001-CANO-INV              TO
+                             COCV1511-COPPORTUNITY-MSG
+              MOVE COCK0002-CAPLIC TO COCV1511-COPPORTUNITY-CAPLIC
+           ELSE
+           IF WS-YEAR < 2008
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1511-COPPORTUNITY-S
+              MOVE COCK0001-CANO-INV              TO
+                             COCV1511-COPPORTUNITY-MSG
+              MOVE COCK0002-CAPLIC TO COCV1511-COPPORTUNITY-CAPLIC
+           END-IF.
+
+           IF WS-SEQ IS NOT NUMERIC
+              MOVE VIAK0002-ERROS-FUNCAO  TO VIAL0002-IND-ERROS
+              MOVE COCK0002-STATUS-ACTIVO TO COCV1511-COPPORTUNITY-S
+              MOVE COCK0001-NSEQ-INV              TO
+                             COCV1511-COPPORTUNITY-MSG
+              MOVE COCK0002-CAPLIC TO COCV1511-COPPORTUNITY-CAPLIC
+           END-IF.
+
+           IF VIAL0002-SEM-ERROS
+              PERFORM 2100-OBTEM-DADOS
+                 THRU 2199-OBTEM-DADOS-EXIT
+           END-IF
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2099-PROC-PROGRAMA-EXIT' TO VIAL0015-CALLER-ID
+              MOVE 'WS-COPPORTUNITY      '   TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-COPPORTUNITY          TO VIAL0015-CAMPO-VLR(1)
+              MOVE 'COCV1510-ADE         '   TO VIAL0015-CAMPO-NM(2)
+              MOVE  COCV1510-ADE             TO VIAL0015-CAMPO-VLR(2)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           .
+       2099-PROC-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      *                   2100-OBTEM-DADOS
+      *--------------------------------------------------------------
+       2100-OBTEM-DADOS.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2100-OBTEM-DADOS' TO VIAL0015-CALLER-ID
+              MOVE 'WS-COPPORTUNITY      ' TO VIAL0015-CAMPO-NM(1)
+              MOVE  WS-COPPORTUNITY        TO VIAL0015-CAMPO-VLR(1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1510-COPPORTUNITY
+             TO COCD0606-COPPORTUNITY
+
+           EXEC SQL
+                 SELECT
+                       COPPORTUNITY
+                     , CPROJECT
+                     , CENTITY
+                     , NVALOR
+                     , NPROB
+                     , TOPPORTUNITY
+                     , DOPPORTUNITY
+                     , DTENV
+                     , CSITUACAO
+                     , GJUSTPERD
+                     , DALTSTAT
+                     , CUSERID
+                     , HTIMEST
+                     , CMOEDA
+                     , CPAIS
+                     , CEMPRESA
+                     , DREGISTO
+                     , DCONCL
+                 INTO
+                       :COCD0606-COPPORTUNITY
+                     , :COCD0606-CPROJECT
+                     , :COCD0606-CENTITY
+                     , :COCD0606-NVALOR
+                     , :COCD0606-NPROB
+                     , :COCD0606-TOPPORTUNITY
+                     , :COCD0606-DOPPORTUNITY
+                     , :COCD0606-DTENV
+                     , :COCD0606-CSITUACAO
+                     , :COCD0606-GJUSTPERD
+                     , :COCD0606-DALTSTAT
+                     , :COCD0606-CUSERID
+                     , :COCD0606-HTIMEST
+                     , :COCD0606-CMOEDA
+                     , :COCD0606-CPAIS
+                     , :COCD0606-CEMPRESA
+                     , :COCD0606-DREGISTO
+                     , :COCD0606-DCONCL
+                 FROM COVT0606_OPPORTUNITIES
+                 WHERE
+                    COPPORTUNITY = :COCD0606-COPPORTUNITY
+           END-EXEC
+
+
+           MOVE CON-COVT0606
+             TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 IF VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV1511-COPPORTUNITY-S
+                    MOVE COCK0001-COPPORTUNITY-EXISTS
+                      TO COCV1511-COPPORTUNITY-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV1511-COPPORTUNITY-CAPLIC
+                 ELSE
+                    PERFORM 2500-BUSCA-PAIS
+                       THRU 2500-BUSCA-PAIS-EXIT
+                    MOVE COCD0606-CENTITY
+                      TO COCV1511-CCLIENT
+                    MOVE COCD0606-COPPORTUNITY
+                      TO COCV1511-COPPORTUNITY
+                    MOVE COCD0606-CPROJECT
+                      TO COCV1511-CPROJECT
+                    MOVE COCD0606-NVALOR
+                      TO COCV1511-NVALOR
+                    MOVE COCD0606-NPROB
+                      TO COCV1511-NPROB
+                    MOVE COCD0606-TOPPORTUNITY
+                      TO COCV1511-TOPPORTUNITY
+                    MOVE COCD0606-DOPPORTUNITY
+                      TO COCV1511-DOPPORTUNITY
+                    MOVE COCD0606-DTENV
+                      TO COCV1511-DTENV
+                    MOVE COCD0606-CSITUACAO
+                      TO COCV1511-CSITUACAO
+                    MOVE COCD0606-CSITUACAO
+                      TO COCV1511-CSITUACAO-ANT
+                    MOVE COCD0606-GJUSTPERD
+                      TO COCV1511-GJUSTPERD
+                    MOVE COCD0606-DALTSTAT
+                      TO COCV1511-DALTSTAT
+                    MOVE COCD0606-CMOEDA
+                      TO COCV1511-CMOEDA
+                    MOVE COCD0606-CPAIS
+                      TO COCV1511-CPAIS
+                    MOVE COCD0606-CEMPRESA
+                      TO COCV1511-CEMPRESA
+                    MOVE COCD0606-DREGISTO
+                      TO COCV1511-DREGISTO
+
+                    IF COCD0606-DCONCL NOT = COCK0002-DATA-MIN
+                       MOVE COCD0606-DCONCL
+                         TO COCV1511-DCONCL
+                    END-IF
+
+                    IF NOT VIAL0001-VISUALIZACAO
+                        CONTINUE
+                    END-IF
+                 END-IF
+              ELSE
+                 IF NOT VIAL0001-CRIACAO
+                    MOVE VIAK0002-ERROS-FUNCAO
+                      TO VIAL0002-IND-ERROS
+                    MOVE COCK0002-STATUS-ACTIVO
+                      TO COCV1511-COPPORTUNITY-S
+                    MOVE COCK0001-COPPORTUNITY-N-EXISTS
+                      TO COCV1511-COPPORTUNITY-MSG
+                    MOVE COCK0002-CAPLIC
+                      TO COCV1511-COPPORTUNITY-CAPLIC
+                 END-IF
+              END-IF
+           END-IF.
+
+       2199-OBTEM-DADOS-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+      * BUSCA O CODIGO DE PAIS PELA EMPRESA
+      *--------------------------------------------------------------
+       2500-BUSCA-PAIS.
+
+           IF VIAL0001-DEBUG-SIM
+              MOVE '2500-BUSCA-PAIS    ' TO VIAL0015-CALLER-ID
+              MOVE 'COCV1510-CCLIENT  ' TO VIAL0015-CAMPO-NM (1)
+              MOVE  COCV1510-CCLIENT    TO VIAL0015-CAMPO-VLR (1)
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCD0606-CENTITY  TO COCD5401-CSIGLA.
+
+           EXEC SQL
+                 SELECT CEMPRESA, GMARCA, CPAIS
+                 INTO  :COCD5401-CEMPRESA,
+                       :COCD5401-GMARCA,
+                       :COCD5401-CPAIS
+                 FROM COVT5401_EMPRESAS
+                 WHERE CSIGLA   = :COCD5401-CSIGLA
+           END-EXEC
+
+           MOVE CON-COVT5401 TO VIAL0002-TABLE-NAME.
+
+           PERFORM 9020-DB2CHECK
+              THRU 9029-DB2CHECK-EXIT.
+
+           IF VIAL0002-SEM-ERROS
+              IF DB2-OK
+                 MOVE COCD5401-CPAIS TO COCD0606-CPAIS
+                 MOVE COCD5401-CPAIS TO COCV1511-CPAIS
+                 MOVE SPACES         TO COCV1511-XDESCCPAIS
+              ELSE
+                MOVE VIAK0002-ERROS-FUNCAO
+                  TO VIAL0002-IND-ERROS
+                MOVE COCK0002-STATUS-ACTIVO
+                  TO COCV1511-CCLIENT-S
+                MOVE COCK0001-CLIENTE-N-EXISTS
+                  TO COCV1511-CCLIENT-MSG
+                MOVE COCK0002-CAPLIC
+                  TO COCV1511-CCLIENT-CAPLIC
+              END-IF
+           END-IF.
+
+       2500-BUSCA-PAIS-EXIT.
+           EXIT.
+
+      *--------------------------------------------------------------
+      *            3000-FINAL-PROGRAMA
+      *--------------------------------------------------------------
+       3000-FINAL-PROGRAMA.
+      *
+           IF VIAL0001-DEBUG-SIM
+              MOVE '3000-FINAL-PROGRAMA' TO VIAL0015-CALLER-ID
+              PERFORM VIAP0016-TRATA-DEBUG
+                 THRU VIAP0016-TRATA-DEBUG-EXIT
+           END-IF.
+
+           MOVE COCV1511-MSG               TO VIAL0001-MENSAGEM-OUTPUT.
+           MOVE COCV1511-LENGTH            TO VIAL0001-LENGTH-MSG.
+           MOVE COCV1511-NR-CAMPOS         TO VIAL0001-NR-CAMPOS.
+           MOVE ZEROES
+             TO VIAL0001-OCORRENCIAS.
+
+       3099-FINAL-PROGRAMA-EXIT.
+           EXIT.
+      *--------------------------------------------------------------
+           EXEC SQL INCLUDE VIAP0003 END-EXEC.
+      *==============================================================
+           COPY VIAP0016.
